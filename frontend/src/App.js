@@ -5,18 +5,28 @@ import HomePage from "./components/HomePage";
 import Register from "./components/Register";
 import Login from "./components/Login";
 import AdminDashboard from "./components/AdminDashboard";
+import { AuthProvider } from "./context/AuthContext";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 
 function App() {
   return (
     <Router>
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/admin-dashboard" element={<AdminDashboard />} />
-        {/* <Route path="/biologist-dashboard" element={<div>Biologist Dashboard</div>} />
-        <Route path="/user-dashboard" element={<div>User Dashboard</div>} /> */}
-      </Routes>
+      <AuthProvider>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/login" element={<Login />} />
+          <Route
+            path="/admin-dashboard"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          {/* Add other protected routes similarly */}
+        </Routes>
+      </AuthProvider>
     </Router>
   );
 }

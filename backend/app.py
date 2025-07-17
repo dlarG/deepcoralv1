@@ -30,6 +30,44 @@ def get_csrf_token():
         session['csrf_token'] = secrets.token_hex(32)
     return jsonify({'csrf_token': session['csrf_token']})
 
+
+# Decorator to check if user is logged in
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Check if user is logged in by checking session
+        if 'user_id' not in session:
+            return jsonify({'error': 'Unauthorized'}), 401
+        return f(*args, **kwargs)
+    return decorated_function
+
+# Decorator to check if user is admin
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # First check if logged in
+        if 'user_id' not in session:
+            return jsonify({'error': 'Unauthorized'}), 401
+        
+        # Then check if admin
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT roletype FROM users WHERE id = %s", (session['user_id'],))
+                user = cur.fetchone()
+                if not user or user[0].lower() != 'admin':
+                    return jsonify({'error': 'Admin access required'}), 403
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+        finally:
+            if conn:
+                conn.close()
+                
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 # Route for register with a POST method
 @app.route('/register', methods=["POST"])
 def register_user():
@@ -121,6 +159,8 @@ def login_user():
                 
             # Generate new CSRF token on login
             session['csrf_token'] = secrets.token_hex(32)
+            session['user_id'] = user[0]
+            session['roletype'] = user[7]
             
             user_data = {
                 'username': user[1],
@@ -144,11 +184,26 @@ def login_user():
             conn.close()
 
 @app.route('/logout', methods=['POST'])
+@login_required  # Add this decorator to ensure only logged-in users can logout
 def logout():
+    # Clear the Flask session
     session.clear()
-    return jsonify({'message': 'Logout successful'}), 200
+    
+    # Create a response and delete the session cookie explicitly
+    response = jsonify({'message': 'Logout successful'})
+    response.set_cookie(
+        'session', 
+        '', 
+        expires=0,  # Immediately expire the cookie
+        httponly=True,
+        secure=True,
+        samesite='Lax'
+    )
+    return response, 200
 
 @app.route('/admin/users', methods=['GET'])
+@login_required
+@admin_required
 def get_all_users():
     # Check if user is admin (you'll need to implement proper authentication)
     # Example: if not current_user.is_authenticated or current_user.roletype != 'admin':
@@ -180,6 +235,20 @@ def get_all_users():
     finally:
         if conn:
             conn.close()
+
+# Add a route to check auth status
+@app.route('/check-auth', methods=['GET'])
+def check_auth():
+    if 'user_id' not in session:
+        return jsonify({'authenticated': False}), 200
+    
+    return jsonify({
+        'authenticated': True,
+        'user': {
+            'id': session['user_id'],
+            'roletype': session.get('roletype', 'guest')
+        }
+    }), 200
 
 # Add this route to delete a user (admin only)
 @app.route('/admin/users/<int:user_id>', methods=['DELETE'])

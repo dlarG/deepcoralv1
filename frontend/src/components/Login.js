@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import { FiUser, FiLock, FiLogIn } from "react-icons/fi";
 
 // Configure axios to send credentials with requests
@@ -15,6 +16,7 @@ function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [csrfToken, setCsrfToken] = useState("");
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   // Fetch CSRF token when component mounts
   useEffect(() => {
@@ -43,12 +45,14 @@ function Login() {
         headers: {
           "X-CSRF-Token": csrfToken,
         },
+        withCredentials: true,
       });
 
       setMessage(res.data.message);
       setForm((prev) => ({ ...prev, password: "" })); // Clear password
 
-      // Store user data in localStorage/sessionStorage
+      login(res.data.user); // Use the auth context login
+      setMessage(res.data.message);
       localStorage.setItem("user", JSON.stringify(res.data.user));
 
       // Redirect based on role

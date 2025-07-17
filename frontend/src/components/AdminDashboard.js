@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import {
   FiLogOut,
   FiUsers,
@@ -16,56 +17,74 @@ import {
 
 function AdminDashboard() {
   const navigate = useNavigate();
+  const { user, loading: authLoading, logout, checkAuthStatus } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState("Manage Users");
 
-  // Fetch users on component mount
+  // Verify authentication status and role when component mounts
   useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const response = await axios.get("http://localhost:5000/admin/users", {
-          withCredentials: true,
-          headers: {
-            "X-CSRF-Token": localStorage.getItem("csrf_token"),
-          },
-        });
-        setUsers(response.data.users);
-      } catch (err) {
-        setError(err.response?.data?.error || "Failed to fetch users");
-        if (err.response?.status === 401) {
-          // Unauthorized - redirect to login
-          navigate("/login");
-        }
-      } finally {
-        setLoading(false);
+    const verifyAuth = async () => {
+      await checkAuthStatus();
+
+      // If not authenticated or not admin, redirect to login
+      if (!user || user.roletype.toLowerCase() !== "admin") {
+        navigate("/login");
       }
     };
 
-    fetchUsers();
-  }, [navigate]);
+    verifyAuth();
+  }, [user, checkAuthStatus, navigate]);
+
+  // Fetch users only if authenticated and admin
+  useEffect(() => {
+    if (user && user.roletype.toLowerCase() === "admin") {
+      const fetchUsers = async () => {
+        try {
+          // First get a fresh CSRF token
+          const csrfResponse = await axios.get(
+            "http://localhost:5000/csrf-token",
+            {
+              withCredentials: true,
+            }
+          );
+          const csrfToken = csrfResponse.data.csrf_token;
+          localStorage.setItem("csrf_token", csrfToken);
+
+          const response = await axios.get(
+            "http://localhost:5000/admin/users",
+            {
+              withCredentials: true,
+              headers: {
+                "X-CSRF-Token": csrfToken,
+              },
+            }
+          );
+          setUsers(response.data.users);
+        } catch (err) {
+          setError(err.response?.data?.error || "Failed to fetch users");
+          if (err.response?.status === 401 || err.response?.status === 403) {
+            // Unauthorized or Forbidden - redirect to login
+            logout();
+            navigate("/login");
+          }
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchUsers();
+    }
+  }, [user, navigate, logout]);
 
   const handleLogout = async () => {
     try {
-      await axios.post(
-        "http://localhost:5000/logout",
-        {},
-        {
-          withCredentials: true,
-          headers: {
-            "X-CSRF-Token": localStorage.getItem("csrf_token"),
-          },
-        }
-      );
-      localStorage.removeItem("user");
-      localStorage.removeItem("csrf_token");
+      await logout();
       navigate("/login");
     } catch (error) {
       console.error("Logout failed:", error);
-      localStorage.removeItem("user");
-      localStorage.removeItem("csrf_token");
       navigate("/login");
     }
   };
@@ -78,10 +97,19 @@ function AdminDashboard() {
   const handleDelete = async (userId) => {
     if (window.confirm("Are you sure you want to delete this user?")) {
       try {
+        // Get fresh CSRF token for important operations
+        const csrfResponse = await axios.get(
+          "http://localhost:5000/csrf-token",
+          {
+            withCredentials: true,
+          }
+        );
+        const csrfToken = csrfResponse.data.csrf_token;
+
         await axios.delete(`http://localhost:5000/admin/users/${userId}`, {
           withCredentials: true,
           headers: {
-            "X-CSRF-Token": localStorage.getItem("csrf_token"),
+            "X-CSRF-Token": csrfToken,
           },
         });
         // Refresh users after deletion
@@ -89,9 +117,25 @@ function AdminDashboard() {
       } catch (error) {
         console.error("Delete failed:", error);
         setError("Failed to delete user");
+        if (error.response?.status === 401 || error.response?.status === 403) {
+          logout();
+          navigate("/login");
+        }
       }
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        Loading...
+      </div>
+    );
+  }
+
+  if (!user || user.roletype.toLowerCase() !== "admin") {
+    return null; // Will be redirected by the useEffect
+  }
 
   const renderContent = () => {
     switch (activeTab) {
