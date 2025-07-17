@@ -1,11 +1,10 @@
 // src/components/ProtectedRoute.js
 import React, { useEffect } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 export function ProtectedRoute({ children, requiredRole = null }) {
   const { user, loading, checkAuthStatus } = useAuth();
-  const navigate = useNavigate();
 
   useEffect(() => {
     // Verify auth status when the protected route mounts

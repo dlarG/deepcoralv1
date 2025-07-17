@@ -242,13 +242,30 @@ def check_auth():
     if 'user_id' not in session:
         return jsonify({'authenticated': False}), 200
     
-    return jsonify({
-        'authenticated': True,
-        'user': {
-            'id': session['user_id'],
-            'roletype': session.get('roletype', 'guest')
-        }
-    }), 200
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, username, firstname, lastname, roletype FROM users WHERE id = %s", (session['user_id'],))
+            user = cur.fetchone()
+            
+            if not user:
+                return jsonify({'authenticated': False}), 200
+                
+            return jsonify({
+                'authenticated': True,
+                'user': {
+                    'id': user[0],
+                    'username': user[1],
+                    'firstname': user[2],
+                    'lastname': user[3],
+                    'roletype': user[4]
+                }
+            }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
 
 # Add this route to delete a user (admin only)
 @app.route('/admin/users/<int:user_id>', methods=['DELETE'])

@@ -241,6 +241,9 @@ function AdminDashboard() {
           </button>
           <h1 className="nav-title">DeepCoral Admin</h1>
         </div>
+        <span>
+          Welcome, {user.firstname} {user.lastname}
+        </span>
         <button className="logout-button" onClick={handleLogout}>
           <FiLogOut className="logout-icon" />
           <span>Logout</span>

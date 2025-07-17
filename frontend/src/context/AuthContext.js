@@ -16,10 +16,17 @@ export function AuthProvider({ children }) {
       });
 
       if (response.data.authenticated) {
-        setUser(response.data.user);
+        // Make sure to store all user data
+        setUser({
+          id: response.data.user.id,
+          username: response.data.user.username,
+          firstname: response.data.user.firstname,
+          lastname: response.data.user.lastname,
+          roletype: response.data.user.roletype,
+        });
       } else {
         setUser(null);
-        localStorage.removeItem("user"); // Clear any stale user data
+        localStorage.removeItem("user");
       }
     } catch (err) {
       console.error("Auth check failed:", err);
@@ -39,6 +46,9 @@ export function AuthProvider({ children }) {
     setUser(userData);
     localStorage.setItem("user", JSON.stringify(userData));
   };
+  useEffect(() => {
+    console.log("Current user data:", user);
+  }, [user]);
 
   const logout = async () => {
     try {

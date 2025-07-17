@@ -51,7 +51,13 @@ function Login() {
       setMessage(res.data.message);
       setForm((prev) => ({ ...prev, password: "" })); // Clear password
 
-      login(res.data.user); // Use the auth context login
+      login({
+        id: res.data.user.id,
+        username: res.data.user.username,
+        firstname: res.data.user.firstname,
+        lastname: res.data.user.lastname,
+        roletype: res.data.user.roletype,
+      });
       setMessage(res.data.message);
       localStorage.setItem("user", JSON.stringify(res.data.user));
 
