@@ -108,7 +108,7 @@ export function AuthProvider({ children }) {
       setCsrfToken(res.data.csrf_token);
       return {
         success: true,
-        redirectTo: res.data.redirect_to, // Add this line
+        redirectTo: res.data.redirect_to,
       };
     } catch (err) {
       return {
