@@ -19,6 +19,16 @@ function Register() {
   const [csrfToken, setCsrfToken] = useState("");
   const navigate = useNavigate();
   const [captchaValue, setCaptchaValue] = useState(null);
+  const validatePassword = (password) => {
+    const errors = [];
+    if (password.length < 8) errors.push("at least 8 characters");
+    if (!/[A-Z]/.test(password)) errors.push("one uppercase letter");
+    if (!/[a-z]/.test(password)) errors.push("one lowercase letter");
+    if (!/[0-9]/.test(password)) errors.push("one number");
+    if (!/[^A-Za-z0-9]/.test(password)) errors.push("one special character");
+
+    return errors.length ? `Password must contain: ${errors.join(", ")}` : null;
+  };
 
   // Fetch CSRF token when component mounts
   useEffect(() => {
@@ -46,9 +56,14 @@ function Register() {
     setMessage("");
 
     // Client-side validation
-    if (form.password.length < 8) {
-      setMessage("Password must be at least 8 characters");
+    const passwordError = validatePassword(form.password);
+    if (passwordError) {
+      setMessage(passwordError);
       setIsLoading(false);
+      return;
+    }
+    if (!captchaValue) {
+      setMessage("Please complete the CAPTCHA");
       return;
     }
 
