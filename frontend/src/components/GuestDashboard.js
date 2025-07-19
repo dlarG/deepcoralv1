@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -13,9 +13,29 @@ import {
 
 function GuestDashboard() {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { authAxios, user } = useAuth(); // Use the provided authAxios
+  const { logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState("Coral LifeForms");
+  const [coralData, setCoralData] = useState([]);
+
+  useEffect(() => {
+    if (activeTab === "Coral LifeForms") {
+      authAxios
+        .get("/coral_info")
+        .then((response) => {
+          console.log("Coral data:", response.data);
+          setCoralData(response.data.data || []);
+        })
+        .catch((err) => {
+          console.error("Failed to fetch coral data:", err);
+          // Handle 401 by redirecting to login
+          if (err.response?.status === 401) {
+            navigate("/login");
+          }
+        });
+    }
+  }, [activeTab, authAxios, navigate]);
 
   const handleLogout = async () => {
     try {
@@ -67,23 +87,30 @@ function GuestDashboard() {
           <div className="content-section">
             <h2 className="content-title">Coral LifeForms Information</h2>
             <div className="content-placeholder">
-              <p>
-                Detailed information about different coral lifeforms will be
-                displayed here.
-              </p>
-              <p>
-                This will include species data, conservation status, and images.
-              </p>
-              <div className="sample-coral-info">
-                <h3>Sample Coral Types:</h3>
-                <ul>
-                  <li>Acropora (Staghorn Coral)</li>
-                  <li>Porites (Massive Coral)</li>
-                  <li>Pocillopora (Cauliflower Coral)</li>
-                  <li>Montipora (Plate Coral)</li>
-                  <li>Fungia (Mushroom Coral)</li>
-                </ul>
-              </div>
+              {coralData.length === 0 ? (
+                <p>Loading coral data...</p>
+              ) : (
+                coralData.map((coral) => (
+                  <div key={coral.id} className="coral-card">
+                    <h3>
+                      {coral.common_name} ({coral.coral_type})
+                    </h3>
+                    <p>
+                      <strong>Scientific Name:</strong> {coral.scientific_name}
+                    </p>
+                    <p>
+                      <strong>Subtype:</strong> {coral.coral_subtype}
+                    </p>
+                    <p>
+                      <strong>Classification:</strong> {coral.classification}
+                    </p>
+                    <p>
+                      <strong>Description:</strong> {coral.identification}
+                    </p>
+                    <hr />
+                  </div>
+                ))
+              )}
             </div>
           </div>
         );

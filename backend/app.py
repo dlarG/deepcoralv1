@@ -10,7 +10,7 @@ import secrets
 app = Flask(__name__)
 app.config['SECRET_KEY'] = secrets.token_hex(32)  # Important for session and CSRF
 app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SECURE'] = True  # Enable in production with HTTPS
+app.config['SESSION_COOKIE_SECURE'] = False,  # Enable in production with HTTPS
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Helps prevent CSRF
 
 CORS(app, supports_credentials=True, origins=['http://localhost:3000'])  # Adjust origin as needed
@@ -133,7 +133,7 @@ def rate_limit(max_per_minute):
     return decorator
 
 @app.route('/login', methods=["POST"])
-@rate_limit(5) # Limit to 5 requests per minute
+@rate_limit(5)
 def login_user():
     data = request.get_json()
     if not data:
@@ -166,13 +166,15 @@ def login_user():
                 'username': user[1],
                 'firstname': user[3],
                 'lastname': user[5],
-                'roletype': user[7]
+                'roletype': user[7],
+                'redirect_to': f'/{user[7].lower()}-dashboard'  # Add this line
             }
             
             return jsonify({
                 'message': 'Login successful',
                 'user': user_data,
-                'csrf_token': session['csrf_token']
+                'csrf_token': session['csrf_token'],
+                'redirect_to': user_data['redirect_to']  # Add this line
             }), 200
             
     except Exception as e:
@@ -184,21 +186,37 @@ def login_user():
             conn.close()
 
 @app.route('/logout', methods=['POST'])
-@login_required  # Add this decorator to ensure only logged-in users can logout
+@login_required
 def logout():
+    # Store the current CSRF token before clearing session
+    old_csrf = session.get('csrf_token')
+    
     # Clear the Flask session
     session.clear()
     
-    # Create a response and delete the session cookie explicitly
+    # Create response
     response = jsonify({'message': 'Logout successful'})
+    
+    # Expire the session cookie
     response.set_cookie(
         'session', 
         '', 
-        expires=0,  # Immediately expire the cookie
+        expires=0,
         httponly=True,
-        secure=True,
-        samesite='Lax'
+        secure=app.config.get('SESSION_COOKIE_SECURE', True),
+        samesite=app.config.get('SESSION_COOKIE_SAMESITE', 'Lax')
     )
+    
+    # Include a new CSRF token in the response
+    session['csrf_token'] = secrets.token_hex(32)
+    response.set_cookie(
+        'new_csrf', 
+        session['csrf_token'],
+        httponly=False,  # Allow JS to read this
+        secure=app.config.get('SESSION_COOKIE_SECURE', True),
+        samesite=app.config.get('SESSION_COOKIE_SAMESITE', 'Lax')
+    )
+    
     return response, 200
 
 @app.route('/admin/users', methods=['GET'])
@@ -294,6 +312,45 @@ def delete_user(user_id):
     finally:
         if conn:
             conn.close()
+
+
+@app.route('/coral_info', methods=['GET'])
+@login_required
+def get_coral_info():
+    print("Current user in session:", session.get('user_id'))
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({'error': 'Database connection failed'}), 500
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM coral_information")
+        print("Fetched rows:", cur.rowcount)
+        coral_info = cur.fetchall()
+        coral_list = []
+
+        for coral in coral_info:
+            coral_list.append({
+                'id': coral[0],
+                'coral_type': coral[1],
+                'coral_subtype': coral[2],
+                'classification': coral[3],
+                'scientific_name': coral[4],
+                'common_name': coral[5],
+                'identification': coral[6],
+                'created_at': coral[7],
+                'updated_at': coral[8],
+            })
+        return jsonify({
+            'status': 'success',
+            'data': coral_list  # Instead of coral_info
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -8,26 +8,28 @@ import { FiUser, FiLock, FiLogIn } from "react-icons/fi";
 axios.defaults.withCredentials = true;
 
 function Login() {
-  const [form, setForm] = useState({
-    username: "",
-    password: "",
-  });
+  const [form, setForm] = useState({ username: "", password: "" });
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [csrfToken, setCsrfToken] = useState("");
-  const navigate = useNavigate();
   const { login } = useAuth();
+  const navigate = useNavigate(); // Add this import from react-router-dom
+  const [csrfToken, setCsrfToken] = useState("");
 
   // Fetch CSRF token when component mounts
   useEffect(() => {
     const fetchCsrfToken = async () => {
       try {
-        const response = await axios.get("http://localhost:5000/csrf-token");
+        const response = await axios.get("http://localhost:5000/csrf-token", {
+          withCredentials: true,
+        });
         setCsrfToken(response.data.csrf_token);
       } catch (err) {
         console.error("Error fetching CSRF token:", err);
+        // Retry after 1 second if fails
+        setTimeout(fetchCsrfToken, 1000);
       }
     };
+
     fetchCsrfToken();
   }, []);
 
@@ -40,48 +42,27 @@ function Login() {
     setIsLoading(true);
     setMessage("");
 
-    try {
-      const res = await axios.post("http://localhost:5000/login", form, {
-        headers: {
-          "X-CSRF-Token": csrfToken,
-        },
-        withCredentials: true,
-      });
+    const result = await login(form);
 
-      setMessage(res.data.message);
-      setForm((prev) => ({ ...prev, password: "" })); // Clear password
-
-      login({
-        id: res.data.user.id,
-        username: res.data.user.username,
-        firstname: res.data.user.firstname,
-        lastname: res.data.user.lastname,
-        roletype: res.data.user.roletype,
-      });
-      setMessage(res.data.message);
-      localStorage.setItem("user", JSON.stringify(res.data.user));
-
-      // Redirect based on role
-      switch (res.data.user.roletype.toLowerCase()) {
-        case "admin":
-          navigate("/admin-dashboard");
-          break;
-        case "biologist":
-          navigate("/biologist-dashboard");
-          break;
-        case "guest":
-          navigate("/guest-dashboard");
-          break;
-        default:
-          navigate("/"); // Fallback route
+    if (result.success) {
+      setMessage("Login successful");
+      await new Promise((resolve) => setTimeout(resolve, 100)); // Short delay
+      if (result.redirectTo) {
+        navigate(result.redirectTo);
+      } else {
+        // Fallback redirect based on user role
+        const role = result.user?.roletype?.toLowerCase();
+        if (role) {
+          navigate(`/${role}-dashboard`);
+        } else {
+          navigate("/"); // Default fallback
+        }
       }
-    } catch (err) {
-      const errorMsg =
-        err.response?.data?.error || err.message || "Login failed";
-      setMessage(errorMsg);
-    } finally {
-      setIsLoading(false);
+    } else {
+      setMessage(result.error || "Login failed");
     }
+
+    setIsLoading(false);
   };
 
   return (
