@@ -6,6 +6,7 @@ from functools import wraps
 import time
 from flask import abort
 import secrets
+import requests
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = secrets.token_hex(32)  # Important for session and CSRF
@@ -70,7 +71,9 @@ def admin_required(f):
 
 # Route for register with a POST method
 @app.route('/register', methods=["POST"])
+
 def register_user():
+    RECAPTCHA_SECRET = "6LeXf4grAAAAAAqU-jXzgtA1U6-05i_QH7oW9vwM"
     data = request.get_json()
     if not data:
         return jsonify({"error": "No data provided"}), 400
@@ -79,7 +82,11 @@ def register_user():
     firstname = data.get('firstname')
     lastname = data.get('lastname')
     roletype = 'guest'  # Default role type
+    captcha_response = data.get('captcha')
     
+    # Validate reCAPTCHA
+    if not captcha_response:
+        return jsonify({"error": "Captcha verification failed"}), 400
     # Validate password strength
     if len(password) < 8:
         return jsonify({"error": "Password must be at least 8 characters"}), 400
@@ -87,6 +94,19 @@ def register_user():
     if not all([username, password, firstname, lastname]):
         return jsonify({"error": "Missing all fields are required"}), 400
     
+    # Verify reCAPTCHA
+    captcha_verify_url = "https://www.google.com/recaptcha/api/siteverify"
+    response = requests.post(
+        captcha_verify_url,
+        data={
+            "secret": RECAPTCHA_SECRET,
+            "response": captcha_response
+        }
+    )
+    result = response.json()
+    if not result.get("success"):
+        return jsonify({"error": "Failed captcha verification"}), 400
+
     conn = get_db_connection()
     if conn is None:
         return jsonify({"error": "Database connection failed"}), 500
