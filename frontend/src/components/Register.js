@@ -186,7 +186,7 @@ function Register() {
               </label>
               <div className="captcha-widget">
                 <ReCAPTCHA
-                  sitekey="6LeXf4grAAAAAExyuuciZTRKKzElM4BpAWVt4a9m"
+                  sitekey="6LdXDYkrAAAAAO83PKhXnlg3zb3tCBN0qgCTYg0M"
                   onChange={(value) => setCaptchaValue(value)}
                   theme="light"
                   size="normal"
