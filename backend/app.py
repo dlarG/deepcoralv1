@@ -7,6 +7,8 @@ import time
 from flask import abort
 import secrets
 import requests
+from dotenv import load_dotenv
+import os
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = secrets.token_hex(32)  # Important for session and CSRF
@@ -73,7 +75,8 @@ def admin_required(f):
 @app.route('/register', methods=["POST"])
 
 def register_user():
-    RECAPTCHA_SECRET = "6LeXf4grAAAAAAqU-jXzgtA1U6-05i_QH7oW9vwM"
+    load_dotenv()  # Load environment variables from .env file
+    RECAPTCHA_SECRET = os.getenv('RECAPTCHA_SECRET')
     data = request.get_json()
     if not data:
         return jsonify({"error": "No data provided"}), 400
