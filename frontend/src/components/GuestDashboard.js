@@ -85,31 +85,93 @@ function GuestDashboard() {
       default:
         return (
           <div className="content-section">
-            <h2 className="content-title">Coral LifeForms Information</h2>
+            <h2
+              className="content-title"
+              style={{
+                fontSize: "1.8rem",
+                fontWeight: "600",
+                color: "#333",
+                marginBottom: "2rem",
+                paddingBottom: "1rem",
+                borderBottom: "2px solid rgba(0, 96, 100, 0.1)",
+              }}
+            >
+              Coral LifeForms
+            </h2>
+
             <div className="content-placeholder">
               {coralData.length === 0 ? (
-                <p>Loading coral data...</p>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    height: "300px",
+                  }}
+                >
+                  <p
+                    style={{
+                      color: "#666",
+                      fontSize: "1.2rem",
+                    }}
+                  >
+                    Loading coral data...
+                  </p>
+                </div>
               ) : (
-                coralData.map((coral) => (
-                  <div key={coral.id} className="coral-card">
-                    <h3>
-                      {coral.common_name} ({coral.coral_type})
-                    </h3>
-                    <p>
-                      <strong>Scientific Name:</strong> {coral.scientific_name}
-                    </p>
-                    <p>
-                      <strong>Subtype:</strong> {coral.coral_subtype}
-                    </p>
-                    <p>
-                      <strong>Classification:</strong> {coral.classification}
-                    </p>
-                    <p>
-                      <strong>Description:</strong> {coral.identification}
-                    </p>
-                    <hr />
-                  </div>
-                ))
+                <div className="coral-grid">
+                  {coralData.map((coral) => (
+                    <div key={coral.id} className="coral-card">
+                      <div className="coral-image-container">
+                        <img
+                          src="/acropora-staghorn-coral.jpg"
+                          alt={coral.common_name}
+                          className="coral-image"
+                        />
+                        <span className="coral-badge">{coral.coral_type}</span>
+                      </div>
+
+                      <div className="coral-content">
+                        <h3 className="coral-name">{coral.common_name}</h3>
+
+                        {/* Centered scientific name */}
+                        <div
+                          className="coral-scientific-name"
+                          style={{
+                            textAlign: "center",
+                            fontStyle: "italic",
+                            color: "#006064",
+                            fontSize: "1.1rem",
+                            marginBottom: "1rem",
+                          }}
+                        >
+                          {coral.scientific_name}
+                        </div>
+
+                        <div className="info-cards-container">
+                          <div className="info-card">
+                            <div className="info-label">Subtype</div>
+                            <div className="info-value">
+                              {coral.coral_subtype}
+                            </div>
+                          </div>
+                          <div className="info-card">
+                            <div className="info-label">Classification</div>
+                            <div className="info-value">
+                              {coral.classification}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="description-section">
+                          <p className="description-text">
+                            {coral.identification}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           </div>
@@ -201,7 +263,7 @@ function GuestDashboard() {
           justify-content: space-between;
           align-items: center;
           padding: 1rem 2rem;
-          background-color: #2c3e50;
+          background: rgba(0, 96, 100, 0.9);
           color: white;
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
@@ -218,12 +280,108 @@ function GuestDashboard() {
           color: white;
           cursor: pointer;
           font-size: 1.5rem;
+          margin-left: -15px;
         }
 
         .nav-title {
           margin: 0;
           font-size: 1.5rem;
           font-weight: 500;
+        }
+        .coral-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+          gap: 2rem;
+          padding: 1.5rem 0;
+        }
+
+        .coral-card {
+          background: white;
+          border-radius: 12px;
+          overflow: hidden;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+          transition: all 0.3s ease;
+        }
+
+        .coral-image-container {
+          position: relative;
+          height: 200px;
+        }
+
+        .coral-image {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .coral-badge {
+          position: absolute;
+          top: 1rem;
+          right: 1rem;
+          background: rgba(0, 96, 100, 0.9);
+          color: white;
+          padding: 0.4rem 1rem;
+          border-radius: 20px;
+          font-size: 0.85rem;
+          font-weight: 500;
+        }
+
+        .coral-content {
+          padding: 1.8rem;
+        }
+
+        .coral-name {
+          font-size: 1.5rem;
+          font-weight: 600;
+          color: #333;
+          margin-bottom: 1rem;
+        }
+
+        .info-cards-container {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+          gap: 1rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .info-card {
+          background: rgba(0, 96, 100, 0.05);
+          border-left: 3px solid rgba(0, 96, 100, 0.9);
+          padding: 1rem;
+          border-radius: 4px;
+        }
+
+        .info-label {
+          font-size: 0.8rem;
+          color: rgba(0, 96, 100, 0.8);
+          margin-bottom: 0.4rem;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          font-weight: 500;
+        }
+
+        .info-value {
+          font-size: 1rem;
+          color: #333;
+          font-weight: 500;
+        }
+
+        .description-section {
+          background: #f9f9f9;
+          padding: 1.5rem;
+          border-radius: 8px;
+        }
+
+        .description-label {
+          font-size: 0.9rem;
+          color: rgba(0, 96, 100, 0.9);
+          margin-bottom: 0.8rem;
+          font-weight: 500;
+        }
+
+        .description-text {
+          color: #555;
+          line-height: 1.6;
         }
 
         .user-info {
@@ -257,7 +415,7 @@ function GuestDashboard() {
 
         .sidebar {
           width: ${sidebarOpen ? "250px" : "60px"};
-          background-color: #34495e;
+          background: rgba(0, 96, 100, 0.9);
           color: white;
           transition: width 0.3s ease;
           overflow: hidden;
@@ -279,11 +437,11 @@ function GuestDashboard() {
         }
 
         .sidebar-nav li:hover {
-          background-color: #3d566e;
+          background: rgba(0, 96, 100, 0.9);
         }
 
         .sidebar-nav li.active {
-          background-color: #2980b9;
+          background: rgba(0, 96, 100, 0.9);
         }
 
         .nav-icon {
