@@ -22,8 +22,10 @@ function HomePage() {
         {/* Navigation */}
         <nav className="navbar">
           <div className="navbar-brand">
-            <span className="logo-icon">🌊</span>
-            <h1>DeepCoral</h1>
+            <span className="logo-icon">
+              <img src="/icon.png" alt="icon" class="logo" />
+            </span>
+            <h1 className="deepcoral-logo">DeepCoral</h1>
           </div>
           <div className="nav-links">
             <Link to="/login" className="nav-link">
@@ -107,6 +109,21 @@ const styles = `
     min-height: 100vh;
     overflow-x: hidden;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+  .logo {
+    width: 40px;
+    height: 40px;
+  }
+  .deepcoral-logo {
+    font-family: 'Georgia', 'Times New Roman', serif; /* or a fancy serif */
+    font-size: 1.9rem;
+    font-weight: bold;
+    background: linear-gradient(to right,rgb(45, 146, 255), #00d4ff); /* deep blue to cyan */
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    margin: 0;
+    padding: 0;
   }
 
   .background-overlay {
