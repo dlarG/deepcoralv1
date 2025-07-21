@@ -1,11 +1,11 @@
 
 #First is to create the enum for role_type
-"""
+
 CREATE TYPE user_role AS ENUM ('admin', 'guest', 'biologist'); 
-"""
+
 
 # Then next is the users table creation
-"""
+
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
@@ -19,4 +19,5 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP,
 	deleted_at TIMESTAMP
 );
-"""
+
+
