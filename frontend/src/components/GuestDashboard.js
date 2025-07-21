@@ -124,7 +124,7 @@ function GuestDashboard() {
                     <div key={coral.id} className="coral-card">
                       <div className="coral-image-container">
                         <img
-                          src="/acropora-staghorn-coral.jpg"
+                          src="/acropora_branching/acropora-staghorn-coral.jpg"
                           alt={coral.common_name}
                           className="coral-image"
                         />
@@ -181,67 +181,100 @@ function GuestDashboard() {
 
   return (
     <div className="guest-dashboard">
-      {/* Top Navigation Bar */}
+      {/* Top Navigation Bar - Modern Design */}
       <nav className="top-nav">
-        <div className="nav-left">
-          <button
-            className="menu-toggle"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-          >
-            {sidebarOpen ? <FiX size={24} /> : <FiMenu size={24} />}
-          </button>
-          <h1 className="nav-title">DeepCoral Guest Portal</h1>
-        </div>
-        <div className="user-info">
-          {user ? (
-            <>
-              <span>Welcome, {user.firstname || user.username}</span>
-              <button className="logout-button" onClick={handleLogout}>
-                <FiLogOut className="logout-icon" />
-                <span>Logout</span>
-              </button>
-            </>
-          ) : (
-            <span>Loading user data...</span>
-          )}
+        <div className="nav-container">
+          <div className="nav-brand">
+            <button
+              className="menu-toggle"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              aria-label="Toggle menu"
+            >
+              {sidebarOpen ? <FiX size={24} /> : <FiMenu size={24} />}
+            </button>
+            <div className="logo-container">
+              <span className="logo-icon">
+                <h1 className="deepcoral-logo">DeepCoral</h1>
+              </span>
+              <span className="portal-tag">Guest</span>
+            </div>
+          </div>
+
+          <div className="user-actions">
+            {user && (
+              <div className="user-profile">
+                <div className="user-avatar">
+                  {user.firstname?.charAt(0) || user.username?.charAt(0)}
+                </div>
+                <div className="user-details">
+                  <span className="welcome-text">Welcome back,</span>
+                  <span className="username">
+                    {user.firstname} {user.lastname}
+                  </span>
+                </div>
+              </div>
+            )}
+            <button className="logout-button" onClick={handleLogout}>
+              <FiLogOut className="logout-icon" />
+              <span>Sign out</span>
+            </button>
+          </div>
         </div>
       </nav>
 
       <div className="dashboard-container">
-        {/* Sidebar Navigation */}
+        {/* Modern Sidebar Navigation */}
         <aside className={`sidebar ${sidebarOpen ? "open" : "closed"}`}>
+          <div className="sidebar-header">
+            <h3 className="sidebar-title">Navigation</h3>
+          </div>
           <nav className="sidebar-nav">
             <ul>
               <li
                 className={activeTab === "Coral LifeForms" ? "active" : ""}
                 onClick={() => setActiveTab("Coral LifeForms")}
               >
-                <FiHome className="nav-icon" />
-                {sidebarOpen && <span>Coral LifeForms</span>}
+                <div className="nav-item-content">
+                  <FiHome className="nav-icon" />
+                  <span className="nav-text">Coral LifeForms</span>
+                </div>
+                <div className="active-indicator"></div>
               </li>
               <li
                 className={activeTab === "Upload Image" ? "active" : ""}
                 onClick={() => setActiveTab("Upload Image")}
               >
-                <FiImage className="nav-icon" />
-                {sidebarOpen && <span>Upload Image</span>}
+                <div className="nav-item-content">
+                  <FiImage className="nav-icon" />
+                  <span className="nav-text">Upload Image</span>
+                </div>
+                <div className="active-indicator"></div>
               </li>
               <li
                 className={activeTab === "View Map" ? "active" : ""}
                 onClick={() => setActiveTab("View Map")}
               >
-                <FiMap className="nav-icon" />
-                {sidebarOpen && <span>View Map</span>}
+                <div className="nav-item-content">
+                  <FiMap className="nav-icon" />
+                  <span className="nav-text">View Map</span>
+                </div>
+                <div className="active-indicator"></div>
               </li>
               <li
                 className={activeTab === "View Results" ? "active" : ""}
                 onClick={() => setActiveTab("View Results")}
               >
-                <FiFileText className="nav-icon" />
-                {sidebarOpen && <span>View Results</span>}
+                <div className="nav-item-content">
+                  <FiFileText className="nav-icon" />
+                  <span className="nav-text">View Results</span>
+                </div>
+                <div className="active-indicator"></div>
               </li>
             </ul>
           </nav>
+          <div className="sidebar-footer">
+            <div className="app-version">v2.4.1</div>
+          </div>
         </aside>
 
         {/* Main Content Area */}
@@ -254,47 +287,228 @@ function GuestDashboard() {
           display: flex;
           flex-direction: column;
           min-height: 100vh;
-          font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-          background-color: #f5f7fa;
+          font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+          background-color: #f8fafc;
         }
 
+        /* Modern Top Navigation */
         .top-nav {
+          position: sticky;
+          top: 0;
+          z-index: 50;
+          background: white;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+          border-bottom: 1px solid #e2e8f0;
+        }
+
+        .nav-container {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 1rem 2rem;
-          background: rgba(0, 96, 100, 0.9);
-          color: white;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          padding: 0 2rem;
+          height: 70px;
+          max-width: 100%;
         }
 
-        .nav-left {
+        .nav-brand {
           display: flex;
           align-items: center;
           gap: 1rem;
         }
 
         .menu-toggle {
-          background: none;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 40px;
+          height: 40px;
+          border-radius: 8px;
+          background: transparent;
           border: none;
-          color: white;
+          color: #334155;
           cursor: pointer;
-          font-size: 1.5rem;
-          margin-left: -15px;
+          transition: all 0.2s;
+        }
+
+        .menu-toggle:hover {
+          background: #f1f5f9;
+        }
+
+        .logo-container {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+
+        .logo-icon {
+          font-size: 1.75rem;
         }
 
         .nav-title {
+          font-size: 1.25rem;
+          font-weight: 600;
+          color: #0f172a;
           margin: 0;
-          font-size: 1.5rem;
-          font-weight: 500;
-        }
-        .coral-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-          gap: 2rem;
-          padding: 1.5rem 0;
         }
 
+        .portal-tag {
+          font-size: 0.75rem;
+          background: rgb(202, 204, 206);
+          color: rgb(35, 35, 35);
+          padding: 0.25rem 0.5rem;
+          border-radius: 12px;
+          font-weight: 500;
+        }
+
+        .user-actions {
+          display: flex;
+          align-items: center;
+          gap: 1.5rem;
+        }
+
+        .user-profile {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+
+        .user-avatar {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #06b6d4 0%, #0ea5e9 100%);
+          color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 500;
+        }
+
+        .user-details {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .welcome-text {
+          font-size: 0.75rem;
+          color: #64748b;
+        }
+
+        .username {
+          font-size: 0.875rem;
+          font-weight: 500;
+          color: #0f172a;
+        }
+
+        .logout-button {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.5rem 1rem;
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+          color: #64748b;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .logout-button:hover {
+          background: #f1f5f9;
+          color: #475569;
+        }
+
+        /* Modern Sidebar */
+        .dashboard-container {
+          display: flex;
+          flex: 1;
+          overflow: hidden;
+        }
+
+        .sidebar {
+          width: ${sidebarOpen ? "280px" : "80px"};
+          background: white;
+          border-right: 1px solid #e2e8f0;
+          transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          height: calc(100vh - 70px);
+          position: sticky;
+          top: 70px;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        }
+
+        .sidebar-header {
+          padding: 1.5rem 1.5rem 1rem;
+          border-bottom: 1px solid #f1f5f9;
+        }
+
+        .sidebar-title {
+          font-size: 0.75rem;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          color: #64748b;
+          font-weight: 600;
+          margin: 0;
+          opacity: ${sidebarOpen ? "1" : "0"};
+          transition: opacity 0.2s;
+          white-space: nowrap;
+        }
+
+        .sidebar-nav {
+          flex: 1;
+          padding: 0.75rem;
+        }
+
+        .sidebar-nav ul {
+          list-style: none;
+          padding: 0;
+          margin: 0;
+        }
+
+        .sidebar-nav li {
+          position: relative;
+          margin-bottom: 0.25rem;
+          border-radius: 8px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .sidebar-nav li:hover {
+          background: #f8fafc;
+        }
+
+        .sidebar-nav li.active {
+          background: #f0f9ff;
+        }
+
+        .sidebar-nav li.active .nav-text {
+          color: #0369a1;
+          font-weight: 500;
+        }
+
+        .sidebar-nav li.active .nav-icon {
+          color: #0284c7;
+        }
+
+        /* Coral Grid - Responsive to sidebar state */
+        .coral-grid {
+          display: grid;
+          gap: 2rem;
+          padding: 1.5rem 0;
+          transition: all 0.3s ease;
+        }
+
+        .coral-grid.sidebar-collapsed {
+          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        }
+
+        .coral-grid:not(.sidebar-collapsed) {
+          grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+        }
+
+        /* Coral Card */
         .coral-card {
           background: white;
           border-radius: 12px;
@@ -335,13 +549,30 @@ function GuestDashboard() {
           font-weight: 600;
           color: #333;
           margin-bottom: 1rem;
+          text-align: center;
         }
 
+        .coral-scientific-name {
+          text-align: center;
+          font-style: italic;
+          color: #006064;
+          font-size: 1.1rem;
+          margin-bottom: 1rem;
+        }
+
+        /* Info Cards - Responsive to sidebar state */
         .info-cards-container {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
           gap: 1rem;
           margin-bottom: 1.5rem;
+        }
+
+        .coral-grid.sidebar-collapsed .info-cards-container {
+          grid-template-columns: 1fr;
+        }
+
+        .coral-grid:not(.sidebar-collapsed) .info-cards-container {
+          grid-template-columns: repeat(2, 1fr);
         }
 
         .info-card {
@@ -372,129 +603,162 @@ function GuestDashboard() {
           border-radius: 8px;
         }
 
-        .description-label {
-          font-size: 0.9rem;
-          color: rgba(0, 96, 100, 0.9);
-          margin-bottom: 0.8rem;
-          font-weight: 500;
-        }
-
         .description-text {
           color: #555;
           line-height: 1.6;
         }
 
-        .user-info {
+        .nav-item-content {
           display: flex;
           align-items: center;
-          gap: 1rem;
-        }
-
-        .logout-button {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.5rem 1rem;
-          background-color: #e74c3c;
-          color: white;
-          border: none;
-          border-radius: 4px;
-          cursor: pointer;
-          transition: background-color 0.2s;
-        }
-
-        .logout-button:hover {
-          background-color: #c0392b;
-        }
-
-        .dashboard-container {
-          display: flex;
-          flex: 1;
-          overflow: hidden;
-        }
-
-        .sidebar {
-          width: ${sidebarOpen ? "250px" : "60px"};
-          background: rgba(0, 96, 100, 0.9);
-          color: white;
-          transition: width 0.3s ease;
-          overflow: hidden;
-        }
-
-        .sidebar-nav ul {
-          list-style: none;
-          padding: 0;
-          margin: 0;
-        }
-
-        .sidebar-nav li {
-          padding: 1rem;
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          cursor: pointer;
-          transition: background-color 0.2s;
-        }
-
-        .sidebar-nav li:hover {
-          background: rgba(0, 96, 100, 0.9);
-        }
-
-        .sidebar-nav li.active {
-          background: rgba(0, 96, 100, 0.9);
+          gap: 0.75rem;
+          padding: 0.75rem;
+          white-space: nowrap;
         }
 
         .nav-icon {
-          font-size: 1.2rem;
+          font-size: 1.25rem;
+          color: #64748b;
           min-width: 24px;
+          display: flex;
+          justify-content: center;
         }
 
+        .nav-text {
+          font-size: 0.9375rem;
+          color: #334155;
+          transition: opacity 0.3s;
+          opacity: ${sidebarOpen ? "1" : "0"};
+        }
+
+        .active-indicator {
+          position: absolute;
+          left: 0;
+          top: 0;
+          bottom: 0;
+          width: 3px;
+          background: #0284c7;
+          border-radius: 0 3px 3px 0;
+          opacity: 0;
+          transition: opacity 0.2s;
+        }
+
+        .sidebar-nav li.active .active-indicator {
+          opacity: 1;
+        }
+
+        .sidebar-footer {
+          padding: 1rem;
+          border-top: 1px solid #f1f5f9;
+        }
+
+        .app-version {
+          font-size: 0.6875rem;
+          color: #94a3b8;
+          opacity: ${sidebarOpen ? "1" : "0"};
+          transition: opacity 0.2s;
+          white-space: nowrap;
+        }
+
+        /* Main Content */
         .main-content {
           flex: 1;
           padding: 2rem;
+          background: #f8fafc;
           overflow-y: auto;
-          background-color: white;
         }
 
         .content-section {
-          max-width: 1200px;
+          max-width: 1400px;
           margin: 0 auto;
+          background: white;
+          border-radius: 12px;
+          padding: 2rem;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
         }
 
         .content-title {
-          color: #2c3e50;
+          font-size: 1.5rem;
+          font-weight: 600;
+          color: #0f172a;
           margin-bottom: 1.5rem;
-          font-size: 1.8rem;
         }
 
         .content-placeholder {
-          background-color: #f8f9fa;
-          border: 1px dashed #dee2e6;
-          border-radius: 4px;
-          padding: 2rem;
+          color: #64748b;
           text-align: center;
-          color: #6c757d;
+          padding: 3rem 0;
+        }
+        @media (max-width: 1024px) {
+          .coral-grid {
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+          }
+
+          .info-cards-container {
+            grid-template-columns: 1fr !important;
+          }
         }
 
-        .sample-coral-info {
-          margin-top: 2rem;
-          text-align: left;
-          padding: 1rem;
-          background-color: #e9ecef;
-          border-radius: 4px;
+        @media (max-width: 768px) {
+          .content-section {
+            padding: 1.5rem;
+          }
+
+          .coral-grid {
+            grid-template-columns: 1fr;
+          }
         }
 
-        .sample-coral-info h3 {
-          color: #2c3e50;
-          margin-bottom: 1rem;
+        @media (max-width: 768px) {
+          .nav-container {
+            padding: 0 1rem;
+          }
+
+          .sidebar {
+            position: fixed;
+            z-index: 40;
+            height: calc(100vh - 70px);
+            box-shadow: ${sidebarOpen
+              ? "4px 0 15px rgba(0, 0, 0, 0.1)"
+              : "none"};
+          }
+
+          .main-content {
+            padding: 1rem;
+          }
+
+          .content-section {
+            padding: 1.5rem;
+          }
         }
 
-        .sample-coral-info ul {
-          padding-left: 1.5rem;
-        }
+        @media (max-width: 480px) {
+          .portal-tag,
+          .welcome-text {
+            display: none;
+          }
 
-        .sample-coral-info li {
-          margin-bottom: 0.5rem;
+          .user-avatar {
+            width: 32px;
+            height: 32px;
+            font-size: 0.875rem;
+          }
+
+          .username {
+            font-size: 0.8125rem;
+          }
+
+          .logout-button span {
+            display: none;
+          }
+
+          .logout-button {
+            padding: 0.5rem;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            justify-content: center;
+          }
         }
       `}</style>
     </div>

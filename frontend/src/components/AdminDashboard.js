@@ -13,6 +13,9 @@ import {
   FiHome,
   FiMenu,
   FiX,
+  FiUser,
+  FiTrash2,
+  FiEdit2,
 } from "react-icons/fi";
 
 function AdminDashboard() {
@@ -22,7 +25,7 @@ function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activeTab, setActiveTab] = useState("Manage Users");
+  const [activeTab, setActiveTab] = useState("Dashboard");
 
   // Verify authentication status and role when component mounts
   useEffect(() => {
@@ -139,12 +142,75 @@ function AdminDashboard() {
 
   const renderContent = () => {
     switch (activeTab) {
-      case "Dashboard":
+      case "Manage Users":
         return (
-          <div className="dashboard-content">
-            Dashboard Overview Coming Soon
-          </div>
+          <>
+            <h2 className="content-title">User Management</h2>
+            {loading ? (
+              <div className="loading">Loading users...</div>
+            ) : error ? (
+              <div className="error-message">Error: {error}</div>
+            ) : (
+              <div className="users-content">
+                <div className="content-header">
+                  <button className="add-button">
+                    <FiUser className="button-icon" />
+                    Add User
+                  </button>
+                </div>
+                <br />
+
+                <div className="table-container">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Username</th>
+                        <th>Name</th>
+                        <th>Role</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {users.map((user) => (
+                        <tr key={user.id}>
+                          <td>{user.id}</td>
+                          <td>{user.username}</td>
+                          <td>
+                            {user.firstname} {user.lastname}
+                          </td>
+                          <td>
+                            <span
+                              className={`role-badge ${user.roletype.toLowerCase()}`}
+                            >
+                              {user.roletype.charAt(0).toUpperCase() +
+                                user.roletype.slice(1).toLowerCase()}
+                            </span>
+                          </td>
+                          <td>
+                            <button
+                              className="action-button edit"
+                              onClick={() => handleEdit(user.id)}
+                            >
+                              <FiEdit2 size={16} />
+                            </button>
+                            <button
+                              className="action-button delete"
+                              onClick={() => handleDelete(user.id)}
+                            >
+                              <FiTrash2 size={16} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </>
         );
+
       case "Add Images":
         return (
           <div className="images-content">
@@ -173,57 +239,49 @@ function AdminDashboard() {
             Validation Interface Coming Soon
           </div>
         );
-      case "Manage Users":
+      case "Dashboard":
       default:
         return (
-          <>
-            <h2 className="content-title">User Management</h2>
-            {loading ? (
-              <div className="loading">Loading users...</div>
-            ) : error ? (
-              <div className="error-message">Error: {error}</div>
-            ) : (
-              <div className="table-container">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>Username</th>
-                      <th>First Name</th>
-                      <th>Last Name</th>
-                      <th>Role</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {users.map((user) => (
-                      <tr key={user.id}>
-                        <td>{user.id}</td>
-                        <td>{user.username}</td>
-                        <td>{user.firstname}</td>
-                        <td>{user.lastname}</td>
-                        <td>{user.roletype}</td>
-                        <td>
-                          <button
-                            className="action-button edit-button"
-                            onClick={() => handleEdit(user.id)}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="action-button delete-button"
-                            onClick={() => handleDelete(user.id)}
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          <div className="dashboard-content">
+            <div className="stats-grid">
+              <div className="stat-card">
+                <div className="stat-icon users">
+                  <FiUsers size={24} />
+                </div>
+                <div className="stat-info">
+                  <h3>Total Users</h3>
+                  <p>24</p>
+                </div>
               </div>
-            )}
-          </>
+              <div className="stat-card">
+                <div className="stat-icon images">
+                  <FiImage size={24} />
+                </div>
+                <div className="stat-info">
+                  <h3>Coral Images</h3>
+                  <p>156</p>
+                </div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-icon reports">
+                  <FiFileText size={24} />
+                </div>
+                <div className="stat-info">
+                  <h3>Reports Generated</h3>
+                  <p>42</p>
+                </div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-icon species">
+                  <FiDatabase size={24} />
+                </div>
+                <div className="stat-info">
+                  <h3>Coral Species</h3>
+                  <p>18</p>
+                </div>
+              </div>
+            </div>
+          </div>
         );
     }
   };
@@ -232,56 +290,91 @@ function AdminDashboard() {
     <div className="admin-dashboard">
       {/* Top Navigation Bar */}
       <nav className="top-nav">
-        <div className="nav-left">
-          <button
-            className="menu-toggle"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-          >
-            {sidebarOpen ? <FiX size={24} /> : <FiMenu size={24} />}
-          </button>
-          <h1 className="nav-title">DeepCoral Admin</h1>
+        <div className="nav-container">
+          <div className="nav-brand">
+            <button
+              className="menu-toggle"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              aria-label="Toggle menu"
+            >
+              {sidebarOpen ? <FiX size={24} /> : <FiMenu size={24} />}
+            </button>
+            <div className="logo-container">
+              <span className="logo-icon">
+                <h1 className="deepcoral-logo">DeepCoral</h1>
+              </span>
+              <span className="portal-tag">Admin</span>
+            </div>
+          </div>
+
+          <div className="user-actions">
+            <div className="user-profile">
+              <div className="user-avatar">
+                {user.firstname?.charAt(0)}
+                {user.lastname?.charAt(0)}
+              </div>
+              <div className="user-info">
+                <span className="user-name">
+                  {user.firstname} {user.lastname}
+                </span>
+                <span className="user-role">Administrator</span>
+              </div>
+            </div>
+            <button className="logout-button" onClick={handleLogout}>
+              <FiLogOut className="logout-icon" />
+            </button>
+          </div>
         </div>
-        <span>
-          Welcome, {user.firstname} {user.lastname}
-        </span>
-        <button className="logout-button" onClick={handleLogout}>
-          <FiLogOut className="logout-icon" />
-          <span>Logout</span>
-        </button>
       </nav>
 
       <div className="dashboard-container">
         {/* Sidebar Navigation */}
         <aside className={`sidebar ${sidebarOpen ? "open" : "closed"}`}>
+          <div className="sidebar-header">
+            <h3 className="sidebar-title">Navigation</h3>
+          </div>
+
           <nav className="sidebar-nav">
             <ul>
               <li
                 className={activeTab === "Dashboard" ? "active" : ""}
                 onClick={() => setActiveTab("Dashboard")}
               >
-                <FiHome className="nav-icon" />
-                <span>Dashboard</span>
+                <div className="nav-item-content">
+                  <FiHome className="nav-icon" />
+                  <span className="nav-text">Dashboard</span>
+                </div>
+                <div className="active-indicator"></div>
               </li>
               <li
                 className={activeTab === "Manage Users" ? "active" : ""}
                 onClick={() => setActiveTab("Manage Users")}
               >
-                <FiUsers className="nav-icon" />
-                <span>Manage Users</span>
+                <div className="nav-item-content">
+                  <FiUsers className="nav-icon" />
+                  <span className="nav-text">Manage Users</span>
+                </div>
+                <div className="active-indicator"></div>
               </li>
               <li
                 className={activeTab === "Add Images" ? "active" : ""}
                 onClick={() => setActiveTab("Add Images")}
               >
-                <FiImage className="nav-icon" />
-                <span>Add Images</span>
+                <div className="nav-item-content">
+                  <FiImage className="nav-icon" />
+                  <span className="nav-text">Add Images</span>
+                </div>
+                <div className="active-indicator"></div>
               </li>
               <li
                 className={activeTab === "Generate Report" ? "active" : ""}
                 onClick={() => setActiveTab("Generate Report")}
               >
-                <FiFileText className="nav-icon" />
-                <span>Generate Report</span>
+                <div className="nav-item-content">
+                  <FiFileText className="nav-icon" />
+                  <span className="nav-text">Generate Report</span>
+                </div>
+                <div className="active-indicator"></div>
               </li>
               <li
                 className={
@@ -289,25 +382,38 @@ function AdminDashboard() {
                 }
                 onClick={() => setActiveTab("Manage Coral LifeForms")}
               >
-                <FiDatabase className="nav-icon" />
-                <span>Manage Coral LifeForms</span>
+                <div className="nav-item-content">
+                  <FiDatabase className="nav-icon" />
+                  <span className="nav-text">Manage LifeForms</span>
+                </div>
+                <div className="active-indicator"></div>
               </li>
               <li
                 className={activeTab === "Coral Distribution" ? "active" : ""}
                 onClick={() => setActiveTab("Coral Distribution")}
               >
-                <FiPieChart className="nav-icon" />
-                <span>Coral Distribution</span>
+                <div className="nav-item-content">
+                  <FiPieChart className="nav-icon" />
+                  <span className="nav-text">Distribution</span>
+                </div>
+                <div className="active-indicator"></div>
               </li>
               <li
                 className={activeTab === "Validate" ? "active" : ""}
                 onClick={() => setActiveTab("Validate")}
               >
-                <FiCheckCircle className="nav-icon" />
-                <span>Validate</span>
+                <div className="nav-item-content">
+                  <FiCheckCircle className="nav-icon" />
+                  <span className="nav-text">Validate</span>
+                </div>
+                <div className="active-indicator"></div>
               </li>
             </ul>
           </nav>
+
+          <div className="sidebar-footer">
+            <div className="app-version">v2.4.1</div>
+          </div>
         </aside>
 
         {/* Main Content Area */}
@@ -316,94 +422,309 @@ function AdminDashboard() {
 
       {/* CSS Styles */}
       <style jsx>{`
-        .admin-dashboard {
+        .guest-dashboard {
           display: flex;
           flex-direction: column;
           min-height: 100vh;
-          font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-          background-color: #f5f7fa;
+          font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+          background-color: #f8fafc;
         }
-
+        .content-section {
+          max-width: 100%;
+          margin: 0;
+          background: white;
+          border-radius: 12px;
+          padding: 2rem;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        }
+        .content-title {
+          font-size: 1.8rem;
+          font-weight: 600;
+          color: #333;
+          margin-bottom: 2rem;
+          padding-bottom: 1rem;
+          border-bottom: 2px solid rgba(0, 96, 100, 0.1);
+        }
         .top-nav {
+          position: sticky;
+          top: 0;
+          z-index: 50;
+          background: white;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+          border-bottom: 1px solid #e2e8f0;
+        }
+        .nav-container {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 0 20px;
-          height: 60px;
-          background: linear-gradient(135deg, #26c6da 0%, #00acc1 100%);
-          color: white;
-          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-          position: sticky;
-          top: 0;
-          z-index: 100;
+          padding: 0 2rem;
+          height: 70px;
+          max-width: 100%;
         }
-
-        .nav-left {
+        .user-actions {
           display: flex;
           align-items: center;
-          gap: 15px;
+          gap: 1.5rem;
         }
 
-        .menu-toggle {
-          background: none;
-          border: none;
+        .user-profile {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+
+        .user-avatar {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #06b6d4 0%, #0ea5e9 100%);
           color: white;
-          cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 5px;
-          border-radius: 4px;
-          transition: background-color 0.2s;
+          font-weight: 500;
         }
 
-        .menu-toggle:hover {
-          background-color: rgba(255, 255, 255, 0.1);
+        .user-info {
+          display: flex;
+          flex-direction: column;
         }
 
-        .nav-title {
-          font-size: 1.2rem;
-          font-weight: 600;
-          margin: 0;
+        .user-name {
+          font-size: 0.875rem;
+          font-weight: 500;
+          color: #0f172a;
+        }
+
+        .user-role {
+          font-size: 0.75rem;
+          color: #64748b;
         }
 
         .logout-button {
           display: flex;
           align-items: center;
-          gap: 8px;
-          background: rgba(255, 255, 255, 0.1);
+          justify-content: center;
+          width: 50px;
+          height: 40px;
+          border-radius: 8px;
+          background: transparent;
           border: none;
-          color: white;
-          padding: 8px 15px;
-          border-radius: 4px;
+          color: #64748b;
           cursor: pointer;
-          transition: background-color 0.2s;
-          font-weight: 500;
+          transition: all 0.2s;
         }
 
         .logout-button:hover {
-          background: rgba(255, 255, 255, 0.2);
+          background: #f1f5f9;
+          color: #475569;
         }
 
+        .nav-brand {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+        }
+        .menu-toggle {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 40px;
+          height: 40px;
+          border-radius: 8px;
+          background: transparent;
+          border: none;
+          color: #334155;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .menu-toggle:hover {
+          background: #f1f5f9;
+        }
+
+        .logo-container {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+
+        .logo-icon {
+          font-size: 1.75rem;
+        }
+
+        .nav-title {
+          font-size: 1.25rem;
+          font-weight: 600;
+          color: #0f172a;
+          margin: 0;
+        }
+
+        .portal-tag {
+          font-size: 0.75rem;
+          background: #e0f2fe;
+          color: #0369a1;
+          padding: 0.25rem 0.5rem;
+          border-radius: 12px;
+          font-weight: 500;
+        }
+
+        .user-actions {
+          display: flex;
+          align-items: center;
+          gap: 1.5rem;
+        }
+
+        .user-profile {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+
+        .user-avatar {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #06b6d4 0%, #0ea5e9 100%);
+          color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 500;
+        }
+
+        .user-details {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .welcome-text {
+          font-size: 0.75rem;
+          color: #64748b;
+        }
+
+        .username {
+          font-size: 0.875rem;
+          font-weight: 500;
+          color: #0f172a;
+        }
+
+        .logout-button {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.5rem 1rem;
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+          color: #64748b;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .logout-button:hover {
+          background: #f1f5f9;
+          color: #475569;
+        }
         .dashboard-container {
           display: flex;
           flex: 1;
           overflow: hidden;
         }
-
-        .sidebar {
-          width: 250px;
-          background-color: white;
-          box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
-          transition: transform 0.3s ease;
-          height: calc(100vh - 60px);
-          position: sticky;
-          top: 60px;
+        .stats-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+          gap: 1.5rem;
+          margin-bottom: 2rem;
         }
 
-        .sidebar.closed {
-          transform: translateX(-250px);
-          position: fixed;
+        .stat-card {
+          background: white;
+          border-radius: 12px;
+          padding: 1.5rem;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+        }
+
+        .stat-icon {
+          width: 48px;
+          height: 48px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .stat-icon.users {
+          background: #e0f2fe;
+          color: #0369a1;
+        }
+
+        .stat-icon.images {
+          background: #ecfdf5;
+          color: #059669;
+        }
+
+        .stat-icon.reports {
+          background: #fef2f2;
+          color: #b91c1c;
+        }
+
+        .stat-icon.species {
+          background: #f5f3ff;
+          color: #7c3aed;
+        }
+
+        .stat-info h3 {
+          font-size: 0.875rem;
+          color: #64748b;
+          margin: 0 0 0.25rem;
+          font-weight: 500;
+        }
+
+        .stat-info p {
+          font-size: 1.5rem;
+          font-weight: 600;
+          color: #0f172a;
+          margin: 0;
+        }
+
+        .sidebar {
+          width: ${sidebarOpen ? "280px" : "80px"};
+          background: white;
+          border-right: 1px solid #e2e8f0;
+          transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          height: calc(100vh - 70px);
+          position: sticky;
+          top: 70px;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        }
+
+        .sidebar-header {
+          padding: 1.5rem 1.5rem 1rem;
+          border-bottom: 1px solid #f1f5f9;
+        }
+
+        .sidebar-title {
+          font-size: 0.75rem;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          color: #64748b;
+          font-weight: 600;
+          margin: 0;
+          opacity: ${sidebarOpen ? "1" : "0"};
+          transition: opacity 0.2s;
+          white-space: nowrap;
+        }
+
+        .sidebar-nav {
+          flex: 1;
+          padding: 0.75rem;
         }
 
         .sidebar-nav ul {
@@ -413,60 +734,183 @@ function AdminDashboard() {
         }
 
         .sidebar-nav li {
-          padding: 12px 20px;
-          display: flex;
-          align-items: center;
-          gap: 12px;
+          position: relative;
+          margin-bottom: 0.25rem;
+          border-radius: 8px;
           cursor: pointer;
-          color: #555;
           transition: all 0.2s;
-          border-left: 3px solid transparent;
         }
 
         .sidebar-nav li:hover {
-          background-color: #f0f4f8;
-          color: #00796b;
+          background: #f8fafc;
         }
 
         .sidebar-nav li.active {
-          background-color: #e0f7fa;
-          color: #00796b;
-          border-left: 3px solid #26c6da;
+          background: #f0f9ff;
+        }
+
+        .sidebar-nav li.active .nav-text {
+          color: #0369a1;
           font-weight: 500;
         }
 
-        .nav-icon {
-          font-size: 1.1rem;
+        .sidebar-nav li.active .nav-icon {
+          color: #0284c7;
         }
 
+        .nav-item-content {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          padding: 0.75rem;
+          white-space: nowrap;
+        }
+
+        .nav-icon {
+          font-size: 1.25rem;
+          color: #64748b;
+          min-width: 24px;
+          display: flex;
+          justify-content: center;
+        }
+
+        .nav-text {
+          font-size: 0.9375rem;
+          color: #334155;
+          transition: opacity 0.3s;
+          opacity: ${sidebarOpen ? "1" : "0"};
+        }
+
+        .active-indicator {
+          position: absolute;
+          left: 0;
+          top: 0;
+          bottom: 0;
+          width: 3px;
+          background: #0284c7;
+          border-radius: 0 3px 3px 0;
+          opacity: 0;
+          transition: opacity 0.2s;
+        }
+
+        .sidebar-nav li.active .active-indicator {
+          opacity: 1;
+        }
+
+        .sidebar-footer {
+          padding: 1rem;
+          border-top: 1px solid #f1f5f9;
+        }
+
+        .app-version {
+          font-size: 0.6875rem;
+          color: #94a3b8;
+          opacity: ${sidebarOpen ? "1" : "0"};
+          transition: opacity 0.2s;
+          white-space: nowrap;
+        }
         .main-content {
           flex: 1;
-          padding: 25px;
+          padding: 2rem;
+          background: #f8fafc;
           overflow-y: auto;
-          background-color: #f5f7fa;
+        }
+
+        .content-section {
+          max-width: 1400px;
+          margin: 0 auto;
+          background: white;
+          border-radius: 12px;
+          padding: 2rem;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
         }
 
         .content-title {
-          color: #00796b;
-          margin-bottom: 20px;
           font-size: 1.5rem;
+          font-weight: 600;
+          color: #0f172a;
+          margin-bottom: 1.5rem;
         }
 
-        .loading,
-        .error-message {
-          padding: 20px;
+        .content-placeholder {
+          color: #64748b;
           text-align: center;
-          color: #555;
+          padding: 3rem 0;
         }
 
-        .error-message {
-          color: #d32f2f;
+        @media (max-width: 768px) {
+          .nav-container {
+            padding: 0 1rem;
+          }
+
+          .sidebar {
+            position: fixed;
+            z-index: 40;
+            height: calc(100vh - 70px);
+            box-shadow: ${sidebarOpen
+              ? "4px 0 15px rgba(0, 0, 0, 0.1)"
+              : "none"};
+          }
+
+          .main-content {
+            padding: 1rem;
+          }
+
+          .content-section {
+            padding: 1.5rem;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .portal-tag,
+          .welcome-text {
+            display: none;
+          }
+
+          .user-avatar {
+            width: 32px;
+            height: 32px;
+            font-size: 0.875rem;
+          }
+
+          .username {
+            font-size: 0.8125rem;
+          }
+
+          .logout-button span {
+            display: none;
+          }
+
+          .logout-button {
+            padding: 0.5rem;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            justify-content: center;
+          }
+        }
+        .add-button {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.5rem 1rem;
+          background: #06b6d4;
+          color: white;
+          border: none;
+          border-radius: 8px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .add-button:hover {
+          background: #0891b2;
         }
 
         .table-container {
-          background-color: white;
-          border-radius: 8px;
-          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+          background: white;
+          border-radius: 12px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
           overflow: hidden;
         }
 
@@ -476,61 +920,76 @@ function AdminDashboard() {
         }
 
         .data-table th {
-          background-color: #f0f4f8;
-          padding: 12px 15px;
+          background: #f1f5f9;
+          padding: 1rem;
           text-align: left;
-          color: #00796b;
+          color: #64748b;
           font-weight: 500;
+          font-size: 0.875rem;
         }
 
         .data-table td {
-          padding: 12px 15px;
-          border-bottom: 1px solid #eee;
-          color: #555;
+          padding: 1rem;
+          border-bottom: 1px solid #e2e8f0;
+          color: #334155;
         }
 
         .data-table tr:hover {
-          background-color: #f9f9f9;
+          background: #f8fafc;
+        }
+
+        .role-badge {
+          display: inline-block;
+          padding: 0.25rem 0.5rem;
+          border-radius: 12px;
+          font-size: 0.75rem;
+          font-weight: 500;
+        }
+
+        .role-badge.admin {
+          background: #e0f2fe;
+          color: #0369a1;
+        }
+
+        .role-badge.biologist {
+          background: #ecfdf5;
+          color: #059669;
+        }
+
+        .role-badge.guest {
+          background: rgb(202, 204, 206);
+          color: rgb(35, 35, 35);
         }
 
         .action-button {
-          padding: 6px 12px;
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
           border: none;
-          border-radius: 4px;
           cursor: pointer;
-          font-size: 0.85rem;
-          margin-right: 8px;
           transition: all 0.2s;
+          margin-right: 0.5rem;
         }
 
-        .edit-button {
-          background-color: #26c6da;
-          color: white;
+        .action-button.edit {
+          background: #e0f2fe;
+          color: #0369a1;
         }
 
-        .edit-button:hover {
-          background-color: #00acc1;
+        .action-button.edit:hover {
+          background: #bae6fd;
         }
 
-        .delete-button {
-          background-color: #f44336;
-          color: white;
+        .action-button.delete {
+          background: #fee2e2;
+          color: #dc2626;
         }
 
-        .delete-button:hover {
-          background-color: #d32f2f;
-        }
-
-        @media (max-width: 768px) {
-          .sidebar {
-            position: fixed;
-            z-index: 90;
-            height: calc(100vh - 60px);
-          }
-
-          .main-content {
-            padding: 15px;
-          }
+        .action-button.delete:hover {
+          background: #fecaca;
         }
       `}</style>
     </div>

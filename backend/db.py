@@ -28,6 +28,10 @@ CREATE TABLE IF NOT EXISTS users (
 """
 
 import psycopg2
+import os
+from dotenv import load_dotenv
+
+load_dotenv()  # Load environment variables from .env file
 
 def get_db_connection():
     """
@@ -37,11 +41,11 @@ def get_db_connection():
     """
     try:
         conn = psycopg2.connect(
-            dbname='deep_coral',
-            user='postgres',  # Replace with your PostgreSQL username
-            password='root123',  # Replace with your PostgreSQL pgAdmin4 password
-            host='localhost',  # Change if your database is hosted elsewhere
-            port='5432'  # Default PostgreSQL port
+            dbname=os.getenv("DB_TABLE"),
+            user=os.getenv("DB_USER"),  
+            password=os.getenv('DB_PASSWORD'), 
+            host=os.getenv("DB_HOST"), 
+            port=os.getenv("DB_PORT")  
         )
         return conn
     except Exception as e:
