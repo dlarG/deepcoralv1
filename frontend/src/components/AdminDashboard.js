@@ -15,6 +15,8 @@ import {
   FiX,
   FiUser,
   FiTrash2,
+  FiUserPlus,
+  FiCheck,
   FiEdit2,
 } from "react-icons/fi";
 
@@ -26,6 +28,17 @@ function AdminDashboard() {
   const [error, setError] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState("Dashboard");
+
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [formData, setFormData] = useState({
+    username: "",
+    password: "",
+    firstname: "",
+    lastname: "",
+    roletype: "guest",
+  });
 
   // Verify authentication status and role when component mounts
   useEffect(() => {
@@ -82,6 +95,92 @@ function AdminDashboard() {
     }
   }, [user, navigate, logout]);
 
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    try {
+      const csrfResponse = await axios.get("http://localhost:5000/csrf-token", {
+        withCredentials: true,
+      });
+      const csrfToken = csrfResponse.data.csrf_token;
+
+      const response = await axios.post(
+        "http://localhost:5000/admin/users",
+        formData,
+        {
+          withCredentials: true,
+          headers: {
+            "X-CSRF-Token": csrfToken,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      setUsers([...users, response.data.user]);
+      setShowCreateModal(false);
+      setFormData({
+        username: "",
+        password: "",
+        firstname: "",
+        lastname: "",
+        roletype: "guest",
+      });
+    } catch (error) {
+      console.error("Create failed:", error);
+      setError(error.response?.data?.error || "Failed to create user");
+    }
+  };
+
+  const handleEdit = (user) => {
+    setCurrentUser(user);
+    setFormData({
+      username: user.username,
+      password: "",
+      firstname: user.firstname,
+      lastname: user.lastname,
+      roletype: user.roletype,
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    try {
+      const csrfResponse = await axios.get("http://localhost:5000/csrf-token", {
+        withCredentials: true,
+      });
+      const csrfToken = csrfResponse.data.csrf_token;
+
+      const response = await axios.put(
+        `http://localhost:5000/admin/users/${currentUser.id}`,
+        formData,
+        {
+          withCredentials: true,
+          headers: {
+            "X-CSRF-Token": csrfToken,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      setUsers(
+        users.map((u) => (u.id === currentUser.id ? response.data.user : u))
+      );
+      setShowEditModal(false);
+      setCurrentUser(null);
+    } catch (error) {
+      console.error("Update failed:", error);
+      setError(error.response?.data?.error || "Failed to update user");
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
   const handleLogout = async () => {
     try {
       await logout();
@@ -90,11 +189,6 @@ function AdminDashboard() {
       console.error("Logout failed:", error);
       navigate("/login");
     }
-  };
-
-  const handleEdit = (userId) => {
-    console.log("Edit user:", userId);
-    // navigate(`/edit-user/${userId}`);
   };
 
   const handleDelete = async (userId) => {
@@ -145,6 +239,163 @@ function AdminDashboard() {
       case "Manage Users":
         return (
           <>
+            {/* Create User Modal */}
+            {showCreateModal && (
+              <div className="modal-overlay">
+                <div className="modal">
+                  <div className="modal-header">
+                    <h3>Create New User</h3>
+                    <button onClick={() => setShowCreateModal(false)}>
+                      <FiX size={20} />
+                    </button>
+                  </div>
+                  <form onSubmit={handleCreate}>
+                    <div className="form-group">
+                      <label>Username</label>
+                      <input
+                        type="text"
+                        name="username"
+                        value={formData.username}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Password</label>
+                      <input
+                        type="password"
+                        name="password"
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>First Name</label>
+                      <input
+                        type="text"
+                        name="firstname"
+                        value={formData.firstname}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Last Name</label>
+                      <input
+                        type="text"
+                        name="lastname"
+                        value={formData.lastname}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Role</label>
+                      <select
+                        name="roletype"
+                        value={formData.roletype}
+                        onChange={handleInputChange}
+                        required
+                      >
+                        <option value="guest">Guest</option>
+                        <option value="biologist">Biologist</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </div>
+                    <div className="modal-actions">
+                      <button
+                        type="button"
+                        onClick={() => setShowCreateModal(false)}
+                      >
+                        Cancel
+                      </button>
+                      <button type="submit" className="primary">
+                        Create User
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+            {/* Edit User Modal */}
+            {showEditModal && currentUser && (
+              <div className="modal-overlay">
+                <div className="modal">
+                  <div className="modal-header">
+                    <h3>Edit User</h3>
+                    <button onClick={() => setShowEditModal(false)}>
+                      <FiX size={20} />
+                    </button>
+                  </div>
+                  <form onSubmit={handleUpdate}>
+                    <div className="form-group">
+                      <label>Username</label>
+                      <input
+                        type="text"
+                        name="username"
+                        value={formData.username}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Password (leave blank to keep current)</label>
+                      <input
+                        type="password"
+                        name="password"
+                        value={formData.password}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>First Name</label>
+                      <input
+                        type="text"
+                        name="firstname"
+                        value={formData.firstname}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Last Name</label>
+                      <input
+                        type="text"
+                        name="lastname"
+                        value={formData.lastname}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Role</label>
+                      <select
+                        name="roletype"
+                        value={formData.roletype}
+                        onChange={handleInputChange}
+                        required
+                      >
+                        <option value="guest">Guest</option>
+                        <option value="biologist">Biologist</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </div>
+                    <div className="modal-actions">
+                      <button
+                        type="button"
+                        onClick={() => setShowEditModal(false)}
+                      >
+                        Cancel
+                      </button>
+                      <button type="submit" className="primary">
+                        Update User
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
             <h2 className="content-title">User Management</h2>
             {loading ? (
               <div className="loading">Loading users...</div>
@@ -153,8 +404,11 @@ function AdminDashboard() {
             ) : (
               <div className="users-content">
                 <div className="content-header">
-                  <button className="add-button">
-                    <FiUser className="button-icon" />
+                  <button
+                    className="add-button"
+                    onClick={() => setShowCreateModal(true)}
+                  >
+                    <FiUserPlus className="button-icon" />
                     Add User
                   </button>
                 </div>
@@ -190,7 +444,7 @@ function AdminDashboard() {
                           <td>
                             <button
                               className="action-button edit"
-                              onClick={() => handleEdit(user.id)}
+                              onClick={() => handleEdit(user)}
                             >
                               <FiEdit2 size={16} />
                             </button>
@@ -990,6 +1244,76 @@ function AdminDashboard() {
 
         .action-button.delete:hover {
           background: #fecaca;
+        }
+
+        .modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: rgba(0, 0, 0, 0.5);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 1000;
+        }
+
+        .modal {
+          background-color: white;
+          padding: 20px;
+          border-radius: 8px;
+          width: 100%;
+          max-width: 500px;
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 20px;
+        }
+
+        .modal-header h3 {
+          margin: 0;
+        }
+
+        .form-group {
+          margin-bottom: 15px;
+        }
+
+        .form-group label {
+          display: block;
+          margin-bottom: 5px;
+          font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select {
+          width: 100%;
+          padding: 8px;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+        }
+
+        .modal-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 10px;
+          margin-top: 20px;
+        }
+
+        .modal-actions button {
+          padding: 8px 16px;
+          border-radius: 4px;
+          cursor: pointer;
+        }
+
+        .modal-actions button.primary {
+          background-color: #4caf50;
+          color: white;
+          border: none;
         }
       `}</style>
     </div>
