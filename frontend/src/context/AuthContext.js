@@ -120,7 +120,7 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     try {
-      const response = await axios.post(
+      await axios.post(
         "http://localhost:5000/logout",
         {},
         {
