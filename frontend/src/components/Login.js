@@ -11,27 +11,12 @@ function Login() {
   const [form, setForm] = useState({ username: "", password: "" });
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
   const navigate = useNavigate(); // Add this import from react-router-dom
-  const [csrfToken, setCsrfToken] = useState("");
+  const { login, csrfToken } = useAuth();
 
   // Fetch CSRF token when component mounts
   useEffect(() => {
     document.title = "Sign in to DeepCoral";
-    const fetchCsrfToken = async () => {
-      try {
-        const response = await axios.get("http://localhost:5000/csrf-token", {
-          withCredentials: true,
-        });
-        setCsrfToken(response.data.csrf_token);
-      } catch (err) {
-        console.error("Error fetching CSRF token:", err);
-        // Retry after 1 second if fails
-        setTimeout(fetchCsrfToken, 1000);
-      }
-    };
-
-    fetchCsrfToken();
   }, []);
 
   const handleChange = (e) => {
@@ -43,27 +28,24 @@ function Login() {
     setIsLoading(true);
     setMessage("");
 
-    const result = await login(form);
+    try {
+      const result = await login(form);
 
-    if (result.success) {
-      setMessage("Login successful");
-      await new Promise((resolve) => setTimeout(resolve, 100)); // Short delay
-      if (result.redirectTo) {
-        navigate(result.redirectTo);
+      if (result.success) {
+        setMessage("Login successful");
+        navigate(
+          result.redirectTo ||
+            `/${result.user?.roletype?.toLowerCase()}-dashboard` ||
+            "/"
+        );
       } else {
-        // Fallback redirect based on user role
-        const role = result.user?.roletype?.toLowerCase();
-        if (role) {
-          navigate(`/${role}-dashboard`);
-        } else {
-          navigate("/"); // Default fallback
-        }
+        setMessage(result.error || "Login failed");
       }
-    } else {
-      setMessage(result.error || "Login failed");
+    } catch (err) {
+      setMessage("Login failed. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   return (

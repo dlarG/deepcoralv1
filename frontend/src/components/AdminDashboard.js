@@ -237,6 +237,16 @@ function AdminDashboard() {
 
   const renderContent = () => {
     switch (activeTab) {
+      case "Profile Management":
+        return (
+          <div className="content-section">
+            <h2 className="content-title">Profile Management</h2>
+            <div className="content-placeholder">
+              <p>Profile management features will be implemented here.</p>
+              <p>Admins can update their profile information.</p>
+            </div>
+          </div>
+        );
       case "Manage Users":
         return (
           <>
@@ -660,6 +670,16 @@ function AdminDashboard() {
                 <div className="nav-item-content">
                   <FiCheckCircle className="nav-icon" />
                   <span className="nav-text">Validate</span>
+                </div>
+                <div className="active-indicator"></div>
+              </li>
+              <li
+                className={activeTab === "Profile Management" ? "active" : ""}
+                onClick={() => setActiveTab("Profile Management")}
+              >
+                <div className="nav-item-content">
+                  <FiUser className="nav-icon" />
+                  <span className="nav-text">Profile Management</span>
                 </div>
                 <div className="active-indicator"></div>
               </li>

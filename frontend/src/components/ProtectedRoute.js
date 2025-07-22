@@ -1,19 +1,19 @@
 // src/components/ProtectedRoute.js
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
+// In ProtectedRoute.js
 export function ProtectedRoute({ children, requiredRole = null }) {
   const { user, loading, checkAuthStatus } = useAuth();
+  const initialized = useRef(false);
 
   useEffect(() => {
-    // Verify auth status when the protected route mounts
-    const verifyAuth = async () => {
-      await checkAuthStatus();
-    };
-    verifyAuth();
-  }, [checkAuthStatus]);
-
+    if (!initialized.current && !user && !loading) {
+      initialized.current = true;
+      checkAuthStatus();
+    }
+  }, [user, loading, checkAuthStatus]);
   if (loading) {
     return <div>Loading...</div>;
   }
@@ -24,7 +24,7 @@ export function ProtectedRoute({ children, requiredRole = null }) {
 
   if (
     requiredRole &&
-    user.roletype.toLowerCase() !== requiredRole.toLowerCase()
+    user.roletype?.toLowerCase() !== requiredRole.toLowerCase()
   ) {
     return <Navigate to="/" replace />;
   }

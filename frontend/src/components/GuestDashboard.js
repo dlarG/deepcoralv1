@@ -8,6 +8,7 @@ import {
   FiMap,
   FiFileText,
   FiMenu,
+  FiUser,
   FiX,
 } from "react-icons/fi";
 
@@ -50,6 +51,16 @@ function GuestDashboard() {
 
   const renderContent = () => {
     switch (activeTab) {
+      case "Profile Management":
+        return (
+          <div className="content-section">
+            <h2 className="content-title">Profile Management</h2>
+            <div className="content-placeholder">
+              <p>Profile management features will be implemented here.</p>
+              <p>Guests can update their profile information.</p>
+            </div>
+          </div>
+        );
       case "Upload Image":
         return (
           <div className="content-section">
@@ -82,6 +93,7 @@ function GuestDashboard() {
             </div>
           </div>
         );
+
       case "Coral LifeForms":
       default:
         return (
@@ -268,6 +280,16 @@ function GuestDashboard() {
                 <div className="nav-item-content">
                   <FiFileText className="nav-icon" />
                   <span className="nav-text">View Results</span>
+                </div>
+                <div className="active-indicator"></div>
+              </li>
+              <li
+                className={activeTab === "Profile Management" ? "active" : ""}
+                onClick={() => setActiveTab("Profile Management")}
+              >
+                <div className="nav-item-content">
+                  <FiUser className="nav-icon" />
+                  <span className="nav-text">Profile Management</span>
                 </div>
                 <div className="active-indicator"></div>
               </li>
