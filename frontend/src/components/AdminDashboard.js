@@ -42,6 +42,7 @@ function AdminDashboard() {
 
   // Verify authentication status and role when component mounts
   useEffect(() => {
+    document.title = "Admin Dashboard | DeepCoral";
     const verifyAuth = async () => {
       await checkAuthStatus();
 

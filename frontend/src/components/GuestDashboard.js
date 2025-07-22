@@ -20,6 +20,7 @@ function GuestDashboard() {
   const [coralData, setCoralData] = useState([]);
 
   useEffect(() => {
+    document.title = "Guest Dashboard | DeepCoral";
     if (activeTab === "Coral LifeForms") {
       authAxios
         .get("/coral_info")

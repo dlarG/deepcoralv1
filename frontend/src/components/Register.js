@@ -32,6 +32,7 @@ function Register() {
 
   // Fetch CSRF token when component mounts
   useEffect(() => {
+    document.title = "Create an Account";
     const fetchCsrfToken = async () => {
       try {
         const response = await axios.get("http://localhost:5000/csrf-token");

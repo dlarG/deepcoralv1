@@ -17,6 +17,7 @@ function Login() {
 
   // Fetch CSRF token when component mounts
   useEffect(() => {
+    document.title = "Sign in to DeepCoral";
     const fetchCsrfToken = async () => {
       try {
         const response = await axios.get("http://localhost:5000/csrf-token", {

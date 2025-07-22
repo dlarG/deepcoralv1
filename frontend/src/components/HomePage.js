@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   FiLogIn,
@@ -9,6 +9,9 @@ import {
 } from "react-icons/fi";
 
 function HomePage() {
+  useEffect(() => {
+    document.title = "DeepCoral - Home";
+  }, []);
   return (
     <div className="homepage-container">
       {/* Background with overlay */}
@@ -22,9 +25,9 @@ function HomePage() {
         {/* Navigation */}
         <nav className="navbar">
           <div className="navbar-brand">
-            <span className="logo-icon">
+            {/* <span className="logo-icon">
               <img src="/icon.png" alt="icon" class="logo" />
-            </span>
+            </span> */}
             <h1 className="deepcoral-logo">DeepCoral</h1>
           </div>
           <div className="nav-links">
