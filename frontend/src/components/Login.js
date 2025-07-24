@@ -3,6 +3,7 @@ import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { FiUser, FiLock, FiLogIn } from "react-icons/fi";
+import Logo from "./Logo"; // Import the Logo component
 
 // Configure axios to send credentials with requests
 axios.defaults.withCredentials = true;
@@ -53,6 +54,9 @@ function Login() {
       <div className="login-card">
         {/* Coral reef header */}
         <div className="login-header">
+          <div className="auth-logo-container">
+            <Logo variant="auth" type="image" theme="dark" />
+          </div>
           <h1>Coral Reef Portal</h1>
           <p>Sign in to access your dashboard</p>
         </div>

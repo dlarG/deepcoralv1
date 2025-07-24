@@ -11,6 +11,7 @@ import {
   FiUser,
   FiX,
 } from "react-icons/fi";
+import Logo from "./Logo"; // Import the Logo component
 
 function GuestDashboard() {
   const navigate = useNavigate();
@@ -206,9 +207,7 @@ function GuestDashboard() {
               {sidebarOpen ? <FiX size={24} /> : <FiMenu size={24} />}
             </button>
             <div className="logo-container">
-              <span className="logo-icon">
-                <h1 className="deepcoral-logo">DeepCoral</h1>
-              </span>
+              <Logo variant="navbar" type="image" theme="light" />
               <span className="portal-tag">Guest</span>
             </div>
           </div>
@@ -465,6 +464,10 @@ function GuestDashboard() {
         .sidebar-header {
           padding: 1.5rem 1.5rem 1rem;
           border-bottom: 1px solid #f1f5f9;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 10px;
         }
 
         .sidebar-title {

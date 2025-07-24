@@ -53,3 +53,10 @@ def get_db_connection():
         print(f"Error connecting to the database: {e}")
         return None
 
+if __name__ == "__main__":
+    conn = get_db_connection()
+    if conn:
+        print("Database connection successful!")
+        conn.close()
+    else:
+        print("Database connection failed.")
