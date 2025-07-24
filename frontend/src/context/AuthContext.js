@@ -145,6 +145,13 @@ export function AuthProvider({ children }) {
     },
   });
 
+  const updateUser = (updatedUserData) => {
+    setUser((prev) => ({
+      ...prev,
+      ...updatedUserData,
+    }));
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -156,6 +163,7 @@ export function AuthProvider({ children }) {
         authAxios,
         csrfToken, // Make sure this is exposed
         fetchCsrfToken, // Add this to exposed functions
+        updateUser,
       }}
     >
       {children}

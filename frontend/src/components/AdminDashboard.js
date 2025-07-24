@@ -22,7 +22,14 @@ import {
 
 function AdminDashboard() {
   const navigate = useNavigate();
-  const { user, loading: authLoading, logout, checkAuthStatus } = useAuth();
+  const {
+    user,
+    loading: authLoading,
+    logout,
+    updateUser,
+    checkAuthStatus,
+    fetchCsrfToken,
+  } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -168,6 +175,7 @@ function AdminDashboard() {
       );
       setShowEditModal(false);
       setCurrentUser(null);
+      alert("User updated successfully!");
     } catch (error) {
       console.error("Update failed:", error);
       setError(error.response?.data?.error || "Failed to update user");
@@ -223,6 +231,49 @@ function AdminDashboard() {
     }
   };
 
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    try {
+      // Get CSRF token
+      const csrfToken = await fetchCsrfToken();
+
+      // Prepare update data
+      const updateData = {
+        username: formData.username,
+        firstname: formData.firstname,
+        lastname: formData.lastname,
+        ...(formData.password && {
+          current_password: prompt(
+            "Please enter your current password to confirm changes:"
+          ),
+          new_password: formData.password,
+        }),
+      };
+
+      // Make the request to /profile endpoint
+      const response = await axios.put(
+        "http://localhost:5000/profile",
+        updateData,
+        {
+          withCredentials: true,
+          headers: {
+            "X-CSRF-Token": csrfToken,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      // Immediately update the UI
+      updateUser(response.data.user);
+
+      setShowEditModal(false);
+      alert("Profile updated successfully!");
+    } catch (error) {
+      console.error("Profile update failed:", error);
+      setError(error.response?.data?.error || "Failed to update profile");
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -241,9 +292,145 @@ function AdminDashboard() {
         return (
           <div className="content-section">
             <h2 className="content-title">Profile Management</h2>
-            <div className="content-placeholder">
-              <p>Profile management features will be implemented here.</p>
-              <p>Admins can update their profile information.</p>
+            {showEditModal && (
+              <div className="modal-overlay">
+                <div className="modal">
+                  <div className="modal-header">
+                    <h3>Edit Profile</h3>
+                    <button onClick={() => setShowEditModal(false)}>
+                      <FiX size={20} />
+                    </button>
+                  </div>
+                  <form onSubmit={handleUpdateProfile}>
+                    <div className="form-group">
+                      <label>Username</label>
+                      <input
+                        type="text"
+                        name="username"
+                        value={formData.username}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Password (leave blank to keep current)</label>
+                      <input
+                        type="password"
+                        name="password"
+                        value={formData.password}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>First Name</label>
+                      <input
+                        type="text"
+                        name="firstname"
+                        value={formData.firstname}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Last Name</label>
+                      <input
+                        type="text"
+                        name="lastname"
+                        value={formData.lastname}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                    <div className="modal-actions">
+                      <button
+                        type="button"
+                        onClick={() => setShowEditModal(false)}
+                      >
+                        Cancel
+                      </button>
+                      <button type="submit" className="primary">
+                        Update Profile
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+            <div className="profile-container">
+              <div className="profile-header">
+                <div className="profile-avatar">
+                  {user.firstname?.charAt(0)}
+                  {user.lastname?.charAt(0)}
+                </div>
+                <div className="profile-info">
+                  <h3>
+                    {user.firstname} {user.lastname}
+                  </h3>
+                  <p className="profile-role">
+                    <span
+                      className={`role-badge ${user.roletype.toLowerCase()}`}
+                    >
+                      {user.roletype.charAt(0).toUpperCase() +
+                        user.roletype.slice(1).toLowerCase()}
+                    </span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="profile-details">
+                <div className="detail-row">
+                  <span className="detail-label">Username:</span>
+                  <span className="detail-value">{user.username}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">First Name:</span>
+                  <span className="detail-value">{user.firstname}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Last Name:</span>
+                  <span className="detail-value">{user.lastname}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Account Created:</span>
+                  <span className="detail-value">
+                    {new Date(user.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+
+              <div className="profile-actions">
+                <button
+                  className="edit-button"
+                  onClick={() => {
+                    setFormData({
+                      username: user.username,
+                      password: "",
+                      firstname: user.firstname,
+                      lastname: user.lastname,
+                      roletype: user.roletype,
+                    });
+                    setShowEditModal(true);
+                  }}
+                >
+                  <FiEdit2 className="button-icon" />
+                  Edit Profile
+                </button>
+                <button
+                  className="delete-button"
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        "⚠️ Warning: This action cannot be undone. Are you sure you want to delete your account?"
+                      )
+                    ) {
+                      handleDelete(user.id);
+                    }
+                  }}
+                >
+                  <FiTrash2 className="button-icon" />
+                  Delete Account
+                </button>
+              </div>
             </div>
           </div>
         );
@@ -1335,6 +1522,137 @@ function AdminDashboard() {
           background-color: #4caf50;
           color: white;
           border: none;
+        }
+        /* Profile Management Styles */
+        .profile-container {
+          background: #fff;
+          border-radius: 8px;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+          padding: 2rem;
+          max-width: 800px;
+          margin: 0 auto;
+        }
+
+        .profile-header {
+          display: flex;
+          align-items: center;
+          margin-bottom: 2rem;
+          padding-bottom: 1.5rem;
+          border-bottom: 1px solid #eee;
+        }
+
+        .profile-avatar {
+          width: 80px;
+          height: 80px;
+          border-radius: 50%;
+          background-color: #4f46e5;
+          color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 2rem;
+          font-weight: bold;
+          margin-right: 1.5rem;
+        }
+
+        .profile-info h3 {
+          font-size: 1.5rem;
+          margin: 0 0 0.5rem 0;
+          color: #333;
+        }
+
+        .profile-role {
+          margin: 0;
+          color: #666;
+        }
+
+        .profile-details {
+          margin-bottom: 2rem;
+        }
+
+        .detail-row {
+          display: flex;
+          margin-bottom: 1rem;
+          padding-bottom: 1rem;
+          border-bottom: 1px solid #f5f5f5;
+        }
+
+        .detail-label {
+          font-weight: 600;
+          color: #555;
+          width: 150px;
+        }
+
+        .detail-value {
+          color: #333;
+          flex: 1;
+        }
+
+        .profile-actions {
+          display: flex;
+          gap: 1rem;
+          margin-top: 2rem;
+        }
+
+        .edit-button {
+          background-color: #4f46e5;
+          color: white;
+          padding: 0.75rem 1.5rem;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-weight: 500;
+          transition: background-color 0.2s;
+        }
+
+        .edit-button:hover {
+          background-color: #4338ca;
+        }
+
+        .delete-button {
+          background-color: #fef2f2;
+          color: #dc2626;
+          padding: 0.75rem 1.5rem;
+          border: 1px solid #fecaca;
+          border-radius: 6px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-weight: 500;
+          transition: all 0.2s;
+        }
+
+        .delete-button:hover {
+          background-color: #fee2e2;
+          border-color: #fca5a5;
+        }
+
+        /* Role badges */
+        .role-badge {
+          padding: 0.25rem 0.75rem;
+          border-radius: 9999px;
+          font-size: 0.75rem;
+          font-weight: 600;
+          text-transform: capitalize;
+        }
+
+        .role-badge.admin {
+          background-color: #e0e7ff;
+          color: #4f46e5;
+        }
+
+        .role-badge.biologist {
+          background-color: #ecfdf5;
+          color: #059669;
+        }
+
+        .role-badge.guest {
+          background-color: #f5f5f5;
+          color: #666;
         }
       `}</style>
     </div>

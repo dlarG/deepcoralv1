@@ -18,7 +18,7 @@ def get_all_users():
     
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT id, username, firstname, lastname, roletype FROM users")
+            cur.execute("SELECT id, username, firstname, lastname, roletype FROM users WHERE users.id != %s", (session.get('user_id'),))
             users = cur.fetchall()
             
             users_list = []

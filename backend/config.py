@@ -11,11 +11,11 @@ class Config:
     SESSION_COOKIE_SAMESITE = 'Lax'
     
     # Database configuration
-    DB_HOST = os.getenv('DB_HOST', 'localhost')  # Default to localhost if not set
-    DB_PORT = os.getenv('DB_PORT', '5432')       # Default PostgreSQL port
-    DB_USER = os.getenv('DB_USER', 'postgres')
-    DB_PASSWORD = os.getenv('DB_PASSWORD', 'root123')
-    DB_TABLE = os.getenv('DB_TABLE', 'deep_coral_ai')
+    DB_HOST = os.getenv('DB_HOST') 
+    DB_PORT = os.getenv('DB_PORT')     
+    DB_USER = os.getenv('DB_USER')
+    DB_PASSWORD = os.getenv('DB_PASSWORD')
+    DB_TABLE = os.getenv('DB_TABLE')
     
     # reCAPTCHA
     RECAPTCHA_SECRET = os.getenv('RECAPTCHA_SECRET')
