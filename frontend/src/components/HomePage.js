@@ -25,10 +25,10 @@ function HomePage() {
         {/* Navigation */}
         <nav className="navbar">
           <div className="navbar-brand">
-            {/* <span className="logo-icon">
-              <img src="/icon.png" alt="icon" class="logo" />
-            </span> */}
-            <h1 className="deepcoral-logo">DeepCoral</h1>
+            <span className="logo-icon">
+              <img src="/LogoSideTextW.png" alt="icon" className="navbar-logo" />
+            </span>
+            {/* <h1 className="deepcoral-logo">DeepCorals</h1> */}
           </div>
           <div className="nav-links">
             <Link to="/login" className="nav-link">
@@ -112,6 +112,13 @@ const styles = `
     min-height: 100vh;
     overflow-x: hidden;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+  .navbar-logo {
+    width: 180px;
+    height: auto;
+    object-fit: contain;
+    margin-right: 10px;
+    vertical-align: middle;
   }
   .logo {
     width: 40px;
