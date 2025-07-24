@@ -67,23 +67,10 @@ function AdminDashboard() {
     if (user && user.roletype.toLowerCase() === "admin") {
       const fetchUsers = async () => {
         try {
-          // First get a fresh CSRF token
-          const csrfResponse = await axios.get(
-            "http://localhost:5000/csrf-token",
-            {
-              withCredentials: true,
-            }
-          );
-          const csrfToken = csrfResponse.data.csrf_token;
-          localStorage.setItem("csrf_token", csrfToken);
-
           const response = await axios.get(
             "http://localhost:5000/admin/users",
             {
               withCredentials: true,
-              headers: {
-                "X-CSRF-Token": csrfToken,
-              },
             }
           );
           setUsers(response.data.users);
@@ -227,6 +214,36 @@ function AdminDashboard() {
           logout();
           navigate("/login");
         }
+      }
+    }
+  };
+
+  const handleDeleteProfile = async () => {
+    if (window.confirm("Are you sure you want to delete your account?")) {
+      try {
+        // Get CSRF token
+        const csrfResponse = await axios.get(
+          "http://localhost:5000/csrf-token",
+          {
+            withCredentials: true,
+          }
+        );
+        const csrfToken = csrfResponse.data.csrf_token;
+        // Make the request to delete the profile
+        await axios.delete("http://localhost:5000/profile", {
+          withCredentials: true,
+          headers: {
+            "X-CSRF-Token": csrfToken,
+            "Content-Type": "application/json",
+          },
+        });
+
+        // Clear auth state and redirect
+        logout();
+        navigate("/login");
+      } catch (error) {
+        console.error("Profile deletion failed:", error);
+        setError(error.response?.data?.error || "Failed to delete profile");
       }
     }
   };
@@ -423,7 +440,7 @@ function AdminDashboard() {
                         "⚠️ Warning: This action cannot be undone. Are you sure you want to delete your account?"
                       )
                     ) {
-                      handleDelete(user.id);
+                      handleDeleteProfile(user.id);
                     }
                   }}
                 >
