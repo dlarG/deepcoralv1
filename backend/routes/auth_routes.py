@@ -127,11 +127,18 @@ def login_user():
 @login_required
 def logout():
     try:
+        # Generate new CSRF token FIRST (before clearing session)
+        new_csrf = secrets.token_hex(32)
+        
         # Clear the Flask session
         session.clear()
+        session['csrf_token'] = new_csrf  # Set new token for next request
         
         # Create response
-        response = jsonify({'message': 'Logout successful'})
+        response = jsonify({
+            'message': 'Logout successful',
+            'csrf_token': new_csrf  # Send new token to client
+        })
         
         # Expire the session cookie
         response.set_cookie(
@@ -143,11 +150,7 @@ def logout():
             samesite='Lax'
         )
         
-        # Generate new CSRF token for future requests
-        new_csrf = secrets.token_hex(32)
-        session['csrf_token'] = new_csrf
-        
-        # Add CORS headers explicitly
+        # CORS headers
         response.headers.add('Access-Control-Allow-Origin', 'http://localhost:3000')
         response.headers.add('Access-Control-Allow-Credentials', 'true')
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type, X-CSRF-Token')

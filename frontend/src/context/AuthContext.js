@@ -108,19 +108,27 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     try {
-      await axios.post(
+      // Get fresh CSRF token before logout
+      const token = await fetchCsrfToken();
+
+      const response = await axios.post(
         "http://localhost:5000/logout",
         {},
         {
           withCredentials: true,
           headers: {
-            "X-CSRF-Token": csrfToken,
+            "X-CSRF-Token": token,
             "Content-Type": "application/json",
           },
         }
       );
 
-      // Clear auth state regardless of response
+      // Update with new CSRF token from response
+      if (response.data.csrf_token) {
+        setCsrfToken(response.data.csrf_token);
+      }
+
+      // Clear auth state
       clearAuth();
 
       // Fetch new CSRF token for future requests
@@ -129,8 +137,9 @@ export function AuthProvider({ children }) {
       return true;
     } catch (err) {
       console.error("Logout failed:", err);
-      // Even if the request failed, clear local auth state
+      // Clear auth state anyway
       clearAuth();
+      // Force new CSRF token
       await fetchCsrfToken();
       return false;
     }
