@@ -1,0 +1,121 @@
+/* Logo Styles - Global CSS for all components */
+
+/* Main Logo (Used in HomePage navbar) */
+.navbar-logo {
+  width: 180px;
+  height: auto;
+  object-fit: contain;
+  margin-right: 10px;
+  vertical-align: middle;
+  transition: opacity 0.3s ease;
+}
+
+.navbar-logo:hover {
+  opacity: 0.9;
+}
+
+/* Text Logo for branding */
+.deepcoral-logo {
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: 1.9rem;
+  font-weight: bold;
+  background: linear-gradient(to right, rgb(45, 146, 255), #00d4ff);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  margin: 0;
+  padding: 0;
+}
+
+/* Logo for Login/Register pages - circular cropped style */
+.auth-logo {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  display: block;
+  margin: 0 auto 15px auto;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Logo container for auth pages */
+.auth-logo-container {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+/* Dashboard logo - smaller version for sidebar/header */
+.dashboard-logo {
+  width: 140px;
+  height: auto;
+  object-fit: contain;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+/* Small logo for compact spaces */
+.logo-small {
+  width: 100px;
+  height: auto;
+  object-fit: contain;
+}
+
+/* Logo icon only (for very small spaces) */
+.logo-icon {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+
+/* Footer logo for homepage footer */
+.footer-logo {
+  width: 120px;
+  height: auto;
+  object-fit: contain;
+  opacity: 0.9;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .navbar-logo {
+    width: 140px;
+  }
+  
+  .dashboard-logo {
+    width: 120px;
+  }
+  
+  .auth-logo {
+    width: 100px;
+    height: 100px;
+  }
+  
+  .footer-logo {
+    width: 100px;
+  }
+}
+
+@media (max-width: 480px) {
+  .navbar-logo {
+    width: 120px;
+  }
+  
+  .dashboard-logo {
+    width: 100px;
+  }
+  
+  .auth-logo {
+    width: 80px;
+    height: 80px;
+  }
+  
+  .footer-logo {
+    width: 80px;
+  }
+  
+  .deepcoral-logo {
+    font-size: 1.5rem;
+  }
+}

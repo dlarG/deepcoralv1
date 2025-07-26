@@ -3,6 +3,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { FiUser, FiLock, FiEdit2, FiArrowRight } from "react-icons/fi";
 import ReCAPTCHA from "react-google-recaptcha";
+import Logo from "./Logo"; // Import the Logo component
 
 // Configure axios to send credentials with requests
 axios.defaults.withCredentials = true;
@@ -106,6 +107,9 @@ function Register() {
       <div className="register-card">
         {/* Coral reef header */}
         <div className="register-header">
+          <div className="auth-logo-container">
+            <Logo variant="auth" type="image" theme="dark" />
+          </div>
           <h1>Join Coral Reef Portal</h1>
           <p>Create your account to get started</p>
         </div>
