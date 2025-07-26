@@ -19,6 +19,7 @@ import {
   FiCheck,
   FiEdit2,
 } from "react-icons/fi";
+import Logo from "./Logo"; // Import the Logo component
 
 function AdminDashboard() {
   const navigate = useNavigate();
@@ -769,9 +770,7 @@ function AdminDashboard() {
               {sidebarOpen ? <FiX size={24} /> : <FiMenu size={24} />}
             </button>
             <div className="logo-container">
-              <span className="logo-icon">
-                <h1 className="deepcoral-logo">DeepCoral</h1>
-              </span>
+              <Logo variant="navbar" type="image" theme="light" />
               <span className="portal-tag">Admin</span>
             </div>
           </div>
