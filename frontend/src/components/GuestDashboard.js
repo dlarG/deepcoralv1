@@ -21,6 +21,29 @@ function GuestDashboard() {
   const [activeTab, setActiveTab] = useState("Coral LifeForms");
   const [coralData, setCoralData] = useState([]);
 
+  // Add responsive sidebar handling
+  useEffect(() => {
+    const handleResize = () => {
+      // Auto-minimize sidebar when screen width is less than 1024px
+      if (window.innerWidth < 1024) {
+        setSidebarOpen(false);
+      } else {
+        setSidebarOpen(true);
+      }
+    };
+
+    // Set initial state based on current window size
+    handleResize();
+
+    // Add event listener for window resize
+    window.addEventListener('resize', handleResize);
+
+    // Cleanup event listener on component unmount
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
   useEffect(() => {
     document.title = "Guest Dashboard | DeepCoral";
     if (activeTab === "Coral LifeForms") {
@@ -325,7 +348,9 @@ function GuestDashboard() {
         .logo-container {
           display: flex;
           align-items: center;
-          gap: 0.75rem;
+          gap: 0.5rem;
+          min-width: 0;
+          overflow: hidden;
         }
 
         .logo-icon {
@@ -346,23 +371,30 @@ function GuestDashboard() {
           padding: 0.25rem 0.5rem;
           border-radius: 12px;
           font-weight: 500;
+          white-space: nowrap;
+          flex-shrink: 0;
         }
 
         .user-actions {
           display: flex;
           align-items: center;
-          gap: 1.5rem;
+          gap: 1rem;
+          min-width: 0;
+          flex-shrink: 1;
         }
 
         .user-profile {
           display: flex;
           align-items: center;
-          gap: 0.75rem;
+          gap: 0.5rem;
+          min-width: 0;
+          overflow: hidden;
         }
 
         .user-avatar {
           width: 36px;
           height: 36px;
+          min-width: 36px;
           border-radius: 50%;
           background: linear-gradient(135deg, #06b6d4 0%, #0ea5e9 100%);
           color: white;
@@ -370,22 +402,31 @@ function GuestDashboard() {
           align-items: center;
           justify-content: center;
           font-weight: 500;
+          flex-shrink: 0;
         }
 
         .user-details {
           display: flex;
           flex-direction: column;
+          min-width: 0;
+          overflow: hidden;
         }
 
         .welcome-text {
           font-size: 0.75rem;
           color: #64748b;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
         .username {
           font-size: 0.875rem;
           font-weight: 500;
           color: #0f172a;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
         .logout-button {
@@ -400,6 +441,8 @@ function GuestDashboard() {
           font-weight: 500;
           cursor: pointer;
           transition: all 0.2s;
+          white-space: nowrap;
+          flex-shrink: 0;
         }
 
         .logout-button:hover {
@@ -691,9 +734,38 @@ function GuestDashboard() {
           .info-cards-container {
             grid-template-columns: 1fr !important;
           }
+
+          .main-content {
+            margin-left: ${sidebarOpen ? "280px" : "80px"};
+          }
         }
 
         @media (max-width: 768px) {
+          .nav-container {
+            padding: 0 0.75rem;
+            gap: 0.5rem;
+          }
+
+          .nav-brand {
+            gap: 0.5rem;
+          }
+
+          .logo-container {
+            gap: 0.25rem;
+          }
+
+          .user-actions {
+            gap: 0.75rem;
+          }
+
+          .user-profile {
+            gap: 0.5rem;
+          }
+
+          .user-details {
+            max-width: 120px;
+          }
+
           .content-section {
             padding: 1.5rem;
           }
@@ -701,23 +773,15 @@ function GuestDashboard() {
           .coral-grid {
             grid-template-columns: 1fr;
           }
-        }
-
-        @media (max-width: 768px) {
-          .nav-container {
-            padding: 0 1rem;
-          }
 
           .sidebar {
-            position: fixed;
-            z-index: 40;
-            height: calc(100vh - 70px);
-            box-shadow: ${sidebarOpen
-              ? "4px 0 15px rgba(0, 0, 0, 0.1)"
-              : "none"};
+            width: ${sidebarOpen ? "280px" : "0px"}; /* Hide completely on mobile */
+            transform: translateX(${sidebarOpen ? "0" : "-100%"});
+            box-shadow: ${sidebarOpen ? "4px 0 15px rgba(0, 0, 0, 0.1)" : "none"};
           }
 
           .main-content {
+            margin-left: 0; /* Full width on mobile */
             padding: 1rem;
           }
 
@@ -726,7 +790,34 @@ function GuestDashboard() {
           }
         }
 
+        @media (max-width: 640px) {
+          .nav-container {
+            padding: 0 0.5rem;
+          }
+
+          .portal-tag {
+            font-size: 0.6875rem;
+            padding: 0.2rem 0.4rem;
+          }
+
+          .user-details {
+            max-width: 100px;
+          }
+
+          .username {
+            font-size: 0.8125rem;
+          }
+
+          .welcome-text {
+            font-size: 0.6875rem;
+          }
+        }
+
         @media (max-width: 480px) {
+          .nav-container {
+            padding: 0 0.5rem;
+          }
+
           .portal-tag,
           .welcome-text {
             display: none;
@@ -735,11 +826,13 @@ function GuestDashboard() {
           .user-avatar {
             width: 32px;
             height: 32px;
+            min-width: 32px;
             font-size: 0.875rem;
           }
 
           .username {
             font-size: 0.8125rem;
+            max-width: 80px;
           }
 
           .logout-button span {
@@ -751,9 +844,47 @@ function GuestDashboard() {
             border-radius: 50%;
             width: 36px;
             height: 36px;
+            min-width: 36px;
             justify-content: center;
           }
+
+          .user-actions {
+            gap: 0.5rem;
+          }
+
+          .sidebar {
+            width: ${sidebarOpen ? "280px" : "0px"};
+            transform: translateX(${sidebarOpen ? "0" : "-100%"});
+          }
         }
+
+        @media (max-width: 360px) {
+          .nav-container {
+            padding: 0 0.25rem;
+          }
+
+          .nav-brand {
+            gap: 0.25rem;
+          }
+
+          .menu-toggle {
+            width: 36px;
+            height: 36px;
+            min-width: 36px;
+          }
+
+          .user-details {
+            display: none;
+          }
+
+          .logout-button {
+            width: 32px;
+            height: 32px;
+            min-width: 32px;
+            padding: 0.25rem;
+          }
+        }
+          
       `}</style>
     </div>
   );

@@ -105,7 +105,6 @@ def login_user():
                 'firstname': user[3],
                 'lastname': user[5],
                 'roletype': user[7],
-                'bio': user[11],
                 'redirect_to': f'/{user[7].lower()}-dashboard'  # Add this line
             }
             

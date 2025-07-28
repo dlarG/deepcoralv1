@@ -112,6 +112,29 @@ function AdminDashboard() {
     }
   }, [user, navigate, logout]);
 
+  // Add this useEffect after your existing useEffects:
+  useEffect(() => {
+    const handleResize = () => {
+      // Auto-minimize sidebar when screen width is less than 1024px
+      if (window.innerWidth < 1024) {
+        setSidebarOpen(false);
+      } else {
+        setSidebarOpen(true);
+      }
+    };
+
+    // Set initial state based on current window size
+    handleResize();
+
+    // Add event listener for window resize
+    window.addEventListener('resize', handleResize);
+
+    // Cleanup event listener on component unmount
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
   const handleCreate = async (e) => {
     e.preventDefault();
     try {
@@ -1115,14 +1138,18 @@ function AdminDashboard() {
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
           border-bottom: 1px solid #e2e8f0;
         }
+
+        /* Responsive Navigation */
         .nav-container {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 0 2rem;
+          padding: 0 1rem;
           height: 70px;
           max-width: 100%;
+          min-width: 0;
         }
+
         .user-actions {
           display: flex;
           align-items: center;
@@ -1150,17 +1177,25 @@ function AdminDashboard() {
         .user-info {
           display: flex;
           flex-direction: column;
+          min-width: 0;
+          overflow: hidden;
         }
 
         .user-name {
           font-size: 0.875rem;
           font-weight: 500;
           color: #0f172a;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
         .user-role {
           font-size: 0.75rem;
           color: #64748b;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
         .logout-button {
@@ -1185,8 +1220,11 @@ function AdminDashboard() {
         .nav-brand {
           display: flex;
           align-items: center;
-          gap: 1rem;
+          gap: 0.75rem;
+          min-width: 0;
+          flex-shrink: 0;
         }
+
         .menu-toggle {
           display: flex;
           align-items: center;
@@ -1208,7 +1246,9 @@ function AdminDashboard() {
         .logo-container {
           display: flex;
           align-items: center;
-          gap: 0.75rem;
+          gap: 0.5rem;
+          min-width: 0;
+          overflow: hidden;
         }
 
         .logo-icon {
@@ -1234,13 +1274,17 @@ function AdminDashboard() {
         .user-actions {
           display: flex;
           align-items: center;
-          gap: 1.5rem;
+          gap: 1rem;
+          min-width: 0;
+          flex-shrink: 1;
         }
 
         .user-profile {
           display: flex;
           align-items: center;
-          gap: 0.75rem;
+          gap: 0.5rem;
+          min-width: 0;
+          overflow: hidden;
         }
 
         .user-avatar {
@@ -1289,11 +1333,14 @@ function AdminDashboard() {
           background: #f1f5f9;
           color: #475569;
         }
+
+        /* Modern Sidebar */
         .dashboard-container {
           display: flex;
           flex: 1;
-          overflow: hidden;
+          height: calc(100vh - 70px); /* Fixed height based on viewport minus navbar */
         }
+
         .stats-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -1359,12 +1406,15 @@ function AdminDashboard() {
           background: white;
           border-right: 1px solid #e2e8f0;
           transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          height: auto;
-          position: sticky;
-          top: 70px;
+          height: calc(100vh - 70px); /* Full viewport height minus navbar */
+          position: fixed; /* Fixed position */
+          top: 70px; /* Start below navbar */
+          left: 0;
+          z-index: 30;
           display: flex;
           flex-direction: column;
-          overflow: hidden;
+          overflow-y: auto; /* Allow sidebar to scroll if content overflows */
+          flex-shrink: 0;
         }
 
         .sidebar-header {
@@ -1471,11 +1521,16 @@ function AdminDashboard() {
           transition: opacity 0.2s;
           white-space: nowrap;
         }
+
+        /* Main Content */
         .main-content {
           flex: 1;
           padding: 2rem;
           background: #f8fafc;
-          overflow-y: auto;
+          overflow-y: auto; /* Enable vertical scrolling for content only */
+          height: calc(100vh - 70px); /* Full viewport height minus navbar */
+          margin-left: ${sidebarOpen ? "280px" : "80px"}; /* Push content right of sidebar */
+          transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         
         .content-placeholder {
@@ -1488,21 +1543,27 @@ function AdminDashboard() {
           height: 300px;
         }
 
+        /* Media Queries */
+        @media (max-width: 1024px) {
+          .main-content {
+            margin-left: ${sidebarOpen ? "280px" : "80px"};
+          }
+        }
+
         @media (max-width: 768px) {
           .nav-container {
-            padding: 0 1rem;
+            padding: 0 0.75rem;
+            gap: 0.5rem;
           }
 
           .sidebar {
-            position: fixed;
-            z-index: 40;
-            height: calc(100vh - 70px);
-            box-shadow: ${
-              sidebarOpen ? "4px 0 15px rgba(0, 0, 0, 0.1)" : "none"
-            };
+            width: ${sidebarOpen ? "280px" : "0px"};
+            transform: translateX(${sidebarOpen ? "0" : "-100%"});
+            box-shadow: ${sidebarOpen ? "4px 0 15px rgba(0, 0, 0, 0.1)" : "none"};
           }
 
           .main-content {
+            margin-left: 0;
             padding: 1rem;
           }
 
@@ -1520,8 +1581,10 @@ function AdminDashboard() {
           .user-avatar {
             width: 32px;
             height: 32px;
+            min-width: 32px;
             font-size: 0.875rem;
           }
+
 
           .username {
             font-size: 0.8125rem;
@@ -1536,6 +1599,7 @@ function AdminDashboard() {
             border-radius: 50%;
             width: 36px;
             height: 36px;
+            min-width: 36px;
             justify-content: center;
           }
         }
