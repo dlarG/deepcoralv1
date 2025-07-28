@@ -20,6 +20,7 @@ import {
   FiEdit2,
 } from "react-icons/fi";
 import Logo from "./Logo"; // Import the Logo component
+import dayjs from "dayjs"; // Import dayjs for date formatting
 
 function AdminDashboard() {
   const navigate = useNavigate();
@@ -417,17 +418,16 @@ function AdminDashboard() {
                   </h3>
                   <p className="account-created">
                     <span className="created">
-                      since {new Date(user.created_at).toLocaleDateString()}
+                      since {dayjs(user.created_at).format("MMMM D, YYYY")}
                     </span>
                   </p>
                 </div>
               </div>
               <div className="profile-details">
-                <span className="detail-value">{user.bio}</span>
-                {/* <div className="detail-row">
+                <div className="detail-row">
                   <span className="detail-label">Biography:</span>
-                  <span className="detail-value">{user.firstname}</span>
-                </div> */}
+                  <span className="detail-value">{user.bio}</span>
+                </div>
               </div>
               <div className="profile-actions">
                 <button
@@ -707,12 +707,7 @@ function AdminDashboard() {
             <div className="content-placeholder">
               {coralData.length === 0 ? (
                 <div>
-                  <p
-                    style={{
-                      color: "#666",
-                      fontSize: "1.2rem",
-                    }}
-                  >
+                  <p style={{ color: "#666", fontSize: "1.2rem" }}>
                     Loading coral data...
                   </p>
                 </div>
@@ -980,15 +975,25 @@ function AdminDashboard() {
       .profile-info .created {
         font-size: 0.8rem;
       }
-      .coral-card {
-          background: white;
-          border-radius: 12px;
-          overflow: hidden;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-          transition: all 0.3s ease;
-          margin-top: 280px;
-          width: 500px;
+      .coral-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+        gap: 2rem;
+        margin-top: 0; /* Remove the 280px margin */
+      }
+
+        /* When sidebar is open (assuming you have a class like 'sidebar-open' on body) */
+        .sidebar-open .coral-grid {
+          grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
         }
+
+      .coral-card {
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s ease;
+      }
 
         .coral-image-container {
           position: relative;
@@ -1035,15 +1040,9 @@ function AdminDashboard() {
 
         .info-cards-container {
           display: grid;
+          grid-template-columns: repeat(2, 1fr);
           gap: 1rem;
           margin-bottom: 1.5rem;
-        }
-        .coral-grid.sidebar .closed .info-cards-container {
-          grid-template-columns: 1fr;
-        }
-
-        .coral-grid:not(.sidebar .open) .info-cards-container {
-          grid-template-columns: repeat(2, 1fr);
         }
 
         .info-card {
@@ -1079,7 +1078,22 @@ function AdminDashboard() {
           line-height: 1.6;
         }
 
-        .guest-dashboard {
+       @media (max-width: 1024px) {
+        .coral-grid {
+          grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        }
+      }
+
+      @media (max-width: 768px) {
+        .coral-grid {
+          grid-template-columns: 1fr;
+        }
+        
+        .info-cards-container {
+          grid-template-columns: 1fr;
+        }
+      }
+        .admin-dashboard {
           display: flex;
           flex-direction: column;
           min-height: 100vh;
@@ -1088,12 +1102,10 @@ function AdminDashboard() {
         }
 
         .content-title {
-          font-size: 1.8rem;
+          color: #1e293b;
+          font-size: 1.75rem;
           font-weight: 600;
-          color: #333;
-          margin-bottom: 2rem;
-          padding-bottom: 1rem;
-          border-bottom: 2px solid rgba(0, 96, 100, 0.1);
+          margin-bottom: 1.5rem;
         }
         .top-nav {
           position: sticky;
@@ -1347,7 +1359,7 @@ function AdminDashboard() {
           background: white;
           border-right: 1px solid #e2e8f0;
           transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          height: calc(100vh - 70px);
+          height: auto;
           position: sticky;
           top: 70px;
           display: flex;
