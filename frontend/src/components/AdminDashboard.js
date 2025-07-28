@@ -36,6 +36,8 @@ function AdminDashboard() {
   const [error, setError] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState("Dashboard");
+  const { authAxios } = useAuth();
+  const [coralData, setCoralData] = useState([]);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -47,6 +49,8 @@ function AdminDashboard() {
     lastname: "",
     roletype: "guest",
   });
+
+  const [showCreateModalCoral, setShowCreateModalCoral] = useState(false);
 
   // Verify authentication status and role when component mounts
   useEffect(() => {
@@ -62,6 +66,24 @@ function AdminDashboard() {
 
     verifyAuth();
   }, [user, checkAuthStatus, navigate]);
+
+  useEffect(() => {
+    if (activeTab === "Manage Coral LifeForms") {
+      authAxios
+        .get("/coral_info")
+        .then((response) => {
+          console.log("Coral data:", response.data);
+          setCoralData(response.data.data || []);
+        })
+        .catch((err) => {
+          console.error("Failed to fetch coral data:", err);
+          // Handle 401 by redirecting to login
+          if (err.response?.status === 401) {
+            navigate("/login");
+          }
+        });
+    }
+  }, [activeTab, authAxios, navigate]);
 
   // Fetch users only if authenticated and admin
   useEffect(() => {
@@ -231,7 +253,7 @@ function AdminDashboard() {
         );
         const csrfToken = csrfResponse.data.csrf_token;
         // Make the request to delete the profile
-        await axios.delete("http://localhost:5000/profile", {
+        await axios.delete(`http://localhost:5000/admin/users/${user.id}`, {
           withCredentials: true,
           headers: {
             "X-CSRF-Token": csrfToken,
@@ -454,231 +476,233 @@ function AdminDashboard() {
         );
       case "Manage Users":
         return (
-          <>
-            {/* Create User Modal */}
-            {showCreateModal && (
-              <div className="modal-overlay">
-                <div className="modal">
-                  <div className="modal-header">
-                    <h3>Create New User</h3>
-                    <button onClick={() => setShowCreateModal(false)}>
-                      <FiX size={20} />
+          <div className="content-section">
+            <>
+              {/* Create User Modal */}
+              {showCreateModal && (
+                <div className="modal-overlay">
+                  <div className="modal">
+                    <div className="modal-header">
+                      <h3>Create New User</h3>
+                      <button onClick={() => setShowCreateModal(false)}>
+                        <FiX size={20} />
+                      </button>
+                    </div>
+                    <form onSubmit={handleCreate}>
+                      <div className="form-group">
+                        <label>Username</label>
+                        <input
+                          type="text"
+                          name="username"
+                          value={formData.username}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Password</label>
+                        <input
+                          type="password"
+                          name="password"
+                          value={formData.password}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>First Name</label>
+                        <input
+                          type="text"
+                          name="firstname"
+                          value={formData.firstname}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Last Name</label>
+                        <input
+                          type="text"
+                          name="lastname"
+                          value={formData.lastname}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Role</label>
+                        <select
+                          name="roletype"
+                          value={formData.roletype}
+                          onChange={handleInputChange}
+                          required
+                        >
+                          <option value="guest">Guest</option>
+                          <option value="biologist">Biologist</option>
+                          <option value="admin">Admin</option>
+                        </select>
+                      </div>
+                      <div className="modal-actions">
+                        <button
+                          type="button"
+                          onClick={() => setShowCreateModal(false)}
+                        >
+                          Cancel
+                        </button>
+                        <button type="submit" className="primary">
+                          Create User
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+              {/* Edit User Modal */}
+              {showEditModal && currentUser && (
+                <div className="modal-overlay">
+                  <div className="modal">
+                    <div className="modal-header">
+                      <h3>Edit User</h3>
+                      <button onClick={() => setShowEditModal(false)}>
+                        <FiX size={20} />
+                      </button>
+                    </div>
+                    <form onSubmit={handleUpdate}>
+                      <div className="form-group">
+                        <label>Username</label>
+                        <input
+                          type="text"
+                          name="username"
+                          value={formData.username}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Password (leave blank to keep current)</label>
+                        <input
+                          type="password"
+                          name="password"
+                          value={formData.password}
+                          onChange={handleInputChange}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>First Name</label>
+                        <input
+                          type="text"
+                          name="firstname"
+                          value={formData.firstname}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Last Name</label>
+                        <input
+                          type="text"
+                          name="lastname"
+                          value={formData.lastname}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Role</label>
+                        <select
+                          name="roletype"
+                          value={formData.roletype}
+                          onChange={handleInputChange}
+                          required
+                        >
+                          <option value="guest">Guest</option>
+                          <option value="biologist">Biologist</option>
+                          <option value="admin">Admin</option>
+                        </select>
+                      </div>
+                      <div className="modal-actions">
+                        <button
+                          type="button"
+                          onClick={() => setShowEditModal(false)}
+                        >
+                          Cancel
+                        </button>
+                        <button type="submit" className="primary">
+                          Update User
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+              <h2 className="content-title">User Management</h2>
+              {loading ? (
+                <div className="loading">Loading users...</div>
+              ) : error ? (
+                <div className="error-message">Error: {error}</div>
+              ) : (
+                <div className="users-content">
+                  <div className="content-header">
+                    <button
+                      className="add-button"
+                      onClick={() => setShowCreateModalCoral(true)}
+                    >
+                      <FiUserPlus className="button-icon" />
+                      Add User
                     </button>
                   </div>
-                  <form onSubmit={handleCreate}>
-                    <div className="form-group">
-                      <label>Username</label>
-                      <input
-                        type="text"
-                        name="username"
-                        value={formData.username}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Password</label>
-                      <input
-                        type="password"
-                        name="password"
-                        value={formData.password}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>First Name</label>
-                      <input
-                        type="text"
-                        name="firstname"
-                        value={formData.firstname}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Last Name</label>
-                      <input
-                        type="text"
-                        name="lastname"
-                        value={formData.lastname}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Role</label>
-                      <select
-                        name="roletype"
-                        value={formData.roletype}
-                        onChange={handleInputChange}
-                        required
-                      >
-                        <option value="guest">Guest</option>
-                        <option value="biologist">Biologist</option>
-                        <option value="admin">Admin</option>
-                      </select>
-                    </div>
-                    <div className="modal-actions">
-                      <button
-                        type="button"
-                        onClick={() => setShowCreateModal(false)}
-                      >
-                        Cancel
-                      </button>
-                      <button type="submit" className="primary">
-                        Create User
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            )}
-            {/* Edit User Modal */}
-            {showEditModal && currentUser && (
-              <div className="modal-overlay">
-                <div className="modal">
-                  <div className="modal-header">
-                    <h3>Edit User</h3>
-                    <button onClick={() => setShowEditModal(false)}>
-                      <FiX size={20} />
-                    </button>
-                  </div>
-                  <form onSubmit={handleUpdate}>
-                    <div className="form-group">
-                      <label>Username</label>
-                      <input
-                        type="text"
-                        name="username"
-                        value={formData.username}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Password (leave blank to keep current)</label>
-                      <input
-                        type="password"
-                        name="password"
-                        value={formData.password}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>First Name</label>
-                      <input
-                        type="text"
-                        name="firstname"
-                        value={formData.firstname}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Last Name</label>
-                      <input
-                        type="text"
-                        name="lastname"
-                        value={formData.lastname}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Role</label>
-                      <select
-                        name="roletype"
-                        value={formData.roletype}
-                        onChange={handleInputChange}
-                        required
-                      >
-                        <option value="guest">Guest</option>
-                        <option value="biologist">Biologist</option>
-                        <option value="admin">Admin</option>
-                      </select>
-                    </div>
-                    <div className="modal-actions">
-                      <button
-                        type="button"
-                        onClick={() => setShowEditModal(false)}
-                      >
-                        Cancel
-                      </button>
-                      <button type="submit" className="primary">
-                        Update User
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            )}
-            <h2 className="content-title">User Management</h2>
-            {loading ? (
-              <div className="loading">Loading users...</div>
-            ) : error ? (
-              <div className="error-message">Error: {error}</div>
-            ) : (
-              <div className="users-content">
-                <div className="content-header">
-                  <button
-                    className="add-button"
-                    onClick={() => setShowCreateModal(true)}
-                  >
-                    <FiUserPlus className="button-icon" />
-                    Add User
-                  </button>
-                </div>
-                <br />
+                  <br />
 
-                <div className="table-container">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>ID</th>
-                        <th>Username</th>
-                        <th>Name</th>
-                        <th>Role</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {users.map((user) => (
-                        <tr key={user.id}>
-                          <td>{user.id}</td>
-                          <td>{user.username}</td>
-                          <td>
-                            {user.firstname} {user.lastname}
-                          </td>
-                          <td>
-                            <span
-                              className={`role-badge ${user.roletype.toLowerCase()}`}
-                            >
-                              {user.roletype.charAt(0).toUpperCase() +
-                                user.roletype.slice(1).toLowerCase()}
-                            </span>
-                          </td>
-                          <td>
-                            <button
-                              className="action-button edit"
-                              onClick={() => handleEdit(user)}
-                            >
-                              <FiEdit2 size={16} />
-                            </button>
-                            <button
-                              className="action-button delete"
-                              onClick={() => handleDelete(user.id)}
-                            >
-                              <FiTrash2 size={16} />
-                            </button>
-                          </td>
+                  <div className="table-container">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>ID</th>
+                          <th>Username</th>
+                          <th>Name</th>
+                          <th>Role</th>
+                          <th>Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {users.map((user) => (
+                          <tr key={user.id}>
+                            <td>{user.id}</td>
+                            <td>{user.username}</td>
+                            <td>
+                              {user.firstname} {user.lastname}
+                            </td>
+                            <td>
+                              <span
+                                className={`role-badge ${user.roletype.toLowerCase()}`}
+                              >
+                                {user.roletype.charAt(0).toUpperCase() +
+                                  user.roletype.slice(1).toLowerCase()}
+                              </span>
+                            </td>
+                            <td>
+                              <button
+                                className="action-button edit"
+                                onClick={() => handleEdit(user)}
+                              >
+                                <FiEdit2 size={16} />
+                              </button>
+                              <button
+                                className="action-button delete"
+                                onClick={() => handleDelete(user.id)}
+                              >
+                                <FiTrash2 size={16} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-            )}
-          </>
+              )}
+            </>
+          </div>
         );
 
       case "Add Images":
@@ -693,9 +717,84 @@ function AdminDashboard() {
         );
       case "Manage Coral LifeForms":
         return (
-          <div className="lifeforms-content">
-            Coral LifeForms Management Coming Soon
-          </div>
+          <>
+            <h2 className="content-title">Coral Information Management</h2>
+            <button
+              className="add-button"
+              onClick={() => setShowCreateModal(true)}
+            >
+              <FiUserPlus className="button-icon" />
+              Add Coral
+            </button>
+            <div className="content-placeholder">
+              {coralData.length === 0 ? (
+                <div>
+                  <p
+                    style={{
+                      color: "#666",
+                      fontSize: "1.2rem",
+                    }}
+                  >
+                    Loading coral data...
+                  </p>
+                </div>
+              ) : (
+                <div className="coral-grid">
+                  {coralData.map((coral) => (
+                    <div key={coral.id} className="coral-card">
+                      <div className="coral-image-container">
+                        <img
+                          src="/acropora_branching/acropora-staghorn-coral.jpg"
+                          alt={coral.common_name}
+                          className="coral-image"
+                        />
+                        <span className="coral-badge">{coral.coral_type}</span>
+                      </div>
+
+                      <div className="coral-content">
+                        <h3 className="coral-name">{coral.common_name}</h3>
+
+                        {/* Centered scientific name */}
+                        <div
+                          className="coral-scientific-name"
+                          style={{
+                            textAlign: "center",
+                            fontStyle: "italic",
+                            color: "#006064",
+                            fontSize: "1.1rem",
+                            marginBottom: "1rem",
+                          }}
+                        >
+                          {coral.scientific_name}
+                        </div>
+
+                        <div className="info-cards-container">
+                          <div className="info-card">
+                            <div className="info-label">Subtype</div>
+                            <div className="info-value">
+                              {coral.coral_subtype}
+                            </div>
+                          </div>
+                          <div className="info-card">
+                            <div className="info-label">Classification</div>
+                            <div className="info-value">
+                              {coral.classification}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="description-section">
+                          <p className="description-text">
+                            {coral.identification}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
         );
       case "Coral Distribution":
         return (
@@ -900,6 +999,105 @@ function AdminDashboard() {
 
       {/* CSS Styles */}
       <style jsx>{`
+      .coral-card {
+          background: white;
+          border-radius: 12px;
+          overflow: hidden;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+          transition: all 0.3s ease;
+          margin-top: 280px;
+          width: 500px;
+        }
+
+        .coral-image-container {
+          position: relative;
+          height: 200px;
+        }
+
+        .coral-image {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .coral-badge {
+          position: absolute;
+          top: 1rem;
+          right: 1rem;
+          background: rgba(0, 96, 100, 0.9);
+          color: white;
+          padding: 0.4rem 1rem;
+          border-radius: 20px;
+          font-size: 0.85rem;
+          font-weight: 500;
+        }
+
+        .coral-content {
+          padding: 1.8rem;
+        }
+
+        .coral-name {
+          font-size: 1.5rem;
+          font-weight: 600;
+          color: #333;
+          margin-bottom: 1rem;
+          text-align: center;
+        }
+
+        .coral-scientific-name {
+          text-align: center;
+          font-style: italic;
+          color: #006064;
+          font-size: 1.1rem;
+          margin-bottom: 1rem;
+        }
+
+        .info-cards-container {
+          display: grid;
+          gap: 1rem;
+          margin-bottom: 1.5rem;
+        }
+        .coral-grid.sidebar .closed .info-cards-container {
+          grid-template-columns: 1fr;
+        }
+
+        .coral-grid:not(.sidebar .open) .info-cards-container {
+          grid-template-columns: repeat(2, 1fr);
+        }
+
+        .info-card {
+          background: rgba(0, 96, 100, 0.05);
+          border-left: 3px solid rgba(0, 96, 100, 0.9);
+          padding: 1rem;
+          border-radius: 4px;
+        }
+
+        .info-label {
+          font-size: 0.8rem;
+          color: rgba(0, 96, 100, 0.8);
+          margin-bottom: 0.4rem;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          font-weight: 500;
+        }
+
+        .info-value {
+          font-size: 1rem;
+          color: #333;
+          font-weight: 500;
+        }
+
+        .description-section {
+          background: #f9f9f9;
+          padding: 1.5rem;
+          border-radius: 8px;
+        }
+
+        .description-text {
+          color: #555;
+          line-height: 1.6;
+        }
+
         .guest-dashboard {
           display: flex;
           flex-direction: column;
@@ -907,14 +1105,7 @@ function AdminDashboard() {
           font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
           background-color: #f8fafc;
         }
-        .content-section {
-          max-width: 100%;
-          margin: 0;
-          background: white;
-          border-radius: 12px;
-          padding: 2rem;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-        }
+
         .content-title {
           font-size: 1.8rem;
           font-weight: 600;
@@ -1293,27 +1484,15 @@ function AdminDashboard() {
           background: #f8fafc;
           overflow-y: auto;
         }
-
-        .content-section {
-          max-width: 1400px;
-          margin: 0 auto;
-          background: white;
-          border-radius: 12px;
-          padding: 2rem;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-        }
-
-        .content-title {
-          font-size: 1.5rem;
-          font-weight: 600;
-          color: #0f172a;
-          margin-bottom: 1.5rem;
-        }
-
+        
         .content-placeholder {
           color: #64748b;
           text-align: center;
           padding: 3rem 0;
+          display: flex;
+          justify-cotent-center;
+          align-items:center;
+          height: 300px;
         }
 
         @media (max-width: 768px) {
@@ -1325,9 +1504,9 @@ function AdminDashboard() {
             position: fixed;
             z-index: 40;
             height: calc(100vh - 70px);
-            box-shadow: ${sidebarOpen
-              ? "4px 0 15px rgba(0, 0, 0, 0.1)"
-              : "none"};
+            box-shadow: ${
+              sidebarOpen ? "4px 0 15px rgba(0, 0, 0, 0.1)" : "none"
+            };
           }
 
           .main-content {

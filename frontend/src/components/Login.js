@@ -159,7 +159,7 @@ const styles = `
   }
 
   .login-header {
-    background: linear-gradient(135deg, #26c6da 0%, #00acc1 100%);
+    background: linear-gradient(135deg, rgb(5, 113, 180) 0%,rgb(0, 94, 153) 100%);
     padding: 30px;
     text-align: center;
     color: white;
@@ -217,7 +217,7 @@ const styles = `
     left: 12px;
     top: 50%;
     transform: translateY(-50%);
-    color: #26c6da;
+    color:rgb(61, 175, 245);
     font-size: 18px;
   }
 
@@ -232,14 +232,14 @@ const styles = `
 
   .input-group input:focus {
     outline: none;
-    border-color: #26c6da;
+    border-color: rgb(0, 94, 153);
     box-shadow: 0 0 0 2px rgba(38, 198, 218, 0.2);
   }
 
   .login-button {
     width: 100%;
     padding: 14px;
-    background: linear-gradient(135deg, #26c6da 0%, #00acc1 100%);
+    background: linear-gradient(135deg, #26c6da 0%, rgb(0, 94, 153) 100%);
     color: white;
     border: none;
     border-radius: 8px;
@@ -254,12 +254,12 @@ const styles = `
   }
 
   .login-button:hover:not(.loading) {
-    background: linear-gradient(135deg, #00acc1 0%, #00838f 100%);
+    background: linear-gradient(135deg, rgb(0, 94, 153) 0%, #00838f 100%);
     box-shadow: 0 4px 12px rgba(0, 172, 193, 0.2);
   }
 
   .login-button.loading {
-    background: #80deea;
+    background: rgb(0, 94, 153);
     cursor: not-allowed;
   }
 

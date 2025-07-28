@@ -198,11 +198,6 @@ def delete_user(user_id):
             if not cur.fetchone():
                 return jsonify({"error": "User not found"}), 404
             
-            # Prevent admin from deleting themselves
-            cur.execute("SELECT id FROM users WHERE id = %s AND roletype = 'admin'", 
-                       (user_id,))
-            if cur.fetchone() and user_id == session.get('user_id'):
-                return jsonify({"error": "Cannot delete your own admin account"}), 403
             
             # Delete the user
             cur.execute("DELETE FROM users WHERE id = %s RETURNING id", (user_id,))
@@ -222,3 +217,51 @@ def delete_user(user_id):
     finally:
         if conn:
             conn.close()
+
+@admin_bp.route('/admin/corals', methods=["POST"])
+@admin_required
+@login_required
+def add_coral():
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data provided.'}), 400
+    
+    required_fields = ['coral_type', 'coral_subtype', 'classification', 'scientific_name', 'common_name', 'indentification']
+    if not all(field in data for field in required_fields):
+        return jsonify({'error': 'MIssing required fields.'}), 400
+    
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({'error': 'Database connection failed.'}), 500
+    try:
+        cur = conn.cursor()
+        cur.execute("""INSERT INTO coral_information 
+                (coral_type, coral_subtype, classification, scientific_name, common_name, identificaiton) 
+                VALUES (%s, %s, %s, %s, %s, %s) 
+                RETURNING id, coral_type, coral_subtype, classification, scientific_name, common_name, identification""",
+                (data['coral_type'], data['coral_subtype'], data['classification'],
+                 data['scientific_name'], data['common_name'], data['identification'])
+                )
+        new_coral = cur.fetchone()
+        conn.commit()
+
+        return jsonify({
+            'message': 'Coral created successfully',
+            'coral': {
+                'id': new_coral[0],
+                'coral_type': new_coral[1],
+                'coral_subtype': new_coral[2],
+                'classification': new_coral[3],
+                'scientific_name': new_coral[4],
+                'common_name': new_coral[5],
+                'indentification': new_coral[6]
+            }
+        }), 201
+    except psycopg2.Error as e:
+        conn.rollback
+        return jsonify({'error': 'Database error'}), 500
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': 'Please contact the devs.'})
+    finally:
+        conn.close()
