@@ -7,14 +7,12 @@ coral_bp = Blueprint('coral', __name__)
 @coral_bp.route('/coral_info', methods=['GET'])
 @login_required
 def get_coral_info():
-    print("Current user in session:", session.get('user_id'))
     conn = get_db_connection()
     if conn is None:
         return jsonify({'error': 'Database connection failed'}), 500
     try:
         cur = conn.cursor()
         cur.execute("SELECT * FROM coral_information")
-        print("Fetched rows:", cur.rowcount)
         coral_info = cur.fetchall()
         coral_list = []
 

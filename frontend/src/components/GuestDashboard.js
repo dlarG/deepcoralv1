@@ -99,41 +99,18 @@ function GuestDashboard() {
       default:
         return (
           <div className="content-section">
-            <h2
-              className="content-title"
-              style={{
-                fontSize: "1.8rem",
-                fontWeight: "600",
-                color: "#333",
-                marginBottom: "2rem",
-                paddingBottom: "1rem",
-                borderBottom: "2px solid rgba(0, 96, 100, 0.1)",
-              }}
-            >
-              Coral LifeForms
-            </h2>
-
-            <div className="content-placeholder">
+            <h2 className="content-title">Coral LifeForms</h2>
+            <div className="coral-content-container">
               {coralData.length === 0 ? (
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    height: "300px",
-                  }}
-                >
-                  <p
-                    style={{
-                      color: "#666",
-                      fontSize: "1.2rem",
-                    }}
-                  >
-                    Loading coral data...
-                  </p>
+                <div className="loading-placeholder">
+                  <p>Loading coral data...</p>
                 </div>
               ) : (
-                <div className="coral-grid">
+                <div
+                  className={`coral-grid ${
+                    sidebarOpen ? "" : "sidebar-collapsed"
+                  }`}
+                >
                   {coralData.map((coral) => (
                     <div key={coral.id} className="coral-card">
                       <div className="coral-image-container">
@@ -147,18 +124,7 @@ function GuestDashboard() {
 
                       <div className="coral-content">
                         <h3 className="coral-name">{coral.common_name}</h3>
-
-                        {/* Centered scientific name */}
-                        <div
-                          className="coral-scientific-name"
-                          style={{
-                            textAlign: "center",
-                            fontStyle: "italic",
-                            color: "#006064",
-                            fontSize: "1.1rem",
-                            marginBottom: "1rem",
-                          }}
-                        >
+                        <div className="coral-scientific-name">
                           {coral.scientific_name}
                         </div>
 
@@ -446,6 +412,7 @@ function GuestDashboard() {
           display: flex;
           flex: 1;
           overflow: hidden;
+          position: relative;
         }
 
         .sidebar {
@@ -453,9 +420,8 @@ function GuestDashboard() {
           background: white;
           border-right: 1px solid #e2e8f0;
           transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          height: calc(100vh - 70px);
+          height: 100vh;
           position: sticky;
-          top: 70px;
           display: flex;
           flex-direction: column;
           overflow: hidden;
@@ -536,6 +502,7 @@ function GuestDashboard() {
 
         /* Coral Card */
         .coral-card {
+          margin-top: -20px;
           background: white;
           border-radius: 12px;
           overflow: hidden;
@@ -714,6 +681,7 @@ function GuestDashboard() {
           color: #64748b;
           text-align: center;
           padding: 3rem 0;
+          max-height: 800px;
         }
         @media (max-width: 1024px) {
           .coral-grid {
