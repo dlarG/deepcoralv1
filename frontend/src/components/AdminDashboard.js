@@ -140,6 +140,7 @@ function AdminDashboard() {
         lastname: "",
         roletype: "guest",
       });
+      alert("User created successfully");
     } catch (error) {
       console.error("Create failed:", error);
       setError(error.response?.data?.error || "Failed to create user");
@@ -228,6 +229,7 @@ function AdminDashboard() {
         });
         // Refresh users after deletion
         setUsers(users.filter((user) => user.id !== userId));
+        alert("User deleted successfully!");
       } catch (error) {
         console.error("Delete failed:", error);
         setError("Failed to delete user");
@@ -240,7 +242,11 @@ function AdminDashboard() {
   };
 
   const handleDeleteProfile = async () => {
-    if (window.confirm("Are you sure you want to delete your account?")) {
+    if (
+      window.confirm(
+        "⚠️ Warning: This action cannot be undone. Are you sure you want to delete your account?"
+      )
+    ) {
       try {
         // Get CSRF token
         const csrfResponse = await axios.get(
@@ -250,8 +256,7 @@ function AdminDashboard() {
           }
         );
         const csrfToken = csrfResponse.data.csrf_token;
-        // Make the request to delete the profile
-        await axios.delete("http://localhost:5000/profile", {
+        await axios.delete(`http://localhost:5000/admin/users/${user.id}`, {
           withCredentials: true,
           headers: {
             "X-CSRF-Token": csrfToken,
@@ -402,40 +407,28 @@ function AdminDashboard() {
                 </div>
                 <div className="profile-info">
                   <h3>
-                    {user.firstname} {user.lastname}
-                  </h3>
-                  <p className="profile-role">
+                    {user.firstname} {user.lastname} ({user.username}){" "}
                     <span
                       className={`role-badge ${user.roletype.toLowerCase()}`}
                     >
                       {user.roletype.charAt(0).toUpperCase() +
                         user.roletype.slice(1).toLowerCase()}
                     </span>
+                  </h3>
+                  <p className="account-created">
+                    <span className="created">
+                      since {new Date(user.created_at).toLocaleDateString()}
+                    </span>
                   </p>
                 </div>
               </div>
-
               <div className="profile-details">
-                <div className="detail-row">
-                  <span className="detail-label">Username:</span>
-                  <span className="detail-value">{user.username}</span>
-                </div>
-                <div className="detail-row">
-                  <span className="detail-label">First Name:</span>
+                <span className="detail-value">{user.bio}</span>
+                {/* <div className="detail-row">
+                  <span className="detail-label">Biography:</span>
                   <span className="detail-value">{user.firstname}</span>
-                </div>
-                <div className="detail-row">
-                  <span className="detail-label">Last Name:</span>
-                  <span className="detail-value">{user.lastname}</span>
-                </div>
-                <div className="detail-row">
-                  <span className="detail-label">Account Created:</span>
-                  <span className="detail-value">
-                    {new Date(user.created_at).toLocaleDateString()}
-                  </span>
-                </div>
+                </div> */}
               </div>
-
               <div className="profile-actions">
                 <button
                   className="edit-button"
@@ -456,13 +449,7 @@ function AdminDashboard() {
                 <button
                   className="delete-button"
                   onClick={() => {
-                    if (
-                      window.confirm(
-                        "⚠️ Warning: This action cannot be undone. Are you sure you want to delete your account?"
-                      )
-                    ) {
-                      handleDeleteProfile(user.id);
-                    }
+                    handleDeleteProfile(user.id);
                   }}
                 >
                   <FiTrash2 className="button-icon" />
@@ -990,6 +977,9 @@ function AdminDashboard() {
 
       {/* CSS Styles */}
       <style jsx>{`
+      .profile-info .created {
+        font-size: 0.8rem;
+      }
       .coral-card {
           background: white;
           border-radius: 12px;
@@ -1743,7 +1733,7 @@ function AdminDashboard() {
 
         .profile-info h3 {
           font-size: 1.5rem;
-          margin: 0 0 0.5rem 0;
+          margin: 0 0 -0.2rem 0;
           color: #333;
         }
 

@@ -105,6 +105,7 @@ def login_user():
                 'firstname': user[3],
                 'lastname': user[5],
                 'roletype': user[7],
+                'bio': user[11],
                 'redirect_to': f'/{user[7].lower()}-dashboard'  # Add this line
             }
             
@@ -112,7 +113,7 @@ def login_user():
                 'message': 'Login successful',
                 'user': user_data,
                 'csrf_token': session['csrf_token'],
-                'redirect_to': user_data['redirect_to']  # Add this line
+                'redirect_to': user_data['redirect_to']
             }), 200
             
     except Exception as e:
