@@ -50,8 +50,6 @@ function AdminDashboard() {
     roletype: "guest",
   });
 
-  const [showCreateModalCoral, setShowCreateModalCoral] = useState(false);
-
   // Verify authentication status and role when component mounts
   useEffect(() => {
     document.title = "Admin Dashboard | DeepCoral";
@@ -253,7 +251,7 @@ function AdminDashboard() {
         );
         const csrfToken = csrfResponse.data.csrf_token;
         // Make the request to delete the profile
-        await axios.delete(`http://localhost:5000/admin/users/${user.id}`, {
+        await axios.delete("http://localhost:5000/profile", {
           withCredentials: true,
           headers: {
             "X-CSRF-Token": csrfToken,
@@ -645,7 +643,7 @@ function AdminDashboard() {
                   <div className="content-header">
                     <button
                       className="add-button"
-                      onClick={() => setShowCreateModalCoral(true)}
+                      onClick={() => setShowCreateModal(true)}
                     >
                       <FiUserPlus className="button-icon" />
                       Add User
@@ -719,13 +717,6 @@ function AdminDashboard() {
         return (
           <>
             <h2 className="content-title">Coral Information Management</h2>
-            <button
-              className="add-button"
-              onClick={() => setShowCreateModal(true)}
-            >
-              <FiUserPlus className="button-icon" />
-              Add Coral
-            </button>
             <div className="content-placeholder">
               {coralData.length === 0 ? (
                 <div>
