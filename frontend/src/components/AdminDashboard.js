@@ -202,18 +202,23 @@ function AdminDashboard() {
 
   const handleLogout = async () => {
     try {
-      const success = await logout();
-      if (success) {
-        // Ensure all state is cleared before navigating
-        setTimeout(() => {
-          navigate("/", { replace: true });
-        }, 100);
-      } else {
-        navigate("/", { replace: true });
-      }
+      // 1. Perform logout
+      await logout();
+
+      // 2. Clear any local storage
+      localStorage.clear();
+      sessionStorage.clear();
+
+      // 3. Force a hard redirect to ensure complete state reset
+      window.location.href = "/";
+
+      // 4. Add a small delay to ensure everything clears
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 100);
     } catch (error) {
       console.error("Logout failed:", error);
-      navigate("/", { replace: true });
+      window.location.href = "/";
     }
   };
 

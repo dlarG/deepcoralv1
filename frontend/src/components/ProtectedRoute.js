@@ -19,7 +19,7 @@ export function ProtectedRoute({ children, requiredRole = null }) {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
 
   if (

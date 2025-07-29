@@ -99,7 +99,7 @@ function HomePage() {
             </div>
             <div className="footer-column">
               <h4>Project</h4>
-              <p>DeepCoral Team</p>
+              <p>BrAInstormers Team</p>
               <p>Capstone Project 2025</p>
             </div>
             <div className="footer-column">
@@ -109,7 +109,7 @@ function HomePage() {
             </div>
             <div className="footer-column">
               <p className="copyright">
-                © 2025 DeepCoral. All rights reserved.
+                © 2025 BrAInstormers. All rights reserved.
               </p>
               <p className="made-with">
                 Made with <span className="heart">💙</span> for our oceans
