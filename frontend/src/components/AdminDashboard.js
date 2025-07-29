@@ -202,11 +202,18 @@ function AdminDashboard() {
 
   const handleLogout = async () => {
     try {
-      await logout();
-      navigate("/login");
+      const success = await logout();
+      if (success) {
+        // Ensure all state is cleared before navigating
+        setTimeout(() => {
+          navigate("/", { replace: true });
+        }, 100);
+      } else {
+        navigate("/", { replace: true });
+      }
     } catch (error) {
       console.error("Logout failed:", error);
-      navigate("/login");
+      navigate("/", { replace: true });
     }
   };
 
@@ -702,17 +709,19 @@ function AdminDashboard() {
         );
       case "Manage Coral LifeForms":
         return (
-          <>
+          <div className="content-section">
             <h2 className="content-title">Coral Information Management</h2>
-            <div className="content-placeholder">
+            <div className="coral-content-container">
               {coralData.length === 0 ? (
-                <div>
-                  <p style={{ color: "#666", fontSize: "1.2rem" }}>
-                    Loading coral data...
-                  </p>
+                <div className="loading-placeholder">
+                  <p>Loading coral data...</p>
                 </div>
               ) : (
-                <div className="coral-grid">
+                <div
+                  className={`coral-grid ${
+                    sidebarOpen ? "" : "sidebar-collapsed"
+                  }`}
+                >
                   {coralData.map((coral) => (
                     <div key={coral.id} className="coral-card">
                       <div className="coral-image-container">
@@ -726,18 +735,7 @@ function AdminDashboard() {
 
                       <div className="coral-content">
                         <h3 className="coral-name">{coral.common_name}</h3>
-
-                        {/* Centered scientific name */}
-                        <div
-                          className="coral-scientific-name"
-                          style={{
-                            textAlign: "center",
-                            fontStyle: "italic",
-                            color: "#006064",
-                            fontSize: "1.1rem",
-                            marginBottom: "1rem",
-                          }}
-                        >
+                        <div className="coral-scientific-name">
                           {coral.scientific_name}
                         </div>
 
@@ -767,7 +765,7 @@ function AdminDashboard() {
                 </div>
               )}
             </div>
-          </>
+          </div>
         );
       case "Coral Distribution":
         return (
@@ -982,10 +980,13 @@ function AdminDashboard() {
         margin-top: 0; /* Remove the 280px margin */
       }
 
-        /* When sidebar is open (assuming you have a class like 'sidebar-open' on body) */
-        .sidebar-open .coral-grid {
-          grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-        }
+      .coral-grid:not(.sidebar-collapsed) {
+        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      }
+
+      .coral-grid.sidebar-collapsed {
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      }
 
       .coral-card {
         background: white;
@@ -1020,6 +1021,12 @@ function AdminDashboard() {
 
         .coral-content {
           padding: 1.8rem;
+        }
+
+        .coral-content-container {
+          width: 100%;
+          max-width: 1400px;
+          margin: 0 auto;
         }
 
         .coral-name {
@@ -1079,17 +1086,21 @@ function AdminDashboard() {
         }
 
        @media (max-width: 1024px) {
-        .coral-grid {
-          grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        .coral-grid:not(.sidebar-collapsed),
+        .coral-grid.sidebar-collapsed {
+          grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
         }
       }
 
       @media (max-width: 768px) {
-        .coral-grid {
-          grid-template-columns: 1fr;
-        }
         
         .info-cards-container {
+          grid-template-columns: 1fr;
+        }
+        .main-content {
+          margin-left: 0;
+        }
+        .coral-grid {
           grid-template-columns: 1fr;
         }
       }
@@ -1293,6 +1304,7 @@ function AdminDashboard() {
           display: flex;
           flex: 1;
           overflow: hidden;
+          position: relative;
         }
         .stats-grid {
           display: grid;
@@ -1359,12 +1371,12 @@ function AdminDashboard() {
           background: white;
           border-right: 1px solid #e2e8f0;
           transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          height: auto;
-          position: sticky;
+          height: calc(100vh - 70px);
+          position: fixed;
           top: 70px;
           display: flex;
           flex-direction: column;
-          overflow: hidden;
+          overflow-y: auto;
         }
 
         .sidebar-header {
@@ -1476,6 +1488,9 @@ function AdminDashboard() {
           padding: 2rem;
           background: #f8fafc;
           overflow-y: auto;
+          margin-left: ${sidebarOpen ? "280px" : "80px"};
+          transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          height: calc(100vh - 70px);
         }
         
         .content-placeholder {

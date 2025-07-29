@@ -134,14 +134,12 @@ export function AuthProvider({ children }) {
       // Fetch new CSRF token for future requests
       await fetchCsrfToken();
 
-      return true;
+      return true; // Explicitly return true on success
     } catch (err) {
       console.error("Logout failed:", err);
-      // Clear auth state anyway
       clearAuth();
-      // Force new CSRF token
       await fetchCsrfToken();
-      return false;
+      return false; // Explicitly return false on failure
     }
   };
 

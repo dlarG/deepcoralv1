@@ -420,11 +420,12 @@ function GuestDashboard() {
           background: white;
           border-right: 1px solid #e2e8f0;
           transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          height: 100vh;
-          position: sticky;
+          height: calc(100vh - 70px);
+          position: fixed;
+          top: 70px;
           display: flex;
           flex-direction: column;
-          overflow: hidden;
+          overflow-y: auto;
         }
 
         .sidebar-header {
@@ -488,21 +489,19 @@ function GuestDashboard() {
         .coral-grid {
           display: grid;
           gap: 2rem;
-          padding: 1.5rem 0;
-          transition: all 0.3s ease;
+          padding: 1rem 0;
         }
 
         .coral-grid.sidebar-collapsed {
-          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
         }
 
         .coral-grid:not(.sidebar-collapsed) {
-          grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
         }
 
         /* Coral Card */
         .coral-card {
-          margin-top: -20px;
           background: white;
           border-radius: 12px;
           overflow: hidden;
@@ -536,7 +535,11 @@ function GuestDashboard() {
         .coral-content {
           padding: 1.8rem;
         }
-
+        .coral-content-container {
+          width: 100%;
+          max-width: 1400px;
+          margin: 0 auto;
+        }
         .coral-name {
           font-size: 1.5rem;
           font-weight: 600;
@@ -659,6 +662,9 @@ function GuestDashboard() {
           padding: 2rem;
           background: #f8fafc;
           overflow-y: auto;
+          margin-left: ${sidebarOpen ? "280px" : "80px"};
+          transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          height: calc(100vh - 70px);
         }
 
         .content-section {
@@ -683,11 +689,12 @@ function GuestDashboard() {
           padding: 3rem 0;
           max-height: 800px;
         }
-        @media (max-width: 1024px) {
-          .coral-grid {
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-          }
 
+        @media (max-width: 1024px) {
+          .coral-grid:not(.sidebar-collapsed),
+          .coral-grid.sidebar-collapsed {
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+          }
           .info-cards-container {
             grid-template-columns: 1fr !important;
           }
@@ -696,6 +703,14 @@ function GuestDashboard() {
         @media (max-width: 768px) {
           .content-section {
             padding: 1.5rem;
+          }
+          .sidebar {
+            z-index: 100;
+            transform: ${sidebarOpen ? "translateX(0)" : "translateX(-100%)"};
+            width: 280px;
+          }
+          .main-content {
+            margin-left: 0;
           }
 
           .coral-grid {
