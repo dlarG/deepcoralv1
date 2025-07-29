@@ -16,7 +16,6 @@ import {
   FiUser,
   FiTrash2,
   FiUserPlus,
-  FiCheck,
   FiEdit2,
   FiEdit,
   FiTrash,
@@ -29,6 +28,10 @@ import {
   FiShield,
   FiCalendar,
   FiLock,
+  FiSearch,
+  FiFilter,
+  FiDownload,
+  FiMoreVertical,
 } from "react-icons/fi";
 import Logo from "./Logo"; // Import the Logo component
 import dayjs from "dayjs"; // Import dayjs for date formatting
@@ -78,6 +81,731 @@ function AdminDashboard() {
     lastname: "",
     roletype: "guest",
   });
+  const [userSearchTerm, setUserSearchTerm] = useState("");
+  const [userFilterRole, setUserFilterRole] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [userPerPage, setUserPerPage] = useState(10);
+  const [userSortBy, setUserSortBy] = useState("created_desc");
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [usersPerPage] = useState(10);
+  const [userModalMode, setUserModalMode] = useState("create"); // "create" or "edit"
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [userFormErrors, setUserFormErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Password validation function
+  const validatePassword = (password) => {
+    const minLength = 8;
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasNumbers = /\d/.test(password);
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+    const errors = [];
+    if (password.length < minLength) {
+      errors.push(`Password must be at least ${minLength} characters long`);
+    }
+    if (!hasUpperCase) {
+      errors.push("Password must contain at least one uppercase letter");
+    }
+    if (!hasLowerCase) {
+      errors.push("Password must contain at least one lowercase letter");
+    }
+    if (!hasNumbers) {
+      errors.push("Password must contain at least one number");
+    }
+    if (!hasSpecialChar) {
+      errors.push("Password must contain at least one special character");
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors: errors,
+    };
+  };
+
+  // Form validation
+  const validateUserForm = (data) => {
+    const errors = {};
+
+    // Username validation
+    if (!data.username || data.username.trim().length < 3) {
+      errors.username = "Username must be at least 3 characters long";
+    } else if (!/^[a-zA-Z0-9_-]+$/.test(data.username)) {
+      errors.username =
+        "Username can only contain letters, numbers, hyphens, and underscores";
+    }
+
+    // Name validation
+    if (!data.firstname || data.firstname.trim().length < 2) {
+      errors.firstname = "First name must be at least 2 characters long";
+    }
+    if (!data.lastname || data.lastname.trim().length < 2) {
+      errors.lastname = "Last name must be at least 2 characters long";
+    }
+
+    // Password validation (only for new users or when password is being changed)
+    if (
+      userModalMode === "create" ||
+      (userModalMode === "edit" && data.password)
+    ) {
+      const passwordValidation = validatePassword(data.password);
+      if (!passwordValidation.isValid) {
+        errors.password = passwordValidation.errors;
+      }
+    }
+
+    // Role validation
+    if (
+      !data.roletype ||
+      !["admin", "biologist", "guest"].includes(data.roletype)
+    ) {
+      errors.roletype = "Please select a valid role";
+    }
+
+    return errors;
+  };
+
+  // Filter and pagination logic
+  const filteredUsers = users.filter((user) => {
+    const matchesSearch =
+      user.username.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+      user.firstname.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+      user.lastname.toLowerCase().includes(userSearchTerm.toLowerCase());
+    const matchesRole =
+      userFilterRole === "all" || user.roletype === userFilterRole;
+    return matchesSearch && matchesRole;
+  });
+
+  // Sort users
+  const sortedUsers = [...filteredUsers].sort((a, b) => {
+    switch (userSortBy) {
+      case "name_asc":
+        return `${a.firstname} ${a.lastname}`.localeCompare(
+          `${b.firstname} ${b.lastname}`
+        );
+      case "name_desc":
+        return `${b.firstname} ${b.lastname}`.localeCompare(
+          `${a.firstname} ${a.lastname}`
+        );
+      case "username_asc":
+        return a.username.localeCompare(b.username);
+      case "username_desc":
+        return b.username.localeCompare(a.username);
+      case "role_asc":
+        return a.roletype.localeCompare(b.roletype);
+      case "role_desc":
+        return b.roletype.localeCompare(a.roletype);
+      default:
+        return a.id - b.id; // Default to ID order
+    }
+  });
+
+  // Pagination
+  const totalPages = Math.ceil(sortedUsers.length / usersPerPage);
+  const indexOfLastUser = currentPage * usersPerPage;
+  const indexOfFirstUser = indexOfLastUser - usersPerPage;
+  const currentUsers = sortedUsers.slice(indexOfFirstUser, indexOfLastUser);
+
+  const openUserModal = (mode, user = null) => {
+    setUserModalMode(mode);
+    setSelectedUser(user);
+    setUserFormErrors({});
+
+    if (mode === "create") {
+      setFormData({
+        username: "",
+        password: "",
+        firstname: "",
+        lastname: "",
+        roletype: "guest",
+      });
+    } else {
+      setFormData({
+        username: user.username,
+        password: "",
+        firstname: user.firstname,
+        lastname: user.lastname,
+        roletype: user.roletype,
+      });
+    }
+
+    setShowUserModal(true);
+  };
+
+  const closeUserModal = () => {
+    setShowUserModal(false);
+    setSelectedUser(null);
+    setUserFormErrors({});
+    setFormData({
+      username: "",
+      password: "",
+      firstname: "",
+      lastname: "",
+      roletype: "guest",
+    });
+  };
+
+  const handleUserSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    // Validate form
+    const errors = validateUserForm(formData);
+    if (Object.keys(errors).length > 0) {
+      setUserFormErrors(errors);
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      const csrfToken = await fetchCsrfToken();
+      let response;
+
+      if (userModalMode === "create") {
+        response = await axios.post(
+          "http://localhost:5000/admin/users",
+          formData,
+          {
+            withCredentials: true,
+            headers: {
+              "X-CSRF-Token": csrfToken,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        setUsers([...users, response.data.user]);
+        alert("User created successfully!");
+      } else {
+        response = await axios.put(
+          `http://localhost:5000/admin/users/${selectedUser.id}`,
+          formData,
+          {
+            withCredentials: true,
+            headers: {
+              "X-CSRF-Token": csrfToken,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        setUsers(
+          users.map((u) => (u.id === selectedUser.id ? response.data.user : u))
+        );
+        alert("User updated successfully!");
+      }
+
+      closeUserModal();
+    } catch (error) {
+      console.error("User operation failed:", error);
+      if (error.response?.data?.error) {
+        // Handle specific backend errors
+        if (error.response.data.error.includes("Username already")) {
+          setUserFormErrors({ username: "Username already exists" });
+        } else {
+          alert(`Error: ${error.response.data.error}`);
+        }
+      } else {
+        alert("Operation failed. Please try again.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const renderUserManagement = () => (
+    <div className="content-section">
+      <div className="user-management-header">
+        <div className="header-left">
+          <h2 className="content-title">User Management</h2>
+          <p className="content-subtitle">
+            Manage system users and their permissions
+          </p>
+        </div>
+        <div className="header-actions">
+          <button
+            className="export-btn"
+            onClick={() => {
+              // Export functionality can be implemented later
+              alert("Export functionality coming soon!");
+            }}
+          >
+            <FiDownload size={18} />
+            Export
+          </button>
+          <button
+            className="add-user-btn primary"
+            onClick={() => openUserModal("create")}
+          >
+            <FiUserPlus size={18} />
+            Add User
+          </button>
+        </div>
+      </div>
+
+      {/* Filters and Search */}
+      <div className="user-controls">
+        <div className="search-section">
+          <div className="search-input-container">
+            <FiSearch className="search-icon" />
+            <input
+              type="text"
+              placeholder="Search users by name or username..."
+              value={userSearchTerm}
+              onChange={(e) => {
+                setUserSearchTerm(e.target.value);
+                setCurrentPage(1); // Reset to first page when searching
+              }}
+              className="search-input"
+            />
+          </div>
+        </div>
+
+        <div className="filter-section">
+          <div className="filter-group">
+            <label>Filter by Role:</label>
+            <select
+              value={userFilterRole}
+              onChange={(e) => {
+                setUserFilterRole(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="filter-select"
+            >
+              <option value="all">All Roles</option>
+              <option value="admin">Admin</option>
+              <option value="biologist">Biologist</option>
+              <option value="guest">Guest</option>
+            </select>
+          </div>
+
+          <div className="filter-group">
+            <label>Sort by:</label>
+            <select
+              value={userSortBy}
+              onChange={(e) => setUserSortBy(e.target.value)}
+              className="filter-select"
+            >
+              <option value="created_desc">Newest First</option>
+              <option value="created_asc">Oldest First</option>
+              <option value="name_asc">Name (A-Z)</option>
+              <option value="name_desc">Name (Z-A)</option>
+              <option value="username_asc">Username (A-Z)</option>
+              <option value="username_desc">Username (Z-A)</option>
+              <option value="role_asc">Role (A-Z)</option>
+              <option value="role_desc">Role (Z-A)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* User Stats */}
+      <div className="user-stats">
+        <div className="stat-item">
+          <span className="stat-number">{users.length}</span>
+          <span className="stat-label">Total Users</span>
+        </div>
+        <div className="stat-item">
+          <span className="stat-number">
+            {users.filter((u) => u.roletype === "admin").length}
+          </span>
+          <span className="stat-label">Admins</span>
+        </div>
+        <div className="stat-item">
+          <span className="stat-number">
+            {users.filter((u) => u.roletype === "biologist").length}
+          </span>
+          <span className="stat-label">Biologists</span>
+        </div>
+        <div className="stat-item">
+          <span className="stat-number">
+            {users.filter((u) => u.roletype === "guest").length}
+          </span>
+          <span className="stat-label">Guests</span>
+        </div>
+        <div className="stat-item">
+          <span className="stat-number">{filteredUsers.length}</span>
+          <span className="stat-label">Filtered Results</span>
+        </div>
+      </div>
+
+      {/* Users Table */}
+      {loading ? (
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>Loading users...</p>
+        </div>
+      ) : error ? (
+        <div className="error-container">
+          <p className="error-message">Error: {error}</p>
+        </div>
+      ) : (
+        <>
+          <div className="users-table-container">
+            <table className="users-table">
+              <thead>
+                <tr>
+                  <th>Avatar</th>
+                  <th>Name</th>
+                  <th>Username</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {currentUsers.map((user) => (
+                  <tr key={user.id} className="user-row">
+                    <td>
+                      <div className="user-avatar-small">
+                        {user.profile_image ? (
+                          <img
+                            src={`/profile_uploads/${user.profile_image}`}
+                            alt={`${user.firstname} ${user.lastname}`}
+                            onError={(e) => {
+                              e.target.style.display = "none";
+                              e.target.nextSibling.style.display = "flex";
+                            }}
+                          />
+                        ) : null}
+                        <div
+                          className="avatar-initials"
+                          style={{
+                            display: user.profile_image ? "none" : "flex",
+                          }}
+                        >
+                          {user.firstname?.charAt(0)}
+                          {user.lastname?.charAt(0)}
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="user-name-cell">
+                        <span className="user-full-name">
+                          {user.firstname} {user.lastname}
+                        </span>
+                        <span className="user-id">ID: {user.id}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <span className="username-cell">@{user.username}</span>
+                    </td>
+                    <td>
+                      <span className={`role-badge-new ${user.roletype}`}>
+                        {user.roletype.charAt(0).toUpperCase() +
+                          user.roletype.slice(1)}
+                      </span>
+                    </td>
+                    <td>
+                      <span className="status-badge active">Active</span>
+                    </td>
+                    <td>
+                      <div className="action-buttons-new">
+                        <button
+                          className="action-btn-new edit"
+                          onClick={() => openUserModal("edit", user)}
+                          title="Edit User"
+                        >
+                          <FiEdit2 size={14} />
+                        </button>
+                        <button
+                          className="action-btn-new delete"
+                          onClick={() => handleDelete(user.id)}
+                          title="Delete User"
+                        >
+                          <FiTrash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {currentUsers.length === 0 && (
+              <div className="no-users-found">
+                <FiUsers size={48} />
+                <h3>No users found</h3>
+                <p>Try adjusting your search or filter criteria</p>
+              </div>
+            )}
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="pagination-container">
+              <div className="pagination-info">
+                Showing {indexOfFirstUser + 1} to{" "}
+                {Math.min(indexOfLastUser, filteredUsers.length)} of{" "}
+                {filteredUsers.length} users
+              </div>
+              <div className="pagination-controls">
+                <button
+                  className="pagination-btn"
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.max(prev - 1, 1))
+                  }
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </button>
+
+                {[...Array(totalPages)].map((_, index) => {
+                  const pageNumber = index + 1;
+                  const isCurrentPage = pageNumber === currentPage;
+                  const shouldShow =
+                    pageNumber === 1 ||
+                    pageNumber === totalPages ||
+                    Math.abs(pageNumber - currentPage) <= 2;
+
+                  if (!shouldShow) {
+                    if (
+                      pageNumber === currentPage - 3 ||
+                      pageNumber === currentPage + 3
+                    ) {
+                      return (
+                        <span key={pageNumber} className="pagination-ellipsis">
+                          ...
+                        </span>
+                      );
+                    }
+                    return null;
+                  }
+
+                  return (
+                    <button
+                      key={pageNumber}
+                      className={`pagination-btn ${
+                        isCurrentPage ? "active" : ""
+                      }`}
+                      onClick={() => setCurrentPage(pageNumber)}
+                    >
+                      {pageNumber}
+                    </button>
+                  );
+                })}
+
+                <button
+                  className="pagination-btn"
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                  }
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Enhanced User Modal */}
+      {showUserModal && renderEnhancedUserModal()}
+    </div>
+  );
+
+  const renderEnhancedUserModal = () => (
+    <div className="modal-overlay-new">
+      <div className="user-modal-new">
+        <div className="modal-header-new">
+          <div className="modal-title-section">
+            <h3>
+              {userModalMode === "create" ? "Create New User" : "Edit User"}
+            </h3>
+            <p>
+              {userModalMode === "create"
+                ? "Add a new user to the system"
+                : "Update user information"}
+            </p>
+          </div>
+          <button className="close-btn-new" onClick={closeUserModal}>
+            <FiX size={20} />
+          </button>
+        </div>
+
+        <form onSubmit={handleUserSubmit} className="user-form-new">
+          <div className="form-body-new">
+            <div className="form-section">
+              <h4>Personal Information</h4>
+
+              <div className="form-row-new">
+                <div className="form-group-new">
+                  <label htmlFor="firstname">
+                    First Name <span className="required">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="firstname"
+                    name="firstname"
+                    value={formData.firstname}
+                    onChange={handleInputChange}
+                    className={userFormErrors.firstname ? "error" : ""}
+                    placeholder="Enter first name"
+                  />
+                  {userFormErrors.firstname && (
+                    <span className="error-text">
+                      {userFormErrors.firstname}
+                    </span>
+                  )}
+                </div>
+
+                <div className="form-group-new">
+                  <label htmlFor="lastname">
+                    Last Name <span className="required">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="lastname"
+                    name="lastname"
+                    value={formData.lastname}
+                    onChange={handleInputChange}
+                    className={userFormErrors.lastname ? "error" : ""}
+                    placeholder="Enter last name"
+                  />
+                  {userFormErrors.lastname && (
+                    <span className="error-text">
+                      {userFormErrors.lastname}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="form-section">
+              <h4>Account Information</h4>
+
+              <div className="form-group-new">
+                <label htmlFor="username">
+                  Username <span className="required">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="username"
+                  name="username"
+                  value={formData.username}
+                  onChange={handleInputChange}
+                  className={userFormErrors.username ? "error" : ""}
+                  placeholder="Enter username"
+                />
+                {userFormErrors.username && (
+                  <span className="error-text">{userFormErrors.username}</span>
+                )}
+              </div>
+
+              <div className="form-group-new">
+                <label htmlFor="password">
+                  Password
+                  <span className="required">*</span>
+                  {userModalMode === "edit" && (
+                    <span className="optional">
+                      {" "}
+                      (leave blank to keep current)
+                    </span>
+                  )}
+                </label>
+                <input
+                  type="password"
+                  id="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  className={userFormErrors.password ? "error" : ""}
+                  placeholder={
+                    userModalMode === "edit"
+                      ? "Enter new password (optional)"
+                      : "Enter password"
+                  }
+                />
+                {userFormErrors.password && (
+                  <div className="error-list">
+                    {Array.isArray(userFormErrors.password) ? (
+                      userFormErrors.password.map((error, index) => (
+                        <span key={index} className="error-text">
+                          {error}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="error-text">
+                        {userFormErrors.password}
+                      </span>
+                    )}
+                  </div>
+                )}
+                <div className="password-requirements">
+                  <p>Password must contain:</p>
+                  <ul>
+                    <li>At least 8 characters</li>
+                    <li>One uppercase letter</li>
+                    <li>One lowercase letter</li>
+                    <li>One number</li>
+                    <li>One special character (!@#$%^&*)</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="form-group-new">
+                <label htmlFor="roletype">
+                  Role <span className="required">*</span>
+                </label>
+                <select
+                  id="roletype"
+                  name="roletype"
+                  value={formData.roletype}
+                  onChange={handleInputChange}
+                  className={userFormErrors.roletype ? "error" : ""}
+                >
+                  <option value="guest">Guest - Limited access</option>
+                  <option value="biologist">
+                    Biologist - Enhanced permissions
+                  </option>
+                  <option value="admin">Admin - Full system access</option>
+                </select>
+                {userFormErrors.roletype && (
+                  <span className="error-text">{userFormErrors.roletype}</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="modal-actions-new">
+            <button
+              type="button"
+              className="cancel-btn-new"
+              onClick={closeUserModal}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="submit-btn-new"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="spinner-small"></div>
+                  {userModalMode === "create" ? "Creating..." : "Updating..."}
+                </>
+              ) : (
+                <>
+                  {userModalMode === "create" ? (
+                    <>
+                      <FiUserPlus size={16} />
+                      Create User
+                    </>
+                  ) : (
+                    <>
+                      <FiSave size={16} />
+                      Update User
+                    </>
+                  )}
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
 
   // State for profile management
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -155,86 +883,6 @@ function AdminDashboard() {
       fetchUsers();
     }
   }, [user, navigate, logout]);
-
-  const handleCreate = async (e) => {
-    e.preventDefault();
-    try {
-      const csrfResponse = await axios.get("http://localhost:5000/csrf-token", {
-        withCredentials: true,
-      });
-      const csrfToken = csrfResponse.data.csrf_token;
-
-      const response = await axios.post(
-        "http://localhost:5000/admin/users",
-        formData,
-        {
-          withCredentials: true,
-          headers: {
-            "X-CSRF-Token": csrfToken,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      setUsers([...users, response.data.user]);
-      setShowCreateModal(false);
-      setFormData({
-        username: "",
-        password: "",
-        firstname: "",
-        lastname: "",
-        roletype: "guest",
-      });
-      alert("User created successfully");
-    } catch (error) {
-      console.error("Create failed:", error);
-      setError(error.response?.data?.error || "Failed to create user");
-    }
-  };
-
-  const handleEdit = (user) => {
-    setCurrentUser(user);
-    setFormData({
-      username: user.username,
-      password: "",
-      firstname: user.firstname,
-      lastname: user.lastname,
-      roletype: user.roletype,
-    });
-    setShowEditModal(true);
-  };
-
-  const handleUpdate = async (e) => {
-    e.preventDefault();
-    try {
-      const csrfResponse = await axios.get("http://localhost:5000/csrf-token", {
-        withCredentials: true,
-      });
-      const csrfToken = csrfResponse.data.csrf_token;
-
-      const response = await axios.put(
-        `http://localhost:5000/admin/users/${currentUser.id}`,
-        formData,
-        {
-          withCredentials: true,
-          headers: {
-            "X-CSRF-Token": csrfToken,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      setUsers(
-        users.map((u) => (u.id === currentUser.id ? response.data.user : u))
-      );
-      setShowEditModal(false);
-      setCurrentUser(null);
-      alert("User updated successfully!");
-    } catch (error) {
-      console.error("Update failed:", error);
-      setError(error.response?.data?.error || "Failed to update user");
-    }
-  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -1252,236 +1900,7 @@ function AdminDashboard() {
       case "Profile Management":
         return renderProfileManagement();
       case "Manage Users":
-        return (
-          <div className="content-section">
-            <>
-              {/* Create User Modal */}
-              {showCreateModal && (
-                <div className="modal-overlay">
-                  <div className="modal">
-                    <div className="modal-header">
-                      <h3>Create New User</h3>
-                      <button onClick={() => setShowCreateModal(false)}>
-                        <FiX size={20} />
-                      </button>
-                    </div>
-                    <form onSubmit={handleCreate}>
-                      <div className="form-group">
-                        <label>Username</label>
-                        <input
-                          type="text"
-                          name="username"
-                          value={formData.username}
-                          onChange={handleInputChange}
-                          required
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>Password</label>
-                        <input
-                          type="password"
-                          name="password"
-                          value={formData.password}
-                          onChange={handleInputChange}
-                          required
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>First Name</label>
-                        <input
-                          type="text"
-                          name="firstname"
-                          value={formData.firstname}
-                          onChange={handleInputChange}
-                          required
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>Last Name</label>
-                        <input
-                          type="text"
-                          name="lastname"
-                          value={formData.lastname}
-                          onChange={handleInputChange}
-                          required
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>Role</label>
-                        <select
-                          name="roletype"
-                          value={formData.roletype}
-                          onChange={handleInputChange}
-                          required
-                        >
-                          <option value="guest">Guest</option>
-                          <option value="biologist">Biologist</option>
-                          <option value="admin">Admin</option>
-                        </select>
-                      </div>
-                      <div className="modal-actions">
-                        <button
-                          type="button"
-                          onClick={() => setShowCreateModal(false)}
-                        >
-                          Cancel
-                        </button>
-                        <button type="submit" className="primary">
-                          Create User
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              )}
-              {/* Edit User Modal */}
-              {showEditModal && currentUser && (
-                <div className="modal-overlay">
-                  <div className="modal">
-                    <div className="modal-header">
-                      <h3>Edit User</h3>
-                      <button onClick={() => setShowEditModal(false)}>
-                        <FiX size={20} />
-                      </button>
-                    </div>
-                    <form onSubmit={handleUpdate}>
-                      <div className="form-group">
-                        <label>Username</label>
-                        <input
-                          type="text"
-                          name="username"
-                          value={formData.username}
-                          onChange={handleInputChange}
-                          required
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>Password (leave blank to keep current)</label>
-                        <input
-                          type="password"
-                          name="password"
-                          value={formData.password}
-                          onChange={handleInputChange}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>First Name</label>
-                        <input
-                          type="text"
-                          name="firstname"
-                          value={formData.firstname}
-                          onChange={handleInputChange}
-                          required
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>Last Name</label>
-                        <input
-                          type="text"
-                          name="lastname"
-                          value={formData.lastname}
-                          onChange={handleInputChange}
-                          required
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>Role</label>
-                        <select
-                          name="roletype"
-                          value={formData.roletype}
-                          onChange={handleInputChange}
-                          required
-                        >
-                          <option value="guest">Guest</option>
-                          <option value="biologist">Biologist</option>
-                          <option value="admin">Admin</option>
-                        </select>
-                      </div>
-                      <div className="modal-actions">
-                        <button
-                          type="button"
-                          onClick={() => setShowEditModal(false)}
-                        >
-                          Cancel
-                        </button>
-                        <button type="submit" className="primary">
-                          Update User
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              )}
-              <h2 className="content-title">User Management</h2>
-              {loading ? (
-                <div className="loading">Loading users...</div>
-              ) : error ? (
-                <div className="error-message">Error: {error}</div>
-              ) : (
-                <div className="users-content">
-                  <div className="content-header">
-                    <button
-                      className="add-button"
-                      onClick={() => setShowCreateModal(true)}
-                    >
-                      <FiUserPlus className="button-icon" />
-                      Add User
-                    </button>
-                  </div>
-                  <br />
-
-                  <div className="table-container">
-                    <table className="data-table">
-                      <thead>
-                        <tr>
-                          <th>ID</th>
-                          <th>Username</th>
-                          <th>Name</th>
-                          <th>Role</th>
-                          <th>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {users.map((user) => (
-                          <tr key={user.id}>
-                            <td>{user.id}</td>
-                            <td>{user.username}</td>
-                            <td>
-                              {user.firstname} {user.lastname}
-                            </td>
-                            <td>
-                              <span
-                                className={`role-badge ${user.roletype.toLowerCase()}`}
-                              >
-                                {user.roletype.charAt(0).toUpperCase() +
-                                  user.roletype.slice(1).toLowerCase()}
-                              </span>
-                            </td>
-                            <td>
-                              <button
-                                className="action-button edit"
-                                onClick={() => handleEdit(user)}
-                              >
-                                <FiEdit2 size={16} />
-                              </button>
-                              <button
-                                className="action-button delete"
-                                onClick={() => handleDelete(user.id)}
-                              >
-                                <FiTrash2 size={16} />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </>
-          </div>
-        );
-
+        return renderUserManagement();
       case "Add Images":
         return (
           <div className="images-content">
@@ -1712,8 +2131,825 @@ function AdminDashboard() {
 
       {/* CSS Styles */}
       <style jsx>{`
+      /* Enhanced User Management Styles */
+        .user-management-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 2rem;
+          padding-bottom: 1.5rem;
+          border-bottom: 1px solid #e2e8f0;
+        }
+        .header-left h2 {
+          margin: 0 0 0.25rem 0;
+        }
+          .content-subtitle {
+          color: #64748b;
+          font-size: 0.875rem;
+          margin: 0;
+        }
 
+        .header-actions {
+          display: flex;
+          gap: 1rem;
+        }
 
+        .export-btn {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.75rem 1.25rem;
+          background: white;
+          border: 1px solid #d1d5db;
+          border-radius: 8px;
+          color: #374151;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .export-btn:hover {
+          background: #f9fafb;
+          border-color: #9ca3af;
+        }
+
+        .add-user-btn {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.75rem 1.25rem;
+          background: #0284c7;
+          color: white;
+          border: none;
+          border-radius: 8px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .add-user-btn:hover {
+          background: #0369a1;
+          transform: translateY(-1px);
+        }
+
+        .user-controls {
+          display: flex;
+          gap: 2rem;
+          margin-bottom: 2rem;
+          padding: 1.5rem;
+          background: white;
+          border-radius: 12px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        }
+
+        .search-section {
+          flex: 1;
+        }
+
+        .search-input-container {
+          position: relative;
+          max-width: 400px;
+        }
+
+        .search-icon {
+          position: absolute;
+          left: 1rem;
+          top: 50%;
+          transform: translateY(-50%);
+          color: #9ca3af;
+          font-size: 1rem;
+        }
+
+        .search-input {
+          width: 100%;
+          padding: 0.75rem 1rem 0.75rem 2.5rem;
+          border: 1px solid #d1d5db;
+          border-radius: 8px;
+          font-size: 0.875rem;
+          transition: all 0.2s;
+        }
+
+        .search-input:focus {
+          outline: none;
+          border-color: #0284c7;
+          box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1);
+        }
+
+        .filter-section {
+          display: flex;
+          gap: 1.5rem;
+        }
+
+        .filter-group {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .filter-group label {
+          font-size: 0.75rem;
+          font-weight: 500;
+          color: #6b7280;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .filter-select {
+          padding: 0.5rem;
+          border: 1px solid #d1d5db;
+          border-radius: 6px;
+          background: white;
+          font-size: 0.875rem;
+          cursor: pointer;
+          transition: border-color 0.2s;
+        }
+
+        .filter-select:focus {
+          outline: none;
+          border-color: #0284c7;
+        }
+
+        .user-stats {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+          gap: 1rem;
+          margin-bottom: 2rem;
+        }
+
+        .stat-item {
+          background: white;
+          padding: 1.25rem;
+          border-radius: 8px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+          text-align: center;
+        }
+
+        .stat-number {
+          display: block;
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: #0284c7;
+          margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+          font-size: 0.75rem;
+          color: #6b7280;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .users-table-container {
+          background: white;
+          border-radius: 12px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+          overflow: hidden;
+          margin-bottom: 2rem;
+        }
+
+        .users-table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+
+        .users-table th {
+          background: #f8fafc;
+          padding: 1rem;
+          text-align: left;
+          font-weight: 600;
+          color: #374151;
+          font-size: 0.75rem;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          border-bottom: 1px solid #e5e7eb;
+        }
+
+        .users-table td {
+          padding: 1rem;
+          border-bottom: 1px solid #f3f4f6;
+          vertical-align: middle;
+        }
+
+        .user-row:hover {
+          background: #f9fafb;
+        }
+
+        .user-avatar-small {
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          overflow: hidden;
+          position: relative;
+          background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+        }
+
+        .user-avatar-small img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .avatar-initials {
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          font-weight: 600;
+          font-size: 0.875rem;
+        }
+
+        .user-name-cell {
+          display: flex;
+          flex-direction: column;
+          gap: 0.125rem;
+        }
+
+        .user-full-name {
+          font-weight: 500;
+          color: #111827;
+        }
+
+        .user-id {
+          font-size: 0.75rem;
+          color: #6b7280;
+        }
+
+        .username-cell {
+          font-family: 'Monaco', 'Menlo', monospace;
+          color: #4b5563;
+          font-size: 0.875rem;
+        }
+
+        .role-badge-new {
+          display: inline-block;
+          padding: 0.375rem 0.75rem;
+          border-radius: 6px;
+          font-size: 0.75rem;
+          font-weight: 600;
+          text-transform: capitalize;
+        }
+
+        .role-badge-new.admin {
+          background: #fef3c7;
+          color: #d97706;
+        }
+
+        .role-badge-new.biologist {
+          background: #d1fae5;
+          color: #065f46;
+        }
+
+        .role-badge-new.guest {
+          background: #f3f4f6;
+          color: #374151;
+        }
+
+        .status-badge {
+          display: inline-block;
+          padding: 0.25rem 0.5rem;
+          border-radius: 12px;
+          font-size: 0.75rem;
+          font-weight: 500;
+          text-transform: uppercase;
+          letter-spacing: 0.025em;
+        }
+
+        .status-badge.active {
+          background: #dcfce7;
+          color: #166534;
+        }
+
+        .action-buttons-new {
+          display: flex;
+          gap: 0.5rem;
+        }
+
+        .action-btn-new {
+          width: 32px;
+          height: 32px;
+          border-radius: 6px;
+          border: none;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .action-btn-new.edit {
+          background: #dbeafe;
+          color: #1d4ed8;
+        }
+
+        .action-btn-new.edit:hover {
+          background: #bfdbfe;
+        }
+
+        .action-btn-new.delete {
+          background: #fee2e2;
+          color: #dc2626;
+        }
+
+        .action-btn-new.delete:hover {
+          background: #fecaca;
+        }
+
+        .no-users-found {
+          text-align: center;
+          padding: 4rem 2rem;
+          color: #6b7280;
+        }
+
+        .no-users-found svg {
+          color: #d1d5db;
+          margin-bottom: 1rem;
+        }
+
+        .no-users-found h3 {
+          margin: 0 0 0.5rem 0;
+          color: #374151;
+        }
+
+        .no-users-found p {
+          margin: 0;
+        }
+
+        .pagination-container {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 1rem 0;
+        }
+
+        .pagination-info {
+          font-size: 0.875rem;
+          color: #6b7280;
+        }
+
+        .pagination-controls {
+          display: flex;
+          gap: 0.25rem;
+          align-items: center;
+        }
+
+        .pagination-btn {
+          padding: 0.5rem 0.75rem;
+          border: 1px solid #d1d5db;
+          background: white;
+          color: #374151;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 0.875rem;
+          transition: all 0.2s;
+        }
+
+        .pagination-btn:hover:not(:disabled) {
+          background: #f9fafb;
+          border-color: #9ca3af;
+        }
+
+        .pagination-btn.active {
+          background: #0284c7;
+          color: white;
+          border-color: #0284c7;
+        }
+
+        .pagination-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .pagination-ellipsis {
+          padding: 0.5rem;
+          color: #9ca3af;
+        }
+
+        /* Enhanced Modal Styles */
+        .modal-overlay-new {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.6);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          padding: 1rem;
+          overflow-y: auto; /* Allow overlay to scroll */
+        }
+
+        .user-modal-new {
+  background: white;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  min-height: 400px; /* Ensure minimum height */
+  overflow: visible; /* Change from hidden to visible */
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+  margin: auto; /* Center the modal */
+}
+
+        .user-modal-new {
+  background: white;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  min-height: 400px; /* Ensure minimum height */
+  overflow: visible; /* Change from hidden to visible */
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+  margin: auto; /* Center the modal */
+}
+
+.modal-header-new {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 2rem;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f8fafc;
+  flex-shrink: 0; /* Prevent header from shrinking */
+}
+
+.modal-title-section h3 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.5rem;
+  color: #111827;
+}
+
+.modal-title-section p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.close-btn-new {
+  background: transparent;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 6px;
+  transition: all 0.2s;
+  flex-shrink: 0; /* Prevent button from shrinking */
+}
+
+.close-btn-new:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.user-form-new {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0; /* Allow flex child to shrink */
+}
+
+.form-body-new {
+  padding: 2rem;
+  overflow-y: auto; /* Enable scrolling */
+  flex: 1;
+  min-height: 0; /* Allow flex child to shrink */
+  max-height: calc(90vh - 200px); /* Reserve space for header and footer */
+}
+
+.form-section {
+  margin-bottom: 2rem;
+}
+
+.form-section:last-child {
+  margin-bottom: 0;
+}
+
+.form-section h4 {
+  margin: 0 0 1rem 0;
+  font-size: 1.125rem;
+  color: #111827;
+  font-weight: 600;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.form-row-new {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.form-group-new {
+  margin-bottom: 1.5rem;
+}
+
+.form-group-new label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #374151;
+  font-size: 0.875rem;
+}
+
+.required {
+  color: #dc2626;
+}
+
+.optional {
+  color: #6b7280;
+  font-weight: 400;
+}
+
+.form-group-new input,
+.form-group-new select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+  background: white;
+  box-sizing: border-box; /* Ensure proper sizing */
+}
+
+.form-group-new input:focus,
+.form-group-new select:focus {
+  outline: none;
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1);
+}
+
+.form-group-new input.error,
+.form-group-new select.error {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+}
+
+.error-text {
+  display: block;
+  color: #dc2626;
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.error-list {
+  margin-top: 0.5rem;
+}
+
+.error-list .error-text {
+  margin-bottom: 0.25rem;
+}
+
+.password-requirements {
+  margin-top: 0.75rem;
+  padding: 1rem;
+  background: #f8fafc;
+  border-radius: 6px;
+  border-left: 3px solid #0284c7;
+}
+
+.password-requirements p {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.password-requirements ul {
+  margin: 0;
+  padding-left: 1rem;
+  list-style-type: disc;
+}
+
+.password-requirements li {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-bottom: 0.125rem;
+}
+
+.modal-actions-new {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 1.5rem 2rem;
+  border-top: 1px solid #e5e7eb;
+  background: #f8fafc;
+  flex-shrink: 0; /* Prevent footer from shrinking */
+  margin-top: auto; /* Push to bottom */
+}
+
+.cancel-btn-new {
+  padding: 0.75rem 1.5rem;
+  border: 1px solid #d1d5db;
+  background: white;
+  color: #374151;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cancel-btn-new:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.submit-btn-new {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: #0284c7;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.submit-btn-new:hover:not(:disabled) {
+  background: #0369a1;
+}
+
+.submit-btn-new:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.spinner-small {
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+  @media (max-width: 768px) {
+  .modal-overlay-new {
+    padding: 0.5rem;
+    align-items: flex-start; /* Align to top on mobile */
+    padding-top: 2rem; /* Add top padding */
+  }
+  
+  .user-modal-new {
+    max-height: 95vh; /* Increase max height on mobile */
+    margin-top: 0; /* Remove top margin on mobile */
+  }
+  
+  .form-body-new {
+    max-height: calc(95vh - 180px); /* Adjust for mobile */
+    padding: 1rem;
+  }
+  
+  .modal-header-new,
+  .modal-actions-new {
+    padding: 1rem;
+  }
+  
+  .form-row-new {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .user-modal-new {
+    border-radius: 12px; /* Smaller border radius */
+  }
+  
+  .form-body-new {
+    padding: 1rem;
+  }
+  
+  .password-requirements {
+    padding: 0.75rem;
+  }
+}
+
+/* Scrollbar styling for better UX */
+.form-body-new::-webkit-scrollbar {
+  width: 6px;
+}
+
+.form-body-new::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.form-body-new::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.form-body-new::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+        .loading-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 4rem 2rem;
+          color: #6b7280;
+        }
+
+        .loading-spinner {
+          width: 40px;
+          height: 40px;
+          border: 3px solid #f3f4f6;
+          border-top: 3px solid #0284c7;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+          margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+
+        .error-container {
+          text-align: center;
+          padding: 4rem 2rem;
+        }
+
+        .error-message {
+          color: #dc2626;
+          font-weight: 500;
+        }
+
+        @media (max-width: 768px) {
+          .user-controls {
+            flex-direction: column;
+            gap: 1rem;
+          }
+
+          .filter-section {
+            flex-direction: column;
+            gap: 1rem;
+          }
+
+          .user-management-header {
+            flex-direction: column;
+            gap: 1rem;
+            align-items: stretch;
+          }
+
+          .header-actions {
+            justify-content: stretch;
+          }
+
+          .export-btn,
+          .add-user-btn {
+            flex: 1;
+            justify-content: center;
+          }
+
+          .form-row-new {
+            grid-template-columns: 1fr;
+          }
+
+          .pagination-container {
+            flex-direction: column;
+            gap: 1rem;
+            text-align: center;
+          }
+
+          .users-table {
+            font-size: 0.875rem;
+          }
+
+          .users-table th,
+          .users-table td {
+            padding: 0.75rem 0.5rem;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .user-stats {
+            grid-template-columns: 1fr 1fr;
+          }
+          
+          .modal-overlay-new {
+            padding: 0.5rem;
+          }
+          
+          .modal-header-new,
+          .form-body-new,
+          .modal-actions-new {
+            padding: 1rem;
+          }
+        }
       /* Coral Management Styles */
         .coral-management-header {
           display: flex;
