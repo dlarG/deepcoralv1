@@ -246,6 +246,28 @@ function AdminDashboard() {
     });
   };
 
+  useEffect(() => {
+    const handleResize = () => {
+      // Auto-minimize sidebar when screen width is less than 1024px
+      if (window.innerWidth < 1024) {
+        setSidebarOpen(false);
+      } else {
+        setSidebarOpen(true);
+      }
+    };
+
+    // Set initial state based on current window size
+    handleResize();
+
+    // Add event listener for window resize
+    window.addEventListener('resize', handleResize);
+
+    // Cleanup event listener on component unmount
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
   const handleUserSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -3409,29 +3431,30 @@ function AdminDashboard() {
         }
 
       
-      .profile-info .created {
-        font-size: 0.8rem;
-      }
-      
-       @media (max-width: 1024px) {
-        .coral-grid:not(.sidebar-collapsed),
-        .coral-grid.sidebar-collapsed {
-          grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        .profile-info .created {
+          font-size: 0.8rem;
         }
-      }
-
-      @media (max-width: 768px) {
         
-        .info-cards-container {
-          grid-template-columns: 1fr;
+        @media (max-width: 1024px) {
+          .coral-grid:not(.sidebar-collapsed),
+          .coral-grid.sidebar-collapsed {
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+          }
         }
-        .main-content {
-          margin-left: 0;
+
+        @media (max-width: 768px) {
+          
+          .info-cards-container {
+            grid-template-columns: 1fr;
+          }
+          .main-content {
+            margin-left: 0;
+          }
+          .coral-grid {
+            grid-template-columns: 1fr;
+          }
         }
-        .coral-grid {
-          grid-template-columns: 1fr;
-        }
-      }
+          
         .admin-dashboard {
           display: flex;
           flex-direction: column;
@@ -3446,6 +3469,8 @@ function AdminDashboard() {
           font-weight: 600;
           margin-bottom: 1.5rem;
         }
+
+        /* Modern Top Navigation */
         .top-nav {
           position: sticky;
           top: 0;
@@ -3454,29 +3479,84 @@ function AdminDashboard() {
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
           border-bottom: 1px solid #e2e8f0;
         }
+
         .nav-container {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 0 2rem;
+          padding: 0 1rem;
           height: 70px;
           max-width: 100%;
+          min-width: 0;
         }
+
+        .nav-brand {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          min-width: 0;
+          flex-shrink: 0;
+        }
+
+        .menu-toggle {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 40px;
+          height: 40px;
+          min-width: 40px;
+          border-radius: 8px;
+          background: transparent;
+          border: none;
+          color: #334155;
+          cursor: pointer;
+          transition: all 0.2s;
+          flex-shrink: 0;
+        }
+
+        .menu-toggle:hover {
+          background: #f1f5f9;
+        }
+
+        .logo-container {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          min-width: 0;
+          overflow: hidden;
+        }
+
+        .portal-tag {
+          font-size: 0.75rem;
+          background: #e0f2fe;
+          color: #0369a1;
+          padding: 0.25rem 0.5rem;
+          border-radius: 12px;
+          font-weight: 500;
+          white-space: nowrap;
+          flex-shrink: 0;
+        } 
+        
         .user-actions {
           display: flex;
           align-items: center;
-          gap: 1.5rem;
+          gap: 1rem;
+          min-width: 0;
+          flex-shrink: 1;
         }
 
         .user-profile {
           display: flex;
           align-items: center;
-          gap: 0.75rem;
+          gap: 0.5rem;
+          min-width: 0;
+          overflow: hidden;
         }
 
         .user-avatar {
           width: 36px;
           height: 36px;
+          min-width: 36px;
           border-radius: 50%;
           background: linear-gradient(135deg, #06b6d4 0%, #0ea5e9 100%);
           color: white;
@@ -3486,13 +3566,16 @@ function AdminDashboard() {
           font-weight: 500;
           position: relative;
           overflow: hidden;
+          flex-shrink: 0;
         }
-          .user-avatar img {
+
+        .user-avatar img {
           width: 100%;
           height: 100%;
           object-fit: cover;
         }
-          .avatar-text {
+
+        .avatar-text {
           position: absolute;
           top: 0;
           left: 0;
@@ -3507,31 +3590,41 @@ function AdminDashboard() {
         .user-info {
           display: flex;
           flex-direction: column;
+          min-width: 0;
+          overflow: hidden;
         }
 
         .user-name {
           font-size: 0.875rem;
           font-weight: 500;
           color: #0f172a;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
         .user-role {
           font-size: 0.75rem;
           color: #64748b;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
         .logout-button {
           display: flex;
           align-items: center;
-          justify-content: center;
-          width: 50px;
-          height: 40px;
+          gap: 0.5rem;
+          padding: 0.5rem 1rem;
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
           border-radius: 8px;
-          background: transparent;
-          border: none;
           color: #64748b;
+          font-weight: 500;
           cursor: pointer;
           transition: all 0.2s;
+          white-space: nowrap;
+          flex-shrink: 0;
         }
 
         .logout-button:hover {
@@ -3539,34 +3632,8 @@ function AdminDashboard() {
           color: #475569;
         }
 
-        .nav-brand {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-        }
-        .menu-toggle {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 40px;
-          height: 40px;
-          border-radius: 8px;
-          background: transparent;
-          border: none;
-          color: #334155;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .menu-toggle:hover {
-          background: #f1f5f9;
-        }
-
-        .logo-container {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-        }
+        /*----------------------------------------------------------*/
+       
 
         .logo-icon {
           font-size: 1.75rem;
@@ -3577,39 +3644,6 @@ function AdminDashboard() {
           font-weight: 600;
           color: #0f172a;
           margin: 0;
-        }
-
-        .portal-tag {
-          font-size: 0.75rem;
-          background: #e0f2fe;
-          color: #0369a1;
-          padding: 0.25rem 0.5rem;
-          border-radius: 12px;
-          font-weight: 500;
-        }
-
-        .user-actions {
-          display: flex;
-          align-items: center;
-          gap: 1.5rem;
-        }
-
-        .user-profile {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-        }
-
-        .user-avatar {
-          width: 36px;
-          height: 36px;
-          border-radius: 50%;
-          background: linear-gradient(135deg, #06b6d4 0%, #0ea5e9 100%);
-          color: white;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: 500;
         }
 
         .user-details {
@@ -3628,30 +3662,14 @@ function AdminDashboard() {
           color: #0f172a;
         }
 
-        .logout-button {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.5rem 1rem;
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
-          border-radius: 8px;
-          color: #64748b;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .logout-button:hover {
-          background: #f1f5f9;
-          color: #475569;
-        }
+        /*----------------------------------------------------------*/
+        /* Modern Sidebar */
         .dashboard-container {
           display: flex;
           flex: 1;
-          overflow: hidden;
-          position: relative;
+          height: calc(100vh - 70px); /* Fixed height based on viewport minus navbar */
         }
+
         .stats-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -3717,12 +3735,15 @@ function AdminDashboard() {
           background: white;
           border-right: 1px solid #e2e8f0;
           transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          height: calc(100vh - 70px);
-          position: fixed;
-          top: 70px;
+          height: calc(100vh - 70px); /* Full viewport height minus navbar */
+          position: fixed; /* Fixed position */
+          top: 70px; /* Start below navbar */
+          left: 0;
+          z-index: 30;
           display: flex;
           flex-direction: column;
-          overflow-y: auto;
+          overflow-y: auto; /* Allow sidebar to scroll if content overflows */
+          flex-shrink: 0;
         }
 
         .sidebar-header {
@@ -3829,14 +3850,25 @@ function AdminDashboard() {
           transition: opacity 0.2s;
           white-space: nowrap;
         }
+
+        /* Main Content */
         .main-content {
           flex: 1;
           padding: 2rem;
           background: #f8fafc;
-          overflow-y: auto;
-          margin-left: ${sidebarOpen ? "280px" : "80px"};
+          overflow-y: auto; /* Enable vertical scrolling for content only */
+          height: calc(100vh - 70px); /* Full viewport height minus navbar */
+          margin-left: ${sidebarOpen ? "280px" : "80px"}; /* Push content right of sidebar */
           transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          height: calc(100vh - 70px);
+        }
+
+        .content-section {
+          max-width: 1400px;
+          margin: 0 auto;
+          background: white;
+          border-radius: 12px;
+          padding: 2rem;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
         }
         
         .content-placeholder {
@@ -3849,21 +3881,47 @@ function AdminDashboard() {
           height: 300px;
         }
 
+        /* Responsive Navigation Adjustments */
+        @media (max-width: 1024px) {
+          .main-content {
+            margin-left: ${sidebarOpen ? "280px" : "80px"};
+          }
+        }
+
         @media (max-width: 768px) {
           .nav-container {
-            padding: 0 1rem;
+            padding: 0 0.75rem;
+            gap: 0.5rem;
+          }
+
+          .nav-brand {
+            gap: 0.5rem;
+          }
+
+          .logo-container {
+            gap: 0.25rem;
+          }
+
+          .user-actions {
+            gap: 0.75rem;
+          }
+
+          .user-profile {
+            gap: 0.5rem;
+          }
+
+          .user-info {
+            max-width: 120px;
           }
 
           .sidebar {
-            position: fixed;
-            z-index: 40;
-            height: calc(100vh - 70px);
-            box-shadow: ${
-              sidebarOpen ? "4px 0 15px rgba(0, 0, 0, 0.1)" : "none"
-            };
+            width: ${sidebarOpen ? "280px" : "0px"}; /* Hide completely on mobile */
+            transform: translateX(${sidebarOpen ? "0" : "-100%"});
+            box-shadow: ${sidebarOpen ? "4px 0 15px rgba(0, 0, 0, 0.1)" : "none"};
           }
 
           .main-content {
+            margin-left: 0; /* Full width on mobile */
             padding: 1rem;
           }
 
@@ -3872,20 +3930,49 @@ function AdminDashboard() {
           }
         }
 
+        @media (max-width: 640px) {
+          .nav-container {
+            padding: 0 0.5rem;
+          }
+
+          .portal-tag {
+            font-size: 0.6875rem;
+            padding: 0.2rem 0.4rem;
+          }
+
+          .user-info {
+            max-width: 100px;
+          }
+
+          .user-name {
+            font-size: 0.8125rem;
+          }
+
+          .user-role {
+            font-size: 0.6875rem;
+          }
+        }
+
         @media (max-width: 480px) {
+          .nav-container {
+            padding: 0 0.5rem;
+          }
+
           .portal-tag,
-          .welcome-text {
+          .user-role {
             display: none;
           }
 
           .user-avatar {
             width: 32px;
             height: 32px;
+            min-width: 32px;
             font-size: 0.875rem;
           }
 
-          .username {
+          .user-name {
             font-size: 0.8125rem;
+            max-width: 80px;
           }
 
           .logout-button span {
@@ -3897,9 +3984,47 @@ function AdminDashboard() {
             border-radius: 50%;
             width: 36px;
             height: 36px;
+            min-width: 36px;
             justify-content: center;
           }
+
+          .user-actions {
+            gap: 0.5rem;
+          }
+
+          .sidebar {
+            width: ${sidebarOpen ? "280px" : "0px"};
+            transform: translateX(${sidebarOpen ? "0" : "-100%"});
+          }
         }
+        
+        @media (max-width: 360px) {
+          .nav-container {
+            padding: 0 0.25rem;
+          }
+
+          .nav-brand {
+            gap: 0.25rem;
+          }
+
+          .menu-toggle {
+            width: 36px;
+            height: 36px;
+            min-width: 36px;
+          }
+
+          .user-info {
+            display: none;
+          }
+
+          .logout-button {
+            width: 32px;
+            height: 32px;
+            min-width: 32px;
+            padding: 0.25rem;
+          }
+        }
+
         .add-button {
           display: flex;
           align-items: center;
