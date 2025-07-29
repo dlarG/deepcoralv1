@@ -453,46 +453,55 @@ function AdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {currentUsers.map((user) => (
-                  <tr key={user.id} className="user-row">
+                {currentUsers.map((tableUser) => (
+                  <tr key={tableUser.id} className="user-row">
                     <td>
-                      <div className="user-avatar-small">
-                        {user.profile_image ? (
-                          <img
-                            src={`/profile_uploads/${user.profile_image}`}
-                            alt={`${user.firstname} ${user.lastname}`}
-                            onError={(e) => {
-                              e.target.style.display = "none";
-                              e.target.nextSibling.style.display = "flex";
+                      <td>
+                        <div className="user-avatar-small">
+                          {tableUser.profile_image ? (
+                            <img
+                              src={`/profile_uploads/${tableUser.profile_image}`}
+                              alt={`${tableUser.firstname} ${tableUser.lastname}`}
+                              onError={(e) => {
+                                console.log(
+                                  `Failed to load image: /profile_uploads/${tableUser.profile_image}`
+                                );
+                                e.target.style.display = "none";
+                                e.target.nextSibling.style.display = "flex";
+                              }}
+                            />
+                          ) : null}
+                          <div
+                            className="avatar-initials"
+                            style={{
+                              display: tableUser.profile_image
+                                ? "none"
+                                : "flex",
                             }}
-                          />
-                        ) : null}
-                        <div
-                          className="avatar-initials"
-                          style={{
-                            display: user.profile_image ? "none" : "flex",
-                          }}
-                        >
-                          {user.firstname?.charAt(0)}
-                          {user.lastname?.charAt(0)}
+                          >
+                            {tableUser.firstname?.charAt(0)?.toUpperCase()}
+                            {tableUser.lastname?.charAt(0)?.toUpperCase()}
+                          </div>
                         </div>
-                      </div>
+                      </td>
                     </td>
                     <td>
                       <div className="user-name-cell">
                         <span className="user-full-name">
-                          {user.firstname} {user.lastname}
+                          {tableUser.firstname} {tableUser.lastname}
                         </span>
-                        <span className="user-id">ID: {user.id}</span>
+                        <span className="user-id">ID: {tableUser.id}</span>
                       </div>
                     </td>
                     <td>
-                      <span className="username-cell">@{user.username}</span>
+                      <span className="username-cell">
+                        @{tableUser.username}
+                      </span>
                     </td>
                     <td>
-                      <span className={`role-badge-new ${user.roletype}`}>
-                        {user.roletype.charAt(0).toUpperCase() +
-                          user.roletype.slice(1)}
+                      <span className={`role-badge-new ${tableUser.roletype}`}>
+                        {tableUser.roletype.charAt(0).toUpperCase() +
+                          tableUser.roletype.slice(1)}
                       </span>
                     </td>
                     <td>
@@ -502,14 +511,14 @@ function AdminDashboard() {
                       <div className="action-buttons-new">
                         <button
                           className="action-btn-new edit"
-                          onClick={() => openUserModal("edit", user)}
+                          onClick={() => openUserModal("edit", tableUser)}
                           title="Edit User"
                         >
                           <FiEdit2 size={14} />
                         </button>
                         <button
                           className="action-btn-new delete"
-                          onClick={() => handleDelete(user.id)}
+                          onClick={() => handleDelete(tableUser.id)}
                           title="Delete User"
                         >
                           <FiTrash2 size={14} />

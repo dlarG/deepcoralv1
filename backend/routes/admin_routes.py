@@ -21,7 +21,13 @@ def get_all_users():
     
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT id, username, firstname, lastname, roletype FROM users WHERE users.id != %s", (session.get('user_id'),))
+            # Add profile_image to the SELECT query
+            cur.execute("""
+                SELECT id, username, firstname, lastname, roletype, profile_image, created_at 
+                FROM users 
+                WHERE users.id != %s 
+                ORDER BY created_at DESC
+            """, (session.get('user_id'),))
             users = cur.fetchall()
             
             users_list = []
@@ -31,7 +37,9 @@ def get_all_users():
                     'username': user[1],
                     'firstname': user[2],
                     'lastname': user[3],
-                    'roletype': user[4]
+                    'roletype': user[4],
+                    'profile_image': user[5],  # Add this field
+                    'created_at': user[6]      # Add this field for sorting
                 })
             
             return jsonify({"users": users_list}), 200
@@ -67,12 +75,12 @@ def create_user():
             # Hash password
             hashed_password = generate_password_hash(data['password'])
             
-            # Insert new user
+            # Insert new user and return profile_image field
             cur.execute(
                 """INSERT INTO users 
                 (username, password, firstname, lastname, roletype) 
                 VALUES (%s, %s, %s, %s, %s) 
-                RETURNING id, username, firstname, lastname, roletype""",
+                RETURNING id, username, firstname, lastname, roletype, profile_image, created_at""",
                 (data['username'], hashed_password, data['firstname'], 
                  data['lastname'], data['roletype'])
             )
@@ -87,7 +95,9 @@ def create_user():
                     'username': new_user[1],
                     'firstname': new_user[2],
                     'lastname': new_user[3],
-                    'roletype': new_user[4]
+                    'roletype': new_user[4],
+                    'profile_image': new_user[5],  # Add this field
+                    'created_at': new_user[6]      # Add this field
                 }
             }), 201
     except psycopg2.Error as e:
@@ -154,12 +164,12 @@ def update_user(user_id):
             # Add user_id to values
             update_values.append(user_id)
             
-            # Execute update
+            # Execute update and return profile_image field
             update_query = f"""
                 UPDATE users 
                 SET {', '.join(update_fields)} 
                 WHERE id = %s
-                RETURNING id, username, firstname, lastname, roletype
+                RETURNING id, username, firstname, lastname, roletype, profile_image, created_at
             """
             
             cur.execute(update_query, update_values)
@@ -173,7 +183,9 @@ def update_user(user_id):
                     'username': updated_user[1],
                     'firstname': updated_user[2],
                     'lastname': updated_user[3],
-                    'roletype': updated_user[4]
+                    'roletype': updated_user[4],
+                    'profile_image': updated_user[5],  # Add this field
+                    'created_at': updated_user[6]      # Add this field
                 }
             }), 200
     except psycopg2.Error as e:
