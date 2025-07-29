@@ -3,135 +3,171 @@ from db import get_db_connection
 from werkzeug.security import generate_password_hash, check_password_hash
 from utils.auth_utils import login_required
 import psycopg2
+import os
+from werkzeug.utils import secure_filename
+from flask import current_app
 
 profile_bp = Blueprint('profile', __name__)
 
 @profile_bp.route('/profile', methods=['GET'])
 @login_required
 def get_profile():
-    user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({"error": "Unauthorized"}), 401
+    if 'user_id' not in session:
+        return jsonify({'authenticated': False}), 200
     
     conn = get_db_connection()
-    if conn is None:
-        return jsonify({"error": "Database connection failed"}), 500
-    
     try:
         with conn.cursor() as cur:
-            cur.execute("""
-                SELECT id, username, firstname, lastname, roletype 
-                FROM users 
-                WHERE id = %s
-            """, (user_id,))
+            cur.execute("SELECT id, username, firstname, lastname, roletype, bio, profile_image, created_at FROM users WHERE id = %s", (session['user_id'],))
             user = cur.fetchone()
             
             if not user:
-                return jsonify({"error": "User not found"}), 404
-            
+                return jsonify({'authenticated': False}), 200
+                
             return jsonify({
-                "user": {
+                'authenticated': True,
+                'user': {
                     'id': user[0],
                     'username': user[1],
                     'firstname': user[2],
                     'lastname': user[3],
-                    'roletype': user[4]
+                    'roletype': user[4],
+                    'bio': user[5],
+                    'profile_image': user[6],
+                    'created_at': user[7]
                 }
             }), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({'error': str(e)}), 500
     finally:
         if conn:
             conn.close()
 
+
 @profile_bp.route('/profile', methods=['PUT'])
 @login_required
 def update_profile():
-    user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({"error": "Unauthorized"}), 401
-    
-    data = request.get_json()
-    if not data:
-        return jsonify({"error": "No data provided"}), 400
-    
-    conn = get_db_connection()
-    if conn is None:
-        return jsonify({"error": "Database connection failed"}), 500
-    
     try:
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'User not authenticated'}), 401
+
+        conn = get_db_connection()
+        if conn is None:
+            return jsonify({'error': 'Database connection failed'}), 500
+
+        # Get current user data
         with conn.cursor() as cur:
-            # Verify current password if changing password
-            if 'new_password' in data:
-                if 'current_password' not in data:
-                    return jsonify({"error": "Current password is required"}), 400
+            cur.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+            current_user = cur.fetchone()
+            
+            if not current_user:
+                return jsonify({'error': 'User not found'}), 404
+
+        # Handle file upload
+        profile_image_filename = current_user[6] if len(current_user) > 6 else None  # Keep existing image
+        if 'profile_image' in request.files:
+            file = request.files['profile_image']
+            if file and file.filename != '':
+                # Validate file type
+                allowed_extensions = {'png', 'jpg', 'jpeg', 'gif'}
+                file_extension = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
                 
-                cur.execute("SELECT password FROM users WHERE id = %s", (user_id,))
-                result = cur.fetchone()
-                if not result or not check_password_hash(result[0], data['current_password']):
-                    return jsonify({"error": "Current password is incorrect"}), 401
+                if file_extension not in allowed_extensions:
+                    return jsonify({'error': 'Invalid file type. Only PNG, JPG, JPEG, and GIF are allowed'}), 400
+                
+                # Delete old image if exists
+                if current_user[6]:  # profile_image column
+                    old_image_path = os.path.join(
+                        current_app.root_path, 
+                        '..', 'frontend', 'public', 'profile_uploads',
+                        current_user[6]
+                    )
+                    if os.path.exists(old_image_path):
+                        os.remove(old_image_path)
+
+                # Save new image
+                filename = secure_filename(file.filename)
+                import uuid
+                unique_filename = f"{uuid.uuid4().hex}_{filename}"
+                
+                upload_path = os.path.join(
+                    current_app.root_path, 
+                    '..', 'frontend', 'public', 'profile_uploads'
+                )
+                os.makedirs(upload_path, exist_ok=True)
+                file.save(os.path.join(upload_path, unique_filename))
+                profile_image_filename = unique_filename
+
+        # Get form data
+        username = request.form.get('username')
+        firstname = request.form.get('firstname')
+        lastname = request.form.get('lastname')
+        bio = request.form.get('bio', '')
+        current_password = request.form.get('current_password')
+        new_password = request.form.get('new_password')
+
+        # Validate required fields
+        if not all([username, firstname, lastname]):
+            return jsonify({'error': 'Username, first name, and last name are required'}), 400
+
+        # Validate password change if requested
+        password_hash = current_user[2]  # Keep existing password
+        if new_password:
+            if not current_password:
+                return jsonify({'error': 'Current password is required to change password'}), 400
             
-            # Build update query
-            update_fields = []
-            update_values = []
+            if not check_password_hash(current_user[2], current_password):
+                return jsonify({'error': 'Current password is incorrect'}), 400
             
-            if 'username' in data:
-                # Check if username is available
-                cur.execute("SELECT id FROM users WHERE username = %s AND id != %s", 
-                          (data['username'], user_id))
-                if cur.fetchone():
-                    return jsonify({"error": "Username already taken"}), 400
-                update_fields.append("username = %s")
-                update_values.append(data['username'])
+            if len(new_password) < 8:
+                return jsonify({'error': 'New password must be at least 8 characters'}), 400
             
-            if 'new_password' in data:
-                update_fields.append("password = %s")
-                update_values.append(generate_password_hash(data['new_password']))
-            
-            if 'firstname' in data:
-                update_fields.append("firstname = %s")
-                update_values.append(data['firstname'])
-            
-            if 'lastname' in data:
-                update_fields.append("lastname = %s")
-                update_values.append(data['lastname'])
-            
-            if not update_fields:
-                return jsonify({"error": "No valid fields to update"}), 400
-            
-            # Add user_id to values
-            update_values.append(user_id)
-            
-            # Execute update
-            update_query = f"""
+            password_hash = generate_password_hash(new_password)
+
+        # Check if username is taken by another user
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM users WHERE username = %s AND id != %s", (username, user_id))
+            if cur.fetchone():
+                return jsonify({'error': 'Username already taken'}), 400
+
+        # Update user profile
+        with conn.cursor() as cur:
+            cur.execute("""
                 UPDATE users 
-                SET {', '.join(update_fields)} 
+                SET username = %s, password = %s, firstname = %s, lastname = %s, 
+                    bio = %s, profile_image = %s, updated_at = CURRENT_TIMESTAMP
                 WHERE id = %s
-                RETURNING id, username, firstname, lastname, roletype
-            """
+                RETURNING id, username, firstname, lastname, roletype, bio, profile_image, created_at
+            """, (
+                username, password_hash, firstname, lastname, 
+                bio, profile_image_filename, user_id
+            ))
             
-            cur.execute(update_query, update_values)
             updated_user = cur.fetchone()
             conn.commit()
             
+            user_response = {
+                'id': updated_user[0],
+                'username': updated_user[1],
+                'firstname': updated_user[2],
+                'lastname': updated_user[3],
+                'roletype': updated_user[4],
+                'bio': updated_user[5],
+                'profile_image': updated_user[6],
+                'created_at': updated_user[7]
+            }
+            
             return jsonify({
-                "message": "Profile updated successfully",
-                "user": {
-                    'id': updated_user[0],
-                    'username': updated_user[1],
-                    'firstname': updated_user[2],
-                    'lastname': updated_user[3],
-                    'roletype': updated_user[4]
-                }
+                'message': 'Profile updated successfully',
+                'user': user_response
             }), 200
-    except psycopg2.Error as e:
-        conn.rollback()
-        return jsonify({"error": "Database error: " + str(e)}), 500
+
     except Exception as e:
-        conn.rollback()
-        return jsonify({"error": str(e)}), 500
+        current_app.logger.error(f"Profile update error: {str(e)}")
+        return jsonify({'error': 'Profile update failed'}), 500
     finally:
-        if conn:
+        if 'conn' in locals():
             conn.close()
 
 @profile_bp.route('/profile', methods=['DELETE'])

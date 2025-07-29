@@ -3,6 +3,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from db import get_db_connection
 import psycopg2
 from utils.auth_utils import admin_required, login_required
+import os
+from werkzeug.utils import secure_filename
+from flask import current_app
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -218,50 +221,222 @@ def delete_user(user_id):
         if conn:
             conn.close()
 
-@admin_bp.route('/admin/corals', methods=["POST"])
+@admin_bp.route('/admin/corals', methods=['POST'])
 @admin_required
 @login_required
 def add_coral():
-    data = request.get_json()
-    if not data:
-        return jsonify({'error': 'No data provided.'}), 400
-    
-    required_fields = ['coral_type', 'coral_subtype', 'classification', 'scientific_name', 'common_name', 'indentification']
-    if not all(field in data for field in required_fields):
-        return jsonify({'error': 'MIssing required fields.'}), 400
-    
-    conn = get_db_connection()
-    if conn is None:
-        return jsonify({'error': 'Database connection failed.'}), 500
     try:
-        cur = conn.cursor()
-        cur.execute("""INSERT INTO coral_information 
-                (coral_type, coral_subtype, classification, scientific_name, common_name, identificaiton) 
-                VALUES (%s, %s, %s, %s, %s, %s) 
-                RETURNING id, coral_type, coral_subtype, classification, scientific_name, common_name, identification""",
-                (data['coral_type'], data['coral_subtype'], data['classification'],
-                 data['scientific_name'], data['common_name'], data['identification'])
+        # Handle file upload
+        image_filename = None
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename != '':
+                filename = secure_filename(file.filename)
+                # Create unique filename
+                import uuid
+                unique_filename = f"{uuid.uuid4().hex}_{filename}"
+                
+                # Save to public/uploaded_coral_information
+                upload_path = os.path.join(
+                    current_app.root_path, 
+                    '..', 'frontend', 'public', 'uploaded_coral_information'
                 )
-        new_coral = cur.fetchone()
-        conn.commit()
+                os.makedirs(upload_path, exist_ok=True)
+                file.save(os.path.join(upload_path, unique_filename))
+                image_filename = unique_filename
 
-        return jsonify({
-            'message': 'Coral created successfully',
-            'coral': {
+        # Get form data
+        coral_data = {
+            'coral_type': request.form.get('coral_type'),
+            'coral_subtype': request.form.get('coral_subtype'),
+            'classification': request.form.get('classification'),
+            'scientific_name': request.form.get('scientific_name'),
+            'common_name': request.form.get('common_name'),
+            'identification': request.form.get('identification'),
+            'image': image_filename
+        }
+
+        # Validate required fields
+        required_fields = ['coral_type', 'coral_subtype', 'classification', 
+                          'scientific_name', 'common_name', 'identification']
+        if not all(coral_data.get(field) for field in required_fields):
+            return jsonify({'error': 'All fields except image are required'}), 400
+
+        conn = get_db_connection()
+        if conn is None:
+            return jsonify({'error': 'Database connection failed'}), 500
+
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO coral_information 
+                (coral_type, coral_subtype, classification, scientific_name, 
+                 common_name, identification, image) 
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                RETURNING *
+            """, (
+                coral_data['coral_type'],
+                coral_data['coral_subtype'], 
+                coral_data['classification'],
+                coral_data['scientific_name'],
+                coral_data['common_name'],
+                coral_data['identification'],
+                coral_data['image']
+            ))
+            
+            new_coral = cur.fetchone()
+            conn.commit()
+            
+            coral_response = {
                 'id': new_coral[0],
                 'coral_type': new_coral[1],
                 'coral_subtype': new_coral[2],
                 'classification': new_coral[3],
                 'scientific_name': new_coral[4],
                 'common_name': new_coral[5],
-                'indentification': new_coral[6]
+                'identification': new_coral[6],
+                'created_at': new_coral[7],
+                'updated_at': new_coral[8],
+                'image': new_coral[9]
             }
-        }), 201
-    except psycopg2.Error as e:
-        conn.rollback
-        return jsonify({'error': 'Database error'}), 500
+            
+            return jsonify({
+                'message': 'Coral added successfully',
+                'coral': coral_response
+            }), 201
+
     except Exception as e:
-        conn.rollback()
-        return jsonify({'error': 'Please contact the devs.'})
+        return jsonify({'error': str(e)}), 500
     finally:
-        conn.close()
+        if 'conn' in locals():
+            conn.close()
+
+@admin_bp.route('/admin/corals/<int:coral_id>', methods=['PUT'])
+@admin_required
+@login_required
+def update_coral(coral_id):
+    try:
+        conn = get_db_connection()
+        if conn is None:
+            return jsonify({'error': 'Database connection failed'}), 500
+
+        # Get current coral data
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM coral_information WHERE id = %s", (coral_id,))
+            current_coral = cur.fetchone()
+            
+            if not current_coral:
+                return jsonify({'error': 'Coral not found'}), 404
+
+        # Handle file upload
+        image_filename = current_coral[9]  # Keep existing image
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename != '':
+                # Delete old image if exists
+                if current_coral[9]:
+                    old_image_path = os.path.join(
+                        current_app.root_path, 
+                        '..', 'frontend', 'public', 'uploaded_coral_information',
+                        current_coral[9]
+                    )
+                    if os.path.exists(old_image_path):
+                        os.remove(old_image_path)
+
+                # Save new image
+                filename = secure_filename(file.filename)
+                import uuid
+                unique_filename = f"{uuid.uuid4().hex}_{filename}"
+                
+                upload_path = os.path.join(
+                    current_app.root_path, 
+                    '..', 'frontend', 'public', 'uploaded_coral_information'
+                )
+                os.makedirs(upload_path, exist_ok=True)
+                file.save(os.path.join(upload_path, unique_filename))
+                image_filename = unique_filename
+
+        # Update coral data
+        with conn.cursor() as cur:
+            cur.execute("""
+                UPDATE coral_information 
+                SET coral_type = %s, coral_subtype = %s, classification = %s,
+                    scientific_name = %s, common_name = %s, identification = %s,
+                    image = %s, updated_at = CURRENT_TIMESTAMP
+                WHERE id = %s
+                RETURNING *
+            """, (
+                request.form.get('coral_type'),
+                request.form.get('coral_subtype'),
+                request.form.get('classification'),
+                request.form.get('scientific_name'),
+                request.form.get('common_name'),
+                request.form.get('identification'),
+                image_filename,
+                coral_id
+            ))
+            
+            updated_coral = cur.fetchone()
+            conn.commit()
+            
+            coral_response = {
+                'id': updated_coral[0],
+                'coral_type': updated_coral[1],
+                'coral_subtype': updated_coral[2],
+                'classification': updated_coral[3],
+                'scientific_name': updated_coral[4],
+                'common_name': updated_coral[5],
+                'identification': updated_coral[6],
+                'created_at': updated_coral[7],
+                'updated_at': updated_coral[8],
+                'image': updated_coral[9]
+            }
+            
+            return jsonify({
+                'message': 'Coral updated successfully',
+                'coral': coral_response
+            }), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+@admin_bp.route('/admin/corals/<int:coral_id>', methods=['DELETE'])
+@admin_required
+@login_required
+def delete_coral(coral_id):
+    try:
+        conn = get_db_connection()
+        if conn is None:
+            return jsonify({'error': 'Database connection failed'}), 500
+
+        with conn.cursor() as cur:
+            # Get coral data to delete image file
+            cur.execute("SELECT image FROM coral_information WHERE id = %s", (coral_id,))
+            coral_data = cur.fetchone()
+            
+            if not coral_data:
+                return jsonify({'error': 'Coral not found'}), 404
+
+            # Delete image file if exists
+            if coral_data[0]:
+                image_path = os.path.join(
+                    current_app.root_path, 
+                    '..', 'frontend', 'public', 'uploaded_coral_information',
+                    coral_data[0]
+                )
+                if os.path.exists(image_path):
+                    os.remove(image_path)
+
+            # Delete coral record
+            cur.execute("DELETE FROM coral_information WHERE id = %s", (coral_id,))
+            conn.commit()
+            
+            return jsonify({'message': 'Coral deleted successfully'}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()

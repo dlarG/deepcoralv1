@@ -70,59 +70,6 @@ def register_user():
         if conn:
             conn.close()
 
-@auth_bp.route('/login', methods=['POST'])
-@rate_limit(5)
-def login_user():
-    data = request.get_json()
-    if not data:
-        return jsonify({'error': 'No data provided'}), 400
-        
-    username = data.get('username')
-    password = data.get('password')
-    
-    if not all([username, password]):
-        return jsonify({'error': 'Username and password are required'}), 400
-    
-    try:
-        conn = get_db_connection()
-        if conn is None:
-            return jsonify({"error": "Database connection failed"}), 500
-            
-        with conn.cursor() as cur:  
-            cur.execute("SELECT * FROM users WHERE username = %s", (username,))
-            user = cur.fetchone()
-            
-            if not user or not check_password_hash(user[2], password):
-                return jsonify({'error': 'Invalid credentials'}), 401
-                
-            # Generate new CSRF token on login
-            session['csrf_token'] = secrets.token_hex(32)
-            session['user_id'] = user[0]
-            session['roletype'] = user[7]
-            
-            user_data = {
-                'username': user[1],
-                'firstname': user[3],
-                'lastname': user[5],
-                'roletype': user[7],
-                'bio': user[11],
-                'redirect_to': f'/{user[7].lower()}-dashboard'  # Add this line
-            }
-            
-            return jsonify({
-                'message': 'Login successful',
-                'user': user_data,
-                'csrf_token': session['csrf_token'],
-                'redirect_to': user_data['redirect_to']
-            }), 200
-            
-    except Exception as e:
-        auth_bp.logger.error(f"Login error: {str(e)}")
-        return jsonify({'error': 'Login failed'}), 500
-        
-    finally:
-        if 'conn' in locals():
-            conn.close()
 
 @auth_bp.route('/logout', methods=['POST'])
 @login_required
@@ -178,7 +125,11 @@ def check_auth():
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT id, username, firstname, lastname, roletype FROM users WHERE id = %s", (session['user_id'],))
+            # Include all necessary columns including profile_image
+            cur.execute("""
+                SELECT id, username, firstname, lastname, roletype, bio, profile_image, created_at 
+                FROM users WHERE id = %s
+            """, (session['user_id'],))
             user = cur.fetchone()
             
             if not user:
@@ -191,11 +142,76 @@ def check_auth():
                     'username': user[1],
                     'firstname': user[2],
                     'lastname': user[3],
-                    'roletype': user[4]
+                    'roletype': user[4],
+                    'bio': user[5] if user[5] else "",  # Correct index for bio
+                    'profile_image': user[6],  # Correct index for profile_image
+                    'created_at': user[7]
                 }
             }), 200
     except Exception as e:
+        current_app.logger.error(f"Check auth error: {str(e)}")
         return jsonify({'error': str(e)}), 500
     finally:
         if conn:
+            conn.close()
+
+@auth_bp.route('/login', methods=['POST'])
+@rate_limit(5)
+def login_user():
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+        
+    username = data.get('username')
+    password = data.get('password')
+    
+    if not all([username, password]):
+        return jsonify({'error': 'Username and password are required'}), 400
+    
+    try:
+        conn = get_db_connection()
+        if conn is None:
+            return jsonify({"error": "Database connection failed"}), 500
+            
+        with conn.cursor() as cur:  
+            # Include all necessary columns including profile_image
+            cur.execute("""
+                SELECT id, username, password, firstname, lastname, roletype, bio, profile_image, created_at 
+                FROM users WHERE username = %s
+            """, (username,))
+            user = cur.fetchone()
+            
+            if not user or not check_password_hash(user[2], password):
+                return jsonify({'error': 'Invalid credentials'}), 401
+                
+            # Generate new CSRF token on login
+            session['csrf_token'] = secrets.token_hex(32)
+            session['user_id'] = user[0]
+            session['roletype'] = user[5]  # roletype is at index 5
+            
+            user_data = {
+                'id': user[0],
+                'username': user[1],
+                'firstname': user[3],
+                'lastname': user[4],
+                'roletype': user[5],
+                'bio': user[6] if user[6] else "",
+                'profile_image': user[7],  # profile_image is at index 7
+                'created_at': user[8],
+                'redirect_to': f'/{user[5].lower()}-dashboard'
+            }
+            
+            return jsonify({
+                'message': 'Login successful',
+                'user': user_data,
+                'csrf_token': session['csrf_token'],
+                'redirect_to': user_data['redirect_to']
+            }), 200
+            
+    except Exception as e:
+        current_app.logger.error(f"Login error: {str(e)}")
+        return jsonify({'error': 'Login failed'}), 500
+        
+    finally:
+        if 'conn' in locals():
             conn.close()

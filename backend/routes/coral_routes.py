@@ -1,6 +1,9 @@
 from flask import Blueprint, jsonify, session
 from utils.auth_utils import login_required
 from db import get_db_connection
+import os
+from werkzeug.utils import secure_filename
+from flask import current_app
 
 coral_bp = Blueprint('coral', __name__)
 
@@ -27,13 +30,15 @@ def get_coral_info():
                 'identification': coral[6],
                 'created_at': coral[7],
                 'updated_at': coral[8],
+                'image': coral[9] if len(coral) > 9 else None  # Include image
             })
         return jsonify({
             'status': 'success',
-            'data': coral_list  # Instead of coral_info
+            'data': coral_list
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
         cur.close()
         conn.close()
+

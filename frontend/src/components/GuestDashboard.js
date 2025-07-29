@@ -21,6 +21,30 @@ function GuestDashboard() {
   const [activeTab, setActiveTab] = useState("Coral LifeForms");
   const [coralData, setCoralData] = useState([]);
 
+  const [selectedClassification, setSelectedClassification] = useState("all");
+  const [selectedCoral, setSelectedCoral] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredCorals = coralData.filter((coral) => {
+    const matchesClassification =
+      selectedClassification === "all" ||
+      coral.classification.toLowerCase() ===
+        selectedClassification.toLowerCase();
+    const matchesSearch =
+      coral.common_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      coral.scientific_name.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesClassification && matchesSearch;
+  });
+
+  const groupedCorals = filteredCorals.reduce((acc, coral) => {
+    const classification = coral.classification;
+    if (!acc[classification]) {
+      acc[classification] = [];
+    }
+    acc[classification].push(coral);
+    return acc;
+  }, {});
+
   useEffect(() => {
     document.title = "Guest Dashboard | DeepCoral";
     if (activeTab === "Coral LifeForms") {
@@ -49,6 +73,171 @@ function GuestDashboard() {
       navigate("/");
     }
   };
+
+  const renderCoralDetails = (coral) => (
+    <div className="coral-detail-modal">
+      <div className="coral-detail-content">
+        <div className="coral-detail-header">
+          <button
+            className="close-detail-btn"
+            onClick={() => setSelectedCoral(null)}
+          >
+            <FiX size={24} />
+          </button>
+        </div>
+        <div className="coral-detail-body">
+          <div className="coral-detail-image">
+            <img
+              src={
+                coral.image
+                  ? `/uploaded_coral_information/${coral.image}`
+                  : "/default-coral.jpg"
+              }
+              alt={coral.common_name}
+              onError={(e) => {
+                e.target.src = "/default-coral.jpg";
+              }}
+            />
+            <span className="coral-detail-badge">{coral.coral_type}</span>
+          </div>
+          <div className="coral-detail-info">
+            <h2 className="coral-detail-name">{coral.common_name}</h2>
+            <p className="coral-detail-scientific">{coral.scientific_name}</p>
+
+            <div className="coral-detail-grid">
+              <div className="detail-item">
+                <span className="detail-label">Classification:</span>
+                <span className="detail-value">{coral.classification}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Subtype:</span>
+                <span className="detail-value">{coral.coral_subtype}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Type:</span>
+                <span className="detail-value">{coral.coral_type}</span>
+              </div>
+            </div>
+
+            <div className="coral-description">
+              <h3>Identification & Information</h3>
+              <p>{coral.identification}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderCoralLifeForms = () => (
+    <div className="content-section">
+      <div className="coral-header">
+        <h2 className="content-title">Coral LifeForms Database</h2>
+
+        {/* Filter Controls */}
+        <div className="coral-controls">
+          <div className="search-container">
+            <input
+              type="text"
+              placeholder="Search corals..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="search-input"
+            />
+          </div>
+
+          <div className="filter-buttons">
+            <button
+              className={`filter-btn ${
+                selectedClassification === "all" ? "active" : ""
+              }`}
+              onClick={() => setSelectedClassification("all")}
+            >
+              All Corals
+            </button>
+            <button
+              className={`filter-btn ${
+                selectedClassification === "hard coral" ? "active" : ""
+              }`}
+              onClick={() => setSelectedClassification("hard coral")}
+            >
+              Hard Corals
+            </button>
+            <button
+              className={`filter-btn ${
+                selectedClassification === "soft coral" ? "active" : ""
+              }`}
+              onClick={() => setSelectedClassification("soft coral")}
+            >
+              Soft Corals
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {coralData.length === 0 ? (
+        <div className="loading-placeholder">
+          <p>Loading coral data...</p>
+        </div>
+      ) : (
+        <div className="coral-sections">
+          {Object.entries(groupedCorals).map(([classification, corals]) => (
+            <div key={classification} className="classification-section">
+              <h3 className="classification-title">
+                {classification.charAt(0).toUpperCase() +
+                  classification.slice(1)}
+                <span className="coral-count">({corals.length})</span>
+              </h3>
+
+              <div className="coral-list">
+                {corals.map((coral) => (
+                  <div
+                    key={coral.id}
+                    className="coral-item"
+                    onClick={() => setSelectedCoral(coral)}
+                  >
+                    <div className="coral-item-image">
+                      <img
+                        src={
+                          coral.image
+                            ? `/uploaded_coral_information/${coral.image}`
+                            : "/default-coral.jpg"
+                        }
+                        alt={coral.common_name}
+                        onError={(e) => {
+                          e.target.src = "/default-coral.jpg";
+                        }}
+                      />
+                    </div>
+                    <div className="coral-item-info">
+                      <h4 className="coral-item-name">{coral.common_name}</h4>
+                      <p className="coral-item-scientific">
+                        {coral.scientific_name}
+                      </p>
+                      <span className="coral-item-subtype">
+                        {coral.coral_subtype}
+                      </span>
+                    </div>
+                    <div className="coral-item-arrow">
+                      <span>→</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          {filteredCorals.length === 0 && (
+            <div className="no-results">
+              <p>No corals found matching your criteria.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {selectedCoral && renderCoralDetails(selectedCoral)}
+    </div>
+  );
 
   const renderContent = () => {
     switch (activeTab) {
@@ -97,65 +286,7 @@ function GuestDashboard() {
 
       case "Coral LifeForms":
       default:
-        return (
-          <div className="content-section">
-            <h2 className="content-title">Coral LifeForms</h2>
-            <div className="coral-content-container">
-              {coralData.length === 0 ? (
-                <div className="loading-placeholder">
-                  <p>Loading coral data...</p>
-                </div>
-              ) : (
-                <div
-                  className={`coral-grid ${
-                    sidebarOpen ? "" : "sidebar-collapsed"
-                  }`}
-                >
-                  {coralData.map((coral) => (
-                    <div key={coral.id} className="coral-card">
-                      <div className="coral-image-container">
-                        <img
-                          src="/acropora_branching/acropora-staghorn-coral.jpg"
-                          alt={coral.common_name}
-                          className="coral-image"
-                        />
-                        <span className="coral-badge">{coral.coral_type}</span>
-                      </div>
-
-                      <div className="coral-content">
-                        <h3 className="coral-name">{coral.common_name}</h3>
-                        <div className="coral-scientific-name">
-                          {coral.scientific_name}
-                        </div>
-
-                        <div className="info-cards-container">
-                          <div className="info-card">
-                            <div className="info-label">Subtype</div>
-                            <div className="info-value">
-                              {coral.coral_subtype}
-                            </div>
-                          </div>
-                          <div className="info-card">
-                            <div className="info-label">Classification</div>
-                            <div className="info-value">
-                              {coral.classification}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="description-section">
-                          <p className="description-text">
-                            {coral.identification}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        );
+        return renderCoralLifeForms();
     }
   };
 
@@ -271,6 +402,334 @@ function GuestDashboard() {
 
       {/* CSS Styles */}
       <style jsx>{`
+        .coral-header {
+          margin-bottom: 2rem;
+        }
+        .coral-controls {
+          display: flex;
+          gap: 1rem;
+          margin-top: 1.5rem;
+          flex-wrap: wrap;
+        }
+        .search-container {
+          flex: 1;
+          min-width: 300px;
+        }
+
+        .search-input {
+          width: 100%;
+          padding: 0.75rem 1rem;
+          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+          font-size: 0.875rem;
+          background: white;
+        }
+
+        .search-input:focus {
+          outline: none;
+          border-color: #0284c7;
+          box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1);
+        }
+
+        .filter-buttons {
+          display: flex;
+          gap: 0.5rem;
+        }
+
+        .filter-btn {
+          padding: 0.75rem 1.5rem;
+          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+          background: white;
+          color: #64748b;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .filter-btn:hover {
+          background: #f8fafc;
+          border-color: #cbd5e1;
+        }
+        .filter-btn.active {
+          background: #0284c7;
+          border-color: #0284c7;
+          color: white;
+        }
+        .coral-sections {
+          margin-top: 2rem;
+        }
+
+        .classification-section {
+          margin-bottom: 3rem;
+        }
+
+        .classification-title {
+          font-size: 1.25rem;
+          font-weight: 600;
+          color: #0f172a;
+          margin-bottom: 1rem;
+          padding-bottom: 0.5rem;
+          border-bottom: 2px solid #e2e8f0;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .coral-count {
+          font-size: 0.875rem;
+          color: #64748b;
+          font-weight: 400;
+        }
+
+        .coral-list {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+          gap: 1rem;
+        }
+
+        .coral-item {
+          display: flex;
+          align-items: center;
+          padding: 1rem;
+          background: white;
+          border: 1px solid #e2e8f0;
+          border-radius: 12px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .coral-item:hover {
+          border-color: #0284c7;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+          transform: translateY(-1px);
+        }
+
+        .coral-item-image {
+          width: 60px;
+          height: 60px;
+          border-radius: 8px;
+          overflow: hidden;
+          margin-right: 1rem;
+          flex-shrink: 0;
+        }
+
+        .coral-item-image img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .coral-item-info {
+          flex: 1;
+        }
+
+        .coral-item-name {
+          font-size: 1rem;
+          font-weight: 600;
+          color: #0f172a;
+          margin: 0 0 0.25rem 0;
+        }
+
+        .coral-item-scientific {
+          font-size: 0.875rem;
+          color: #64748b;
+          font-style: italic;
+          margin: 0 0 0.5rem 0;
+        }
+
+        .coral-item-subtype {
+          font-size: 0.75rem;
+          background: #f1f5f9;
+          color: #475569;
+          padding: 0.25rem 0.5rem;
+          border-radius: 4px;
+          font-weight: 500;
+        }
+
+        .coral-item-arrow {
+          color: #94a3b8;
+          font-size: 1.25rem;
+          margin-left: 1rem;
+        }
+        .coral-detail-modal {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.75);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          padding: 2rem;
+        }
+
+        .coral-detail-content {
+          background: white;
+          border-radius: 16px;
+          max-width: 800px;
+          width: 100%;
+          max-height: 90vh;
+          overflow-y: auto;
+          position: relative;
+        }
+
+        .coral-detail-header {
+          position: sticky;
+          top: 0;
+          background: white;
+          padding: 1rem 1.5rem;
+          border-bottom: 1px solid #e2e8f0;
+          display: flex;
+          justify-content: flex-end;
+          border-radius: 16px 16px 0 0;
+        }
+
+        .close-detail-btn {
+          background: #f8fafc;
+          border: none;
+          border-radius: 8px;
+          width: 40px;
+          height: 40px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          color: #64748b;
+          transition: all 0.2s;
+        }
+
+        .close-detail-btn:hover {
+          background: #f1f5f9;
+          color: #475569;
+        }
+
+        .coral-detail-body {
+          padding: 0 1.5rem 1.5rem;
+        }
+
+        .coral-detail-image {
+          position: relative;
+          height: 300px;
+          border-radius: 12px;
+          overflow: hidden;
+          margin-bottom: 1.5rem;
+        }
+
+        .coral-detail-image img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .coral-detail-badge {
+          position: absolute;
+          top: 1rem;
+          right: 1rem;
+          background: rgba(0, 96, 100, 0.9);
+          color: white;
+          padding: 0.5rem 1rem;
+          border-radius: 20px;
+          font-size: 0.875rem;
+          font-weight: 500;
+        }
+
+        .coral-detail-name {
+          font-size: 2rem;
+          font-weight: 700;
+          color: #0f172a;
+          margin: 0 0 0.5rem 0;
+        }
+
+        .coral-detail-scientific {
+          font-size: 1.25rem;
+          color: #0284c7;
+          font-style: italic;
+          margin: 0 0 2rem 0;
+        }
+
+        .coral-detail-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 1rem;
+          margin-bottom: 2rem;
+        }
+
+        .detail-item {
+          background: #f8fafc;
+          padding: 1rem;
+          border-radius: 8px;
+          border-left: 4px solid #0284c7;
+        }
+
+        .detail-label {
+          display: block;
+          font-size: 0.75rem;
+          color: #64748b;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          font-weight: 600;
+          margin-bottom: 0.5rem;
+        }
+
+        .detail-value {
+          font-size: 1rem;
+          color: #0f172a;
+          font-weight: 500;
+        }
+
+        .coral-description {
+          background: #f8fafc;
+          padding: 1.5rem;
+          border-radius: 12px;
+        }
+
+        .coral-description h3 {
+          font-size: 1.25rem;
+          color: #0f172a;
+          margin: 0 0 1rem 0;
+        }
+
+        .coral-description p {
+          line-height: 1.6;
+          color: #374151;
+          margin: 0;
+        }
+
+        .no-results {
+          text-align: center;
+          padding: 3rem;
+          color: #64748b;
+        }
+
+        @media (max-width: 768px) {
+          .coral-controls {
+            flex-direction: column;
+          }
+
+          .filter-buttons {
+            justify-content: center;
+          }
+
+          .coral-list {
+            grid-template-columns: 1fr;
+          }
+
+          .coral-detail-modal {
+            padding: 1rem;
+          }
+
+          .coral-detail-name {
+            font-size: 1.5rem;
+          }
+
+          .coral-detail-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+
         .guest-dashboard {
           display: flex;
           flex-direction: column;
