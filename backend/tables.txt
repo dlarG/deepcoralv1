@@ -1,0 +1,25 @@
+
+#First is to create the enum for role_type
+
+CREATE TYPE user_role AS ENUM ('admin', 'guest', 'biologist'); 
+
+
+# Then next is the users table creation
+
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    firstname VARCHAR(100) NOT NULL,
+    middlename VARCHAR(100),
+    lastname VARCHAR(100) NOT NULL,
+    profile_picture TEXT,
+    roletype user_role NOT NULL DEFAULT 'guest',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP,
+	deleted_at TIMESTAMP
+);
+
+
+
+

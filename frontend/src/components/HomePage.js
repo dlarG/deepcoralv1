@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   FiLogIn,
@@ -7,8 +7,12 @@ import {
   FiDatabase,
   FiBarChart2,
 } from "react-icons/fi";
+import Logo from "./Logo"; // Import the Logo component
 
 function HomePage() {
+  useEffect(() => {
+    document.title = "DeepCoral - Home";
+  }, []);
   return (
     <div className="homepage-container">
       {/* Background with overlay */}
@@ -22,8 +26,7 @@ function HomePage() {
         {/* Navigation */}
         <nav className="navbar">
           <div className="navbar-brand">
-            <span className="logo-icon">🌊</span>
-            <h1>DeepCoral</h1>
+            <Logo variant="navbar" type="image" theme="dark" />
           </div>
           <div className="nav-links">
             <Link to="/login" className="nav-link">
@@ -90,10 +93,29 @@ function HomePage() {
 
         {/* Footer */}
         <footer className="footer">
-          <p>
-            Made with <span className="heart">💙</span> by the DeepCoral Team |
-            Capstone Project 2025
-          </p>
+          <div className="footer-content">
+            <div className="footer-column">
+              <Logo variant="footer" type="image" theme="dark" />
+            </div>
+            <div className="footer-column">
+              <h4>Project</h4>
+              <p>BrAInstormers Team</p>
+              <p>Capstone Project 2025</p>
+            </div>
+            <div className="footer-column">
+              <h4>Institution</h4>
+              <p>Southern Leyte State University</p>
+              <p>GIS Tech Center</p>
+            </div>
+            <div className="footer-column">
+              <p className="copyright">
+                © 2025 BrAInstormers. All rights reserved.
+              </p>
+              <p className="made-with">
+                Made with <span className="heart">💙</span> for our oceans
+              </p>
+            </div>
+          </div>
         </footer>
       </div>
     </div>
@@ -312,11 +334,51 @@ const styles = `
 
   /* Footer */
   .footer {
-    padding: 20px;
-    background: rgba(0, 77, 64, 0.9);
+    padding: 40px 20px 20px;
+    background: rgba(0, 77, 64, 0.95);
     color: white;
-    text-align: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .footer-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 30px;
+    align-items: start;
+  }
+
+  .footer-column {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .footer-column h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #26c6da;
+    border-bottom: 1px solid rgba(38, 198, 218, 0.3);
+    padding-bottom: 4px;
+  }
+
+  .footer-column p {
     font-size: 0.9rem;
+    opacity: 0.8;
+    margin: 0;
+    line-height: 1.4;
+  }
+
+  .copyright {
+    font-weight: 500;
+    margin-bottom: 8px !important;
+  }
+
+  .made-with {
+    font-size: 0.85rem !important;
+    opacity: 0.7 !important;
   }
 
   .heart {
@@ -357,6 +419,11 @@ const styles = `
       width: 100%;
       max-width: 350px;
     }
+
+    .footer-content {
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
   }
 
   @media (max-width: 480px) {
@@ -374,6 +441,16 @@ const styles = `
 
     .hero-title {
       font-size: 1.8rem;
+    }
+
+    .footer-content {
+      grid-template-columns: 1fr;
+      gap: 25px;
+      text-align: center;
+    }
+
+    .footer-column {
+      align-items: center;
     }
   }
 `;

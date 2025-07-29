@@ -1,32 +1,23 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
-import { FiUser, FiLock, FiLogIn } from "react-icons/fi";
+import { useAuth } from "../context/AuthContext";
+import { FiUser, FiLock, FiLogIn, FiArrowLeft } from "react-icons/fi";
+import Logo from "./Logo"; // Import the Logo component
 
 // Configure axios to send credentials with requests
 axios.defaults.withCredentials = true;
 
 function Login() {
-  const [form, setForm] = useState({
-    username: "",
-    password: "",
-  });
+  const [form, setForm] = useState({ username: "", password: "" });
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [csrfToken, setCsrfToken] = useState("");
-  const navigate = useNavigate();
+  const navigate = useNavigate(); // Add this import from react-router-dom
+  const { login, csrfToken } = useAuth();
 
   // Fetch CSRF token when component mounts
   useEffect(() => {
-    const fetchCsrfToken = async () => {
-      try {
-        const response = await axios.get("http://localhost:5000/csrf-token");
-        setCsrfToken(response.data.csrf_token);
-      } catch (err) {
-        console.error("Error fetching CSRF token:", err);
-      }
-    };
-    fetchCsrfToken();
+    document.title = "Sign in to DeepCoral";
   }, []);
 
   const handleChange = (e) => {
@@ -39,36 +30,20 @@ function Login() {
     setMessage("");
 
     try {
-      const res = await axios.post("http://localhost:5000/login", form, {
-        headers: {
-          "X-CSRF-Token": csrfToken,
-        },
-      });
+      const result = await login(form);
 
-      setMessage(res.data.message);
-      setForm((prev) => ({ ...prev, password: "" })); // Clear password
-
-      // Store user data in localStorage/sessionStorage
-      localStorage.setItem("user", JSON.stringify(res.data.user));
-
-      // Redirect based on role
-      switch (res.data.user.roletype.toLowerCase()) {
-        case "admin":
-          navigate("/admin-dashboard");
-          break;
-        case "biologist":
-          navigate("/biologist-dashboard");
-          break;
-        case "guest":
-          navigate("/guest-dashboard");
-          break;
-        default:
-          navigate("/"); // Fallback route
+      if (result.success) {
+        setMessage("Login successful");
+        navigate(
+          result.redirectTo ||
+            `/${result.user?.roletype?.toLowerCase()}-dashboard` ||
+            "/"
+        );
+      } else {
+        setMessage(result.error || "Login failed");
       }
     } catch (err) {
-      const errorMsg =
-        err.response?.data?.error || err.message || "Login failed";
-      setMessage(errorMsg);
+      setMessage("Login failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -79,6 +54,12 @@ function Login() {
       <div className="login-card">
         {/* Coral reef header */}
         <div className="login-header">
+          <Link to="/" className="back-button">
+            <FiArrowLeft />
+          </Link>
+          <div className="auth-logo-container">
+            <Logo variant="auth" type="image" theme="dark" />
+          </div>
           <h1>Coral Reef Portal</h1>
           <p>Sign in to access your dashboard</p>
         </div>
@@ -161,6 +142,17 @@ function Login() {
 
 // CSS Styles
 const styles = `
+  .back-button {
+    color: white;
+    font-size: 24px;
+    text-decoration: none;
+    transition: color 0.3s;
+  }
+    
+  .back-button:hover {
+    color: #26c6da;
+  }
+
   .login-container {
     min-height: 100vh;
     display: flex;
@@ -181,7 +173,7 @@ const styles = `
   }
 
   .login-header {
-    background: linear-gradient(135deg, #26c6da 0%, #00acc1 100%);
+    background: linear-gradient(135deg, rgb(5, 113, 180) 0%,rgb(0, 94, 153) 100%);
     padding: 30px;
     text-align: center;
     color: white;
@@ -239,7 +231,7 @@ const styles = `
     left: 12px;
     top: 50%;
     transform: translateY(-50%);
-    color: #26c6da;
+    color:rgb(61, 175, 245);
     font-size: 18px;
   }
 
@@ -254,14 +246,14 @@ const styles = `
 
   .input-group input:focus {
     outline: none;
-    border-color: #26c6da;
+    border-color: rgb(0, 94, 153);
     box-shadow: 0 0 0 2px rgba(38, 198, 218, 0.2);
   }
 
   .login-button {
     width: 100%;
     padding: 14px;
-    background: linear-gradient(135deg, #26c6da 0%, #00acc1 100%);
+    background: linear-gradient(135deg, #26c6da 0%, rgb(0, 94, 153) 100%);
     color: white;
     border: none;
     border-radius: 8px;
@@ -276,12 +268,12 @@ const styles = `
   }
 
   .login-button:hover:not(.loading) {
-    background: linear-gradient(135deg, #00acc1 0%, #00838f 100%);
+    background: linear-gradient(135deg, rgb(0, 94, 153) 0%, #00838f 100%);
     box-shadow: 0 4px 12px rgba(0, 172, 193, 0.2);
   }
 
   .login-button.loading {
-    background: #80deea;
+    background: rgb(0, 94, 153);
     cursor: not-allowed;
   }
 
