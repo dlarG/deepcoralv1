@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { FiUser, FiLock, FiLogIn } from "react-icons/fi";
+import { FiUser, FiLock, FiLogIn, FiArrowLeft } from "react-icons/fi";
 import Logo from "./Logo"; // Import the Logo component
 
 // Configure axios to send credentials with requests
@@ -54,6 +54,9 @@ function Login() {
       <div className="login-card">
         {/* Coral reef header */}
         <div className="login-header">
+          <Link to="/" className="back-button">
+            <FiArrowLeft />
+          </Link>
           <div className="auth-logo-container">
             <Logo variant="auth" type="image" theme="dark" />
           </div>
@@ -139,6 +142,17 @@ function Login() {
 
 // CSS Styles
 const styles = `
+  .back-button {
+    color: white;
+    font-size: 24px;
+    text-decoration: none;
+    transition: color 0.3s;
+  }
+    
+  .back-button:hover {
+    color: #26c6da;
+  }
+
   .login-container {
     min-height: 100vh;
     display: flex;

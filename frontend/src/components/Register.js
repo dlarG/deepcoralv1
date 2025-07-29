@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
-import { FiUser, FiLock, FiEdit2, FiArrowRight } from "react-icons/fi";
+import { useNavigate, Link } from "react-router-dom";
+import {
+  FiUser,
+  FiLock,
+  FiEdit2,
+  FiArrowRight,
+  FiArrowLeft,
+} from "react-icons/fi";
 import ReCAPTCHA from "react-google-recaptcha";
 import Logo from "./Logo"; // Import the Logo component
 
@@ -107,6 +113,9 @@ function Register() {
       <div className="register-card">
         {/* Coral reef header */}
         <div className="register-header">
+          <Link to="/" className="back-button">
+            <FiArrowLeft />
+          </Link>
           <div className="auth-logo-container">
             <Logo variant="auth" type="image" theme="dark" />
           </div>
