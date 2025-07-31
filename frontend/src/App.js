@@ -2,8 +2,8 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import HomePage from "./components/HomePage";
-import Register from "./components/Register";
-import Login from "./components/Login";
+import Register from "./components/auth/Register";
+import Login from "./components/auth/Login";
 import GuestDashboard from "./components/GuestDashboard";
 import BiologistDashboard from "./components/BiologistDashboard";
 import AdminDashboard from "./components/AdminDashboard";
