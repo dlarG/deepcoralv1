@@ -22,8 +22,6 @@ function UserManagement() {
     showUserModal,
     userModalMode,
     currentUsers,
-    indexOfFirstUser,
-    indexOfLastUser,
     totalPages,
     currentPage,
     userSearchTerm,
@@ -264,11 +262,7 @@ function UserManagement() {
           {/* Pagination */}
           {totalPages > 1 && (
             <div className="pagination-container">
-              <div className="pagination-info">
-                Showing {indexOfFirstUser + 1} to{" "}
-                {Math.min(indexOfLastUser, filteredUsers.length)} of{" "}
-                {filteredUsers.length} users
-              </div>
+              <div className="pagination-info">Showing users information</div>
               <div className="pagination-controls">
                 <button
                   className="pagination-btn"

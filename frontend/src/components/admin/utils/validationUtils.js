@@ -23,35 +23,66 @@ export const validatePassword = (password) => {
   };
 };
 
-export const validateUserForm = (data, isEditMode = false) => {
+export const validateUserForm = (formData, mode = "create") => {
   const errors = {};
 
-  if (!data.username || data.username.trim().length < 3) {
+  // Validate first name
+  if (!formData.firstname?.trim()) {
+    errors.firstname = "First name is required";
+  }
+
+  // Validate last name
+  if (!formData.lastname?.trim()) {
+    errors.lastname = "Last name is required";
+  }
+
+  // Validate username
+  if (!formData.username?.trim()) {
+    errors.username = "Username is required";
+  } else if (formData.username.length < 3) {
     errors.username = "Username must be at least 3 characters";
-  } else if (!/^[a-zA-Z0-9_-]+$/.test(data.username)) {
-    errors.username =
-      "Username can only contain letters, numbers, hyphens, and underscores";
   }
 
-  if (!data.firstname || data.firstname.trim().length < 2) {
-    errors.firstname = "First name must be at least 2 characters";
-  }
-  if (!data.lastname || data.lastname.trim().length < 2) {
-    errors.lastname = "Last name must be at least 2 characters";
-  }
+  // Validate password - only required for create mode or when password is provided in edit mode
+  const shouldValidatePassword =
+    mode === "create" || (mode === "edit" && formData.password?.trim());
 
-  if (!isEditMode || (isEditMode && data.password)) {
-    const passwordValidation = validatePassword(data.password);
-    if (!passwordValidation.isValid) {
-      errors.password = passwordValidation.errors;
+  if (shouldValidatePassword) {
+    const passwordErrors = [];
+    const password = formData.password;
+
+    if (!password || password.length < 8) {
+      passwordErrors.push("Password must be at least 8 characters");
     }
+    if (!/[A-Z]/.test(password)) {
+      passwordErrors.push(
+        "Password must contain at least one uppercase letter"
+      );
+    }
+    if (!/[a-z]/.test(password)) {
+      passwordErrors.push(
+        "Password must contain at least one lowercase letter"
+      );
+    }
+    if (!/\d/.test(password)) {
+      passwordErrors.push("Password must contain at least one number");
+    }
+    if (!/[!@#$%^&*]/.test(password)) {
+      passwordErrors.push(
+        "Password must contain at least one special character"
+      );
+    }
+
+    if (passwordErrors.length > 0) {
+      errors.password = passwordErrors;
+    }
+  } else if (mode === "create" && !formData.password?.trim()) {
+    errors.password = "Password is required";
   }
 
-  if (
-    !data.roletype ||
-    !["admin", "biologist", "guest"].includes(data.roletype)
-  ) {
-    errors.roletype = "Please select a valid role";
+  // Validate role
+  if (!formData.roletype) {
+    errors.roletype = "Role is required";
   }
 
   return errors;

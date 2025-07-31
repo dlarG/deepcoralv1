@@ -27,7 +27,6 @@ export default function useUserManagement() {
   const [userSearchTerm, setUserSearchTerm] = useState("");
   const [userFilterRole, setUserFilterRole] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const [userPerPage, setUserPerPage] = useState(10);
   const [userSortBy, setUserSortBy] = useState("created_desc");
 
   // Fetch users
@@ -140,8 +139,8 @@ export default function useUserManagement() {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Validate form
-    const errors = validateUserForm(formData);
+    // Validate form - pass the current mode
+    const errors = validateUserForm(formData, userModalMode);
     if (Object.keys(errors).length > 0) {
       setUserFormErrors(errors);
       setIsSubmitting(false);
@@ -167,9 +166,15 @@ export default function useUserManagement() {
         setUsers([...users, response.data.user]);
         alert("User created successfully!");
       } else {
+        // For edit mode, only send password if it's provided
+        const updateData = { ...formData };
+        if (!updateData.password?.trim()) {
+          delete updateData.password; // Remove empty password from request
+        }
+
         response = await axios.put(
           `http://localhost:5000/admin/users/${selectedUser.id}`,
-          formData,
+          updateData,
           {
             withCredentials: true,
             headers: {
