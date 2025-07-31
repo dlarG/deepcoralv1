@@ -4,6 +4,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
 import { validateUserForm } from "../utils/validationUtils";
+import { encryptId, decryptId } from "../../../utils/encryption";
 
 export default function useUserManagement() {
   const navigate = useNavigate();
@@ -238,8 +239,16 @@ export default function useUserManagement() {
       }
     }
   };
+  const handleUserProfileClick = (userId) => {
+    const encryptedId = encryptId(userId);
+    // Navigate to user profile page with encrypted ID
+    navigate(`/admin/users/${encryptedId}`, {
+      state: { activeTab: "Manage Users" },
+    });
+  };
 
   return {
+    handleUserProfileClick,
     users,
     loading,
     error,

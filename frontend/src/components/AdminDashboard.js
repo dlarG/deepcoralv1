@@ -1,6 +1,6 @@
 // src/components/AdminDashboard.js
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import Sidebar from "./admin/components/Sidebar";
 import TopNavigation from "./admin/components/TopNavigation";
@@ -12,9 +12,19 @@ import { getAdminStyles } from "./admin/styles/adminStyles";
 
 function AdminDashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, loading: authLoading, logout, checkAuthStatus } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState("Dashboard");
+
+  // Handle navigation state to set active tab
+  useEffect(() => {
+    if (location.state?.activeTab) {
+      setActiveTab(location.state.activeTab);
+      // Clear the state to prevent issues with browser back/forward
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   // Inject dynamic styles
   useEffect(() => {
@@ -24,7 +34,9 @@ function AdminDashboard() {
 
     return () => {
       // Clean up the style element when component unmounts
-      document.head.removeChild(styleElement);
+      if (document.head.contains(styleElement)) {
+        document.head.removeChild(styleElement);
+      }
     };
   }, [sidebarOpen]); // Re-run when sidebarOpen changes
 
@@ -69,7 +81,7 @@ function AdminDashboard() {
       case "Profile Management":
         return <ProfileManagement user={user} />;
       case "Manage Users":
-        return <UserManagement />;
+        return <UserManagement editUserId={location.state?.editUserId} />;
       case "Manage Coral LifeForms":
         return <CoralManagement />;
       case "Dashboard":

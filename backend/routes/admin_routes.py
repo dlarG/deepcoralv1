@@ -452,3 +452,40 @@ def delete_coral(coral_id):
     finally:
         if 'conn' in locals():
             conn.close()
+
+@admin_bp.route('/admin/users/<int:user_id>', methods=['GET'])
+@login_required
+@admin_required
+def get_user_profile(user_id):
+    print(f"Fetching user with ID: {user_id}")
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, username, firstname, lastname, roletype, 
+                       bio, profile_image, created_at, updated_at 
+                FROM users WHERE id = %s
+            """, (user_id,))
+            user = cur.fetchone()
+            
+            if not user:
+                return jsonify({'error': 'User not found'}), 404
+                
+            return jsonify({
+                'user': {
+                    'id': user[0],
+                    'username': user[1],
+                    'firstname': user[2],
+                    'lastname': user[3],
+                    'roletype': user[4],
+                    'bio': user[5],
+                    'profile_image': user[6],
+                    'created_at': user[7],
+                    'updated_at': user[8]
+                }
+            }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()

@@ -10,6 +10,7 @@ import {
   FiSave,
   FiUsers,
 } from "react-icons/fi";
+// import { encryptedId } from "../../../utils/encryption";
 
 function UserManagement() {
   const {
@@ -37,6 +38,7 @@ function UserManagement() {
     setUserFilterRole,
     setUserSortBy,
     setCurrentPage,
+    handleUserProfileClick,
   } = useUserManagement();
 
   return (
@@ -207,7 +209,11 @@ function UserManagement() {
                     </td>
                     <td>
                       <div className="user-name-cell">
-                        <span className="user-full-name">
+                        <span
+                          className="user-full-name clickable-name"
+                          onClick={() => handleUserProfileClick(tableUser.id)}
+                          title="View user profile"
+                        >
                           {tableUser.firstname} {tableUser.lastname}
                         </span>
                         <span className="user-id">ID: {tableUser.id}</span>

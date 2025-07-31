@@ -264,8 +264,8 @@ export const getAdminStyles = (sidebarOpen) => `
         }
 
         .role-badge-new.biologist {
-          background: #d1fae5;
-          color: #065f46;
+          background:rgb(97, 162, 236);
+          color:rgb(2, 0, 64);
         }
 
         .role-badge-new.guest {
@@ -2403,4 +2403,15 @@ export const getAdminStyles = (sidebarOpen) => `
           background-color: #f5f5f5;
           color: #666;
         }
+        .clickable-name {
+          cursor: pointer;
+          color: #2563eb;
+          transition: color 0.2s ease;
+        }
+
+        .clickable-name:hover {
+          color: #1d4ed8;
+          text-decoration: underline;
+        }
+          
 `;

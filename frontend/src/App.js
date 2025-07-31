@@ -9,6 +9,7 @@ import BiologistDashboard from "./components/BiologistDashboard";
 import AdminDashboard from "./components/AdminDashboard";
 import { AuthProvider } from "./context/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import UserProfile from "./components/admin/components/UserProfile";
 
 function App() {
   return (
@@ -26,6 +27,24 @@ function App() {
               </ProtectedRoute>
             }
           />
+          {/* Update this route to match the navigation pattern */}
+          <Route
+            path="/admin/users/:userId"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <UserProfile />
+              </ProtectedRoute>
+            }
+          />
+          {/* Keep the old route as fallback if needed */}
+          <Route
+            path="/user-profile/:userId"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <UserProfile />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/biologist-dashboard"
             element={
@@ -37,7 +56,7 @@ function App() {
           <Route
             path="/guest-dashboard"
             element={
-              <ProtectedRoute requiredRole="guest">
+              <ProtectedRoute requiredRole="admin">
                 <GuestDashboard />
               </ProtectedRoute>
             }
