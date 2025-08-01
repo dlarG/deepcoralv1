@@ -68,7 +68,7 @@ def register_user():
     finally:
         if 'cur' in locals():
             cur.close()
-        if conn:
+        # if conn:
             conn.close()
 
 
@@ -157,7 +157,7 @@ def check_auth():
             conn.close()
 
 @auth_bp.route('/login', methods=['POST'])
-@rate_limit(5)
+@rate_limit(6)
 def login_user():
     data = request.get_json()
     if not data:

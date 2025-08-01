@@ -297,6 +297,7 @@ export default function useProfileManagement(user) {
     deleteError,
     openDeleteModal,
     closeDeleteModal,
+    setDeletePassword,
     setShowProfileModal,
     setProfileFormData,
     handleProfileInputChange,
