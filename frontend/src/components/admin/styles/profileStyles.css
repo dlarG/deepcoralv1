@@ -292,6 +292,19 @@
   animation: spin 1s linear infinite;
   margin-bottom: 1rem;
 }
+.profile-footer {
+  margin-top: 2rem;
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.875rem;
+  bottom: -150px;
+  width: 100%;
+  padding: 1rem;
+  background: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+  position: relative;
+  box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.05);
+}
 
 @keyframes spin {
   to {

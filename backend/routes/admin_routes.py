@@ -457,7 +457,6 @@ def delete_coral(coral_id):
 @login_required
 @admin_required
 def get_user_profile(user_id):
-    print(f"Fetching user with ID: {user_id}")
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:

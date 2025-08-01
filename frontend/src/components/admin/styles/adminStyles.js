@@ -2413,5 +2413,120 @@ export const getAdminStyles = (sidebarOpen) => `
           color: #1d4ed8;
           text-decoration: underline;
         }
+
+        .delete-modal {
+  background: white;
+  border-radius: 20px;
+  max-width: 500px;
+  width: 100%;
+  overflow: hidden;
+  box-shadow: 0 25px 60px rgba(239, 68, 68, 0.3);
+  animation: slideUp 0.3s ease;
+}
+
+.delete-modal-header {
+  padding: 2rem;
+  text-align: center;
+  background: linear-gradient(135deg, #fef2f2 0%, #fff1f2 100%);
+  border-bottom: 1px solid #fecaca;
+}
+
+.delete-warning-icon {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
+  color: white;
+  box-shadow: 0 8px 25px rgba(239, 68, 68, 0.3);
+}
+
+.delete-modal-header h3 {
+  margin: 0 0 0.5rem 0;
+  color: #dc2626;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.delete-modal-header p {
+  margin: 0;
+  color: #7f1d1d;
+  font-weight: 500;
+}
+
+.delete-modal-body {
+  padding: 2rem;
+}
+
+.delete-warning {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.delete-warning h4 {
+  margin: 0 0 1rem 0;
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.delete-warning ul {
+  margin: 0;
+  padding-left: 1.5rem;
+  color: #7f1d1d;
+}
+
+.delete-warning li {
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.delete-confirm-btn {
+  margin-bottom: 1.5rem;
+  margin-left: 5px;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.875rem 1.5rem;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.delete-confirm-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
+}
+
+.delete-confirm-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+  .cancels-btn {
+    padding: 0.875rem 1.5rem;
+    background: #f1f5f9;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    color: #334155;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-left: 20px;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 600;
+  }
           
 `;

@@ -19,6 +19,7 @@ def register_user():
     firstname = data.get('firstname')
     lastname = data.get('lastname')
     roletype = 'guest'  # Default role type
+    status = 'pending'
     captcha_response = data.get('captcha')
     
     # Validate reCAPTCHA
@@ -56,8 +57,8 @@ def register_user():
             return jsonify({"error": "Username already exists"}), 400
         
         cur.execute(
-            "INSERT INTO users (username, password, firstname, lastname, roletype) VALUES (%s, %s, %s, %s, %s)",
-            (username, password_hashed, firstname, lastname, roletype)
+            "INSERT INTO users (username, password, firstname, lastname, roletype, status) VALUES (%s, %s, %s, %s, %s, %s)",
+            (username, password_hashed, firstname, lastname, roletype, status)
         )
         conn.commit()
         return jsonify({"message": "User registered successfully"}), 201

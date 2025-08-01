@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../context/AuthContext";
 import { FiUser, FiLock, FiLogIn, FiArrowLeft } from "react-icons/fi";
-import Logo from "../Logo";
+import Logo from "./Logo";
 
 // Configure axios to send credentials with requests
 axios.defaults.withCredentials = true;

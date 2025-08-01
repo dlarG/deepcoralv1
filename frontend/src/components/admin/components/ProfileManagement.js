@@ -19,6 +19,11 @@ import dayjs from "dayjs";
 function ProfileManagement({ user }) {
   const {
     showProfileModal,
+    showDeleteModal,
+    deletePassword,
+    setDeletePassword,
+    deleteLoading,
+    deleteError,
     profileFormData,
     profileImagePreview,
     profileLoading,
@@ -27,6 +32,8 @@ function ProfileManagement({ user }) {
     handleProfileImageChange,
     openProfileModal,
     closeProfileModal,
+    openDeleteModal,
+    closeDeleteModal,
     handleProfileSubmit,
     handleDeleteProfile,
     setProfileTab,
@@ -147,7 +154,7 @@ function ProfileManagement({ user }) {
               </button>
               <button
                 className="action-btn danger"
-                onClick={handleDeleteProfile}
+                onClick={openDeleteModal} // Changed from handleDeleteProfile
               >
                 <FiTrash2 size={16} />
                 Delete Account
@@ -156,6 +163,68 @@ function ProfileManagement({ user }) {
           </div>
         </div>
       </div>
+
+      {showDeleteModal && (
+        <div className="modal-overlay">
+          <div className="delete-modal">
+            <div className="delete-modal-header">
+              <div className="delete-warning-icon">
+                <FiTrash2 size={32} />
+              </div>
+              <h3>Delete Account</h3>
+              <p>
+                This action cannot be undone. Please confirm your password to
+                proceed.
+              </p>
+            </div>
+
+            <div className="delete-modal-body">
+              <div className="form-group">
+                <label>Confirm Your Password</label>
+                <input
+                  type="password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  placeholder="Enter your password"
+                  className={deleteError ? "error" : ""}
+                  autoFocus
+                />
+                {deleteError && (
+                  <span className="error-text">{deleteError}</span>
+                )}
+              </div>
+
+              <div className="delete-warning">
+                <h4>⚠️ Warning</h4>
+                <ul>
+                  <li>Your account will be permanently deleted</li>
+                  <li>All your data will be lost</li>
+                  <li>This action cannot be reversed</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="delete-modal-actions">
+              <button
+                type="button"
+                onClick={closeDeleteModal}
+                className="cancels-btn"
+                disabled={deleteLoading}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteProfile}
+                className="delete-confirm-btn"
+                disabled={deleteLoading || !deletePassword.trim()}
+              >
+                {deleteLoading ? "Deleting..." : "Delete Account"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showProfileModal && (
         <div className="modal-overlay">

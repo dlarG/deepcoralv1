@@ -2,8 +2,8 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import HomePage from "./components/HomePage";
-import Register from "./components/auth/Register";
-import Login from "./components/auth/Login";
+import Register from "./components/Register";
+import Login from "./components/Login";
 import GuestDashboard from "./components/GuestDashboard";
 import BiologistDashboard from "./components/BiologistDashboard";
 import AdminDashboard from "./components/AdminDashboard";
@@ -27,7 +27,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-          {/* Update this route to match the navigation pattern */}
           <Route
             path="/admin/users/:userId"
             element={
@@ -36,7 +35,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-          {/* Keep the old route as fallback if needed */}
           <Route
             path="/user-profile/:userId"
             element={
@@ -56,12 +54,11 @@ function App() {
           <Route
             path="/guest-dashboard"
             element={
-              <ProtectedRoute requiredRole="admin">
+              <ProtectedRoute requiredRole="guest">
                 <GuestDashboard />
               </ProtectedRoute>
             }
           />
-          {/* Add other protected routes similarly */}
         </Routes>
       </AuthProvider>
     </Router>

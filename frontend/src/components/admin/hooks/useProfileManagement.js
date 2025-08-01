@@ -6,6 +6,10 @@ import { useAuth } from "../../../context/AuthContext";
 export default function useProfileManagement(user) {
   const { updateUser, fetchCsrfToken, logout } = useAuth();
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const [profileFormData, setProfileFormData] = useState({
     username: "",
     firstname: "",
@@ -28,6 +32,24 @@ export default function useProfileManagement(user) {
   const handleProfileImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      // Validate file type
+      const allowedTypes = [
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/gif",
+      ];
+      if (!allowedTypes.includes(file.type)) {
+        alert("Only JPG, JPEG, PNG, and GIF files are allowed");
+        return;
+      }
+
+      // Validate file size (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        alert("File size must be less than 5MB");
+        return;
+      }
+
       setProfileFormData((prev) => ({ ...prev, profile_image: file }));
       const reader = new FileReader();
       reader.onload = (e) => setProfileImagePreview(e.target.result);
@@ -69,11 +91,42 @@ export default function useProfileManagement(user) {
     setProfileTab("info");
   };
 
+  const openDeleteModal = () => {
+    setShowDeleteModal(true);
+    setDeletePassword("");
+    setDeleteError("");
+  };
+
+  const closeDeleteModal = () => {
+    setShowDeleteModal(false);
+    setDeletePassword("");
+    setDeleteError("");
+  };
+
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
     setProfileLoading(true);
 
     try {
+      // Validate passwords if changing
+      if (profileFormData.new_password) {
+        if (!profileFormData.current_password) {
+          alert("Current password is required to change password");
+          setProfileLoading(false);
+          return;
+        }
+        if (profileFormData.new_password.length < 8) {
+          alert("New password must be at least 8 characters long");
+          setProfileLoading(false);
+          return;
+        }
+        if (profileFormData.new_password !== profileFormData.confirm_password) {
+          alert("New passwords do not match");
+          setProfileLoading(false);
+          return;
+        }
+      }
+
       const formData = new FormData();
       formData.append("username", profileFormData.username);
       formData.append("firstname", profileFormData.firstname);
@@ -107,31 +160,53 @@ export default function useProfileManagement(user) {
       alert("Profile updated successfully!");
     } catch (error) {
       console.error("Profile update failed:", error);
+      alert(error.response?.data?.error || "Failed to update profile");
     } finally {
       setProfileLoading(false);
     }
   };
 
   const handleDeleteProfile = async () => {
-    if (
-      !window.confirm("⚠️ Warning: This action cannot be undone. Are you sure?")
-    )
+    if (!deletePassword.trim()) {
+      setDeleteError("Password is required");
       return;
+    }
+
+    setDeleteLoading(true);
+    setDeleteError("");
 
     try {
       const csrfToken = await fetchCsrfToken();
-      await axios.delete(`http://localhost:5000/admin/users/${user.id}`, {
-        headers: { "X-CSRF-Token": csrfToken },
+      await axios.delete("http://localhost:5000/profile", {
+        data: { password: deletePassword },
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
+        },
         withCredentials: true,
       });
-      logout();
+
+      alert("Account deleted successfully");
+      await logout();
+      window.location.href = "/";
     } catch (error) {
       console.error("Profile deletion failed:", error);
+      setDeleteError(
+        error.response?.data?.error ||
+          "Failed to delete account. Please try again."
+      );
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
   return {
     showProfileModal,
+    showDeleteModal,
+    deletePassword,
+    setDeletePassword,
+    deleteLoading,
+    deleteError,
     profileFormData,
     profileImagePreview,
     profileLoading,
@@ -140,8 +215,14 @@ export default function useProfileManagement(user) {
     handleProfileImageChange,
     openProfileModal,
     closeProfileModal,
+    openDeleteModal,
+    closeDeleteModal,
     handleProfileSubmit,
     handleDeleteProfile,
     setProfileTab,
   };
 }
+
+// This hook manages the profile management logic for the admin dashboard
+// It handles form data, validation, submission, and profile image handling
+// It also includes functionality for deleting the user profile

@@ -9,7 +9,7 @@ import {
   FiArrowLeft,
 } from "react-icons/fi";
 import ReCAPTCHA from "react-google-recaptcha";
-import Logo from "../Logo"; // Import the Logo component
+import Logo from "./Logo";
 
 // Configure axios to send credentials with requests
 axios.defaults.withCredentials = true;

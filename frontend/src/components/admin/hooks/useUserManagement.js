@@ -4,7 +4,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
 import { validateUserForm } from "../utils/validationUtils";
-import { encryptId, decryptId } from "../../../utils/encryption";
+import { encryptId } from "../../../utils/encryption";
 
 export default function useUserManagement() {
   const navigate = useNavigate();
@@ -240,11 +240,20 @@ export default function useUserManagement() {
     }
   };
   const handleUserProfileClick = (userId) => {
-    const encryptedId = encryptId(userId);
-    // Navigate to user profile page with encrypted ID
-    navigate(`/admin/users/${encryptedId}`, {
-      state: { activeTab: "Manage Users" },
-    });
+    try {
+      const encryptedId = encryptId(userId);
+      if (encryptedId) {
+        // URL encode the encrypted ID to handle special characters
+        const encodedId = encodeURIComponent(encryptedId);
+        navigate(`/admin/users/${encodedId}`);
+      } else {
+        console.error("Failed to encrypt user ID");
+        alert("Error opening user profile");
+      }
+    } catch (error) {
+      console.error("Error navigating to user profile:", error);
+      alert("Error opening user profile");
+    }
   };
 
   return {

@@ -13,12 +13,10 @@ import {
   FiMoreVertical,
 } from "react-icons/fi";
 import "../styles/profileStyles.css";
-import { encryptId, decryptId } from "../../../utils/encryption";
+import { decryptId } from "../../../utils/encryption";
 
 function UserProfile() {
-  const { userId } = useParams();
-  // Decrypt userId if needed
-  const decryptedId = decryptId(userId);
+  const { userId: encodedUserId } = useParams();
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -28,32 +26,71 @@ function UserProfile() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
+        // Decode the URL-encoded encrypted ID, then decrypt it
+        const decodedEncryptedId = decodeURIComponent(encodedUserId);
+        const decryptedId = decryptId(decodedEncryptedId);
+
+        if (!decryptedId) {
+          setError("Invalid or corrupted user ID");
+          return;
+        }
+
         const response = await axios.get(
           `http://localhost:5000/admin/users/${decryptedId}`,
           { withCredentials: true }
         );
         setUser(response.data.user);
       } catch (err) {
+        console.error("Error fetching user:", err);
         setError(err.response?.data?.error || "Failed to fetch user details");
       } finally {
         setLoading(false);
       }
     };
 
-    if (decryptedId) fetchUser();
-  }, [decryptedId]);
+    if (encodedUserId) {
+      fetchUser();
+    } else {
+      setError("No user ID provided");
+      setLoading(false);
+    }
+  }, [encodedUserId]);
 
   const handleGoBack = () => {
     navigate("/admin-dashboard", {
       state: { activeTab: "Manage Users" },
     });
   };
-  const handleEditUser = () => navigate(`/admin/users/edit/${decryptedId}`);
+
+  const handleEditUser = () => {
+    // Decode and decrypt the ID for editing
+    const decodedEncryptedId = decodeURIComponent(encodedUserId);
+    const decryptedId = decryptId(decodedEncryptedId);
+
+    if (decryptedId) {
+      navigate("/admin-dashboard", {
+        state: {
+          activeTab: "Manage Users",
+          editUserId: decryptedId,
+        },
+      });
+    }
+  };
+
   const toggleDropdown = () => setDropdownOpen(!dropdownOpen);
 
   const handleDeleteUser = async () => {
     if (window.confirm("Are you sure you want to delete this user?")) {
       try {
+        // Decode and decrypt the ID for deletion
+        const decodedEncryptedId = decodeURIComponent(encodedUserId);
+        const decryptedId = decryptId(decodedEncryptedId);
+
+        if (!decryptedId) {
+          alert("Invalid user ID");
+          return;
+        }
+
         const csrfResponse = await axios.get(
           "http://localhost:5000/csrf-token",
           {
@@ -93,7 +130,7 @@ function UserProfile() {
       <div className="profile-error">
         <div className="error-message">{error}</div>
         <button onClick={handleGoBack} className="btn-back">
-          <FiArrowLeft /> Back to Dashboard
+          <FiArrowLeft /> Back to User Management
         </button>
       </div>
     );
@@ -103,7 +140,7 @@ function UserProfile() {
       <div className="profile-not-found">
         <h2>User not found</h2>
         <button onClick={handleGoBack} className="btn-back">
-          <FiArrowLeft /> Back to Users
+          <FiArrowLeft /> Back to User Management
         </button>
       </div>
     );
@@ -114,7 +151,7 @@ function UserProfile() {
       <header className="profile-header">
         <button onClick={handleGoBack} className="btn-back">
           <FiArrowLeft size={18} />
-          <span>Back to Users</span>
+          <span>Back to User Management</span>
         </button>
 
         <div className="header-actions">
@@ -209,10 +246,6 @@ function UserProfile() {
                 <span className="info-label">Last Name</span>
                 <span className="info-value">{user.lastname}</span>
               </div>
-              <div className="info-row">
-                <span className="info-label">User ID</span>
-                <span className="info-value">#{user.id}</span>
-              </div>
             </div>
           </div>
 
@@ -283,6 +316,13 @@ function UserProfile() {
           </div>
         </section>
       </main>
+
+      <footer className="profile-footer">
+        <div className="footer-text">
+          &copy; {new Date().getFullYear()} DeepCoral Portal. All rights
+          reserved.
+        </div>
+      </footer>
     </div>
   );
 }

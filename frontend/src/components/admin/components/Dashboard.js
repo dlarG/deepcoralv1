@@ -1,11 +1,7 @@
 import React from "react";
 import { FiUsers, FiImage, FiFileText, FiDatabase } from "react-icons/fi";
-import { encryptId } from "../../../utils/encryption";
 
 const Dashboard = () => {
-  const testId = "123";
-  const encrypted = encryptId(testId);
-  console.log("Encrypted ID:", encrypted);
   return (
     <div className="content-section">
       <h2 className="content-title">Admin Dashboard</h2>
@@ -47,10 +43,10 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
-      <div className="dashboard-welcome">
+      {/* <div className="dashboard-welcome">
         <h2>Welcome to the Admin Dashboard</h2>
         <p>Manage users, coral lifeforms, and more.</p>
-      </div>
+      </div> */}
     </div>
   );
 };
