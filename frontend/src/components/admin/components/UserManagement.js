@@ -10,6 +10,7 @@ import {
   FiSave,
   FiUsers,
 } from "react-icons/fi";
+import dayjs from "dayjs";
 // import { encryptedId } from "../../../utils/encryption";
 
 function UserManagement() {
@@ -95,7 +96,7 @@ function UserManagement() {
                 setUserFilterRole(e.target.value);
                 setCurrentPage(1);
               }}
-              className="filter-select"
+              className="filter-selects"
             >
               <option value="all">All Roles</option>
               <option value="admin">Admin</option>
@@ -109,7 +110,7 @@ function UserManagement() {
             <select
               value={userSortBy}
               onChange={(e) => setUserSortBy(e.target.value)}
-              className="filter-select"
+              className="filter-selects"
             >
               <option value="created_desc">Newest First</option>
               <option value="created_asc">Oldest First</option>
@@ -216,7 +217,12 @@ function UserManagement() {
                         >
                           {tableUser.firstname} {tableUser.lastname}
                         </span>
-                        <span className="user-id">ID: {tableUser.id}</span>
+                        <span className="user-id">
+                          member since{" "}
+                          {tableUser.created_at
+                            ? dayjs(tableUser.created_at).format("MMMM D, YYYY")
+                            : "N/A"}
+                        </span>
                       </div>
                     </td>
                     <td>
@@ -231,7 +237,9 @@ function UserManagement() {
                       </span>
                     </td>
                     <td>
-                      <span className="status-badge active">Active</span>
+                      <span className="status-badge active">
+                        {tableUser.status}
+                      </span>
                     </td>
                     <td>
                       <div className="action-buttons-new">

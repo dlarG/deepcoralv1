@@ -126,9 +126,9 @@ def check_auth():
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
-            # Include all necessary columns including profile_image
+            # Include ALL necessary columns including status
             cur.execute("""
-                SELECT id, username, firstname, lastname, roletype, bio, profile_image, created_at 
+                SELECT id, username, firstname, lastname, roletype, bio, profile_image, created_at, status 
                 FROM users WHERE id = %s
             """, (session['user_id'],))
             user = cur.fetchone()
@@ -144,9 +144,10 @@ def check_auth():
                     'firstname': user[2],
                     'lastname': user[3],
                     'roletype': user[4],
-                    'bio': user[5] if user[5] else "",  # Correct index for bio
-                    'profile_image': user[6],  # Correct index for profile_image
-                    'created_at': user[7]
+                    'bio': user[5] if user[5] else "",
+                    'profile_image': user[6],
+                    'created_at': user[7],
+                    'status': user[8]  # status is at index 8 now
                 }
             }), 200
     except Exception as e:
@@ -175,16 +176,20 @@ def login_user():
             return jsonify({"error": "Database connection failed"}), 500
             
         with conn.cursor() as cur:  
-            # Include all necessary columns including profile_image
+            # Include ALL necessary columns including status
             cur.execute("""
-                SELECT id, username, password, firstname, lastname, roletype, bio, profile_image, created_at 
+                SELECT id, username, password, firstname, lastname, roletype, bio, profile_image, created_at, status 
                 FROM users WHERE username = %s
             """, (username,))
             user = cur.fetchone()
             
             if not user or not check_password_hash(user[2], password):
                 return jsonify({'error': 'Invalid credentials'}), 401
-                
+            
+            # Now status is at index 9 (not 12)
+            if user[9] == 'pending':
+                return jsonify({'error': 'Account is pending approval. Wait for the admin to validate your joining request.'}), 403
+
             # Generate new CSRF token on login
             session['csrf_token'] = secrets.token_hex(32)
             session['user_id'] = user[0]
@@ -197,8 +202,9 @@ def login_user():
                 'lastname': user[4],
                 'roletype': user[5],
                 'bio': user[6] if user[6] else "",
-                'profile_image': user[7],  # profile_image is at index 7
+                'profile_image': user[7],
                 'created_at': user[8],
+                'status': user[9],  # Add status to user data
                 'redirect_to': f'/{user[5].lower()}-dashboard'
             }
             

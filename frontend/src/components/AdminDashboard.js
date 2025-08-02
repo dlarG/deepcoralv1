@@ -8,6 +8,10 @@ import Dashboard from "./admin/components/Dashboard";
 import UserManagement from "./admin/components/UserManagement";
 import CoralManagement from "./admin/components/CoralManagement";
 import ProfileManagement from "./admin/components/ProfileManagement";
+import AddImage from "./admin/components/AddImage";
+import GenerateReport from "./admin/components/GenerateReport";
+import CoralDistributionTrend from "./admin/components/Distribution";
+import Validate from "./admin/components/Validate";
 import { getAdminStyles } from "./admin/styles/adminStyles";
 
 function AdminDashboard() {
@@ -82,8 +86,16 @@ function AdminDashboard() {
         return <ProfileManagement user={user} />;
       case "Manage Users":
         return <UserManagement editUserId={location.state?.editUserId} />;
+      case "Add Images":
+        return <AddImage />;
+      case "Generate Report":
+        return <GenerateReport />;
       case "Manage Coral LifeForms":
         return <CoralManagement />;
+      case "Coral Distribution":
+        return <CoralDistributionTrend />;
+      case "Validate":
+        return <Validate />;
       case "Dashboard":
       default:
         return <Dashboard />;
