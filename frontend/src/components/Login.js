@@ -2,7 +2,14 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { FiUser, FiLock, FiLogIn, FiArrowLeft } from "react-icons/fi";
+import {
+  FiUser,
+  FiLock,
+  FiLogIn,
+  FiArrowLeft,
+  FiEye,
+  FiEyeOff,
+} from "react-icons/fi";
 import Logo from "./Logo";
 
 // Configure axios to send credentials with requests
@@ -12,7 +19,8 @@ function Login() {
   const [form, setForm] = useState({ username: "", password: "" });
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate(); // Add this import from react-router-dom
+  const [showPassword, setShowPassword] = useState(false);
+  const navigate = useNavigate();
   const { login, csrfToken } = useAuth();
 
   // Fetch CSRF token when component mounts
@@ -22,6 +30,10 @@ function Login() {
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
   };
 
   const handleSubmit = async (e) => {
@@ -97,7 +109,7 @@ function Login() {
                 <FiLock />
               </div>
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 name="password"
                 placeholder="Password"
                 value={form.password}
@@ -105,6 +117,14 @@ function Login() {
                 required
                 minLength="8"
               />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={togglePasswordVisibility}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <FiEyeOff /> : <FiEye />}
+              </button>
             </div>
 
             <button
@@ -231,8 +251,9 @@ const styles = `
     left: 12px;
     top: 50%;
     transform: translateY(-50%);
-    color:rgb(61, 175, 245);
+    color: rgb(61, 175, 245);
     font-size: 18px;
+    z-index: 2;
   }
 
   .input-group input {
@@ -242,12 +263,47 @@ const styles = `
     border-radius: 8px;
     font-size: 14px;
     transition: all 0.3s;
+    padding-right: 45px; /* Add space for password toggle */
   }
 
   .input-group input:focus {
     outline: none;
     border-color: rgb(0, 94, 153);
     box-shadow: 0 0 0 2px rgba(38, 198, 218, 0.2);
+  }
+
+  .password-toggle {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #9e9e9e;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .password-toggle:hover {
+    color: rgb(61, 175, 245);
+    background-color: rgba(61, 175, 245, 0.1);
+  }
+
+  .password-toggle:focus {
+    outline: none;
+    color: rgb(0, 94, 153);
+    background-color: rgba(0, 94, 153, 0.1);
+  }
+
+  .password-toggle:active {
+    transform: translateY(-50%) scale(0.95);
   }
 
   .login-button {
@@ -321,6 +377,36 @@ const styles = `
 
   .signup-prompt a:hover {
     text-decoration: underline;
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 480px) {
+    .login-container {
+      padding: 10px;
+    }
+
+    .login-header {
+      padding: 20px;
+    }
+
+    .login-body {
+      padding: 20px;
+    }
+
+    .input-group input {
+      padding: 12px 14px 12px 38px;
+      padding-right: 42px;
+    }
+
+    .input-icon {
+      left: 10px;
+      font-size: 16px;
+    }
+
+    .password-toggle {
+      right: 10px;
+      font-size: 16px;
+    }
   }
 `;
 
