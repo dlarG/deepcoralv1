@@ -11,8 +11,14 @@ import {
   FiX,
   FiSave,
   FiUpload,
+  FiActivity,
+  FiSettings,
+  FiAward,
+  FiMapPin,
+  FiMail,
 } from "react-icons/fi";
 import useProfileManagement from "../hooks/useProfileManagement";
+import dayjs from "dayjs";
 
 function ProfileManagement({ user }) {
   const {
@@ -42,6 +48,7 @@ function ProfileManagement({ user }) {
     return (
       <div className="content-section">
         <div className="loading-container">
+          <div className="loading-spinner"></div>
           <p>Loading profile...</p>
         </div>
       </div>
@@ -49,92 +56,132 @@ function ProfileManagement({ user }) {
   }
 
   return (
-    <div className="content-section">
-      <div className="profile-management-header">
-        <h2 className="content-title">Profile Management</h2>
-        <p className="profile-subtitle">
-          Manage your personal information and account settings
-        </p>
-      </div>
-
-      {/* Profile Overview Card */}
-      <div className="profile-overview-card">
-        <div className="profile-header">
-          <div className="profile-avatar-section">
-            <div className="profile-avatar">
-              {user.profile_image ? (
-                <img
-                  src={`/profile_uploads/${user.profile_image}`}
-                  alt={`${user.firstname} ${user.lastname}`}
-                  onError={(e) => {
-                    e.target.style.display = "none";
-                    e.target.nextSibling.style.display = "flex";
-                  }}
-                />
-              ) : null}
-              <div
-                className="avatar-initials"
-                style={{ display: user.profile_image ? "none" : "flex" }}
-              >
-                {user.firstname?.charAt(0)?.toUpperCase()}
-                {user.lastname?.charAt(0)?.toUpperCase()}
-              </div>
-            </div>
-            <div className="profile-info">
-              <h3 className="profile-name">
-                {user.firstname} {user.lastname}{" "}
-                <span className="profile-username">({user.username})</span>
-              </h3>
-              <span className={`role-badge ${user.roletype}`}>
-                <FiShield size={14} />
-                {user.roletype.charAt(0).toUpperCase() + user.roletype.slice(1)}
-              </span>
-            </div>
-          </div>
-          <div className="profile-actions">
-            <button onClick={openProfileModal} className="edit-profile-btn">
-              <FiEdit2 size={16} />
-              Edit Profile
-            </button>
+    <div className="modern-guest-profile">
+      {/* Hero Section with Gradient Background */}
+      <div className="guest-profile-hero">
+        <div className="hero-background">
+          <div className="gradient-overlay"></div>
+          <div className="floating-elements">
+            <div className="float-element element-1"></div>
+            <div className="float-element element-2"></div>
+            <div className="float-element element-3"></div>
           </div>
         </div>
 
-        {/* Profile Details Grid */}
-        <div className="profile-details-grid">
-          <div className="detail-card">
-            <div className="detail-header">
-              <FiUser size={20} />
-              <h4>Personal Information</h4>
+        <div className="hero-content">
+          <div className="profile-header-actions">
+            <button className="modern-settings-btn" onClick={openProfileModal}>
+              <FiSettings size={20} />
+              <span>Manage Profile</span>
+            </button>
+          </div>
+
+          <div className="profile-hero-info">
+            <div className="profile-avatar-container">
+              <div className="avatar-wrapper">
+                <div className="profile-avatar-modern">
+                  {user.profile_image ? (
+                    <img
+                      src={`/profile_uploads/${user.profile_image}`}
+                      alt={`${user.firstname} ${user.lastname}`}
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                        e.target.nextSibling.style.display = "flex";
+                      }}
+                    />
+                  ) : null}
+                  <div
+                    className="avatar-fallback-modern"
+                    style={{ display: user.profile_image ? "none" : "flex" }}
+                  >
+                    {user.firstname?.charAt(0)?.toUpperCase()}
+                    {user.lastname?.charAt(0)?.toUpperCase()}
+                  </div>
+                </div>
+                <div className="avatar-status-indicator">
+                  <div className="status-dot active"></div>
+                </div>
+              </div>
+
+              <div className="profile-role-indicator">
+                <span
+                  className={`modern-role-badge ${user.roletype?.toLowerCase()}`}
+                >
+                  <FiShield size={14} />
+                  {user.roletype?.charAt(0).toUpperCase() +
+                    user.roletype?.slice(1)}
+                </span>
+              </div>
             </div>
-            <div className="detail-content">
-              <div className="detail-items">
-                <span className="detail-label">Full Name</span>
-                <span className="detail-value">
+
+            <div className="profile-hero-text">
+              <h1 className="profile-name-hero">
+                {user.firstname} {user.lastname}
+              </h1>
+              <p className="profile-username-hero">@{user.username}</p>
+              <p className="profile-bio-hero">
+                {user.bio ||
+                  "Marine biologist and coral reef researcher passionate about ocean conservation."}
+              </p>
+
+              <div className="profile-stats-hero">
+                <div className="stat-item-hero">
+                  <FiCalendar size={16} />
+                  <span>
+                    Joined {dayjs(user.created_at).format("MMMM YYYY")}
+                  </span>
+                </div>
+                <div className="stat-item-hero">
+                  <FiActivity size={16} />
+                  <span>Active Member</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Modern Info Cards */}
+      <div className="guest-profile-content">
+        <div className="profile-cards-grid">
+          <div className="profile-card personal-card">
+            <div className="card-header">
+              <div className="card-icon personal">
+                <FiUser size={24} />
+              </div>
+              <h3>Personal Information</h3>
+            </div>
+            <div className="card-content">
+              <div className="info-item">
+                <span className="info-label">Full Name</span>
+                <span className="info-value">
                   {user.firstname} {user.lastname}
                 </span>
               </div>
-              <div className="detail-items">
-                <span className="detail-label">Username</span>
-                <span className="detail-value">@{user.username}</span>
+              <div className="info-item">
+                <span className="info-label">Username</span>
+                <span className="info-value">@{user.username}</span>
               </div>
-              <div className="detail-items">
-                <span className="detail-label">Bio</span>
-                <span className="detail-value">
+              <div className="info-item">
+                <span className="info-label">Bio</span>
+                <span className="info-value">
                   {user.bio || "No bio added yet"}
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="detail-card">
-            <div className="detail-header">
-              <FiCalendar size={20} />
-              <h4>Account Information</h4>
+          <div className="profile-card account-card">
+            <div className="card-header">
+              <div className="card-icon account">
+                <FiCalendar size={24} />
+              </div>
+              <h3>Account Information</h3>
             </div>
-            <div className="detail-content">
-              <div className="detail-items">
-                <span className="detail-label">Member Since</span>
-                <span className="detail-value">
+            <div className="card-content">
+              <div className="info-item">
+                <span className="info-label">Member Since</span>
+                <span className="info-value">
                   {new Date(user.created_at).toLocaleDateString("en-US", {
                     year: "numeric",
                     month: "long",
@@ -142,36 +189,88 @@ function ProfileManagement({ user }) {
                   })}
                 </span>
               </div>
-              <div className="detail-items">
-                <span className="detail-label">Account Type</span>
-                <span className="detail-value">
-                  {user.roletype.charAt(0).toUpperCase() +
-                    user.roletype.slice(1)}{" "}
+              <div className="info-item">
+                <span className="info-label">Account Type</span>
+                <span className="info-value">
+                  {user.roletype?.charAt(0).toUpperCase() +
+                    user.roletype?.slice(1)}{" "}
                   User
                 </span>
               </div>
-              <div className="detail-items">
-                <span className="detail-label">Profile Picture</span>
-                <span className="detail-value">
+              <div className="info-item">
+                <span className="info-label">Profile Picture</span>
+                <span
+                  className={`status-indicator ${
+                    user.profile_image ? "has-image" : "no-image"
+                  }`}
+                >
                   {user.profile_image ? "Uploaded" : "Not set"}
                 </span>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Danger Zone */}
-        <div className="danger-zone">
-          <div className="danger-header">
-            <h4>Danger Zone</h4>
-            <p>Irreversible and destructive actions</p>
+          <div className="profile-card security-card">
+            <div className="card-header">
+              <div className="card-icon security">
+                <FiShield size={24} />
+              </div>
+              <h3>Security & Access</h3>
+            </div>
+            <div className="card-content">
+              <div className="info-item">
+                <span className="info-label">Account Status</span>
+                <span className="status-badge active">Active</span>
+              </div>
+              <div className="info-item">
+                <span className="info-label">Role</span>
+                <span className={`role-chip ${user.roletype?.toLowerCase()}`}>
+                  {user.roletype?.charAt(0).toUpperCase() +
+                    user.roletype?.slice(1)}
+                </span>
+              </div>
+              <div className="info-item">
+                <span className="info-label">Last Activity</span>
+                <span className="info-value">Recently Active</span>
+              </div>
+            </div>
           </div>
-          <button onClick={openDeleteModal} className="delete-account-btn">
-            <FiTrash2 size={16} />
-            Delete Account
-          </button>
+
+          <div className="profile-card actions-card">
+            <div className="card-header">
+              <div className="card-icon actions">
+                <FiSettings size={24} />
+              </div>
+              <h3>Account Actions</h3>
+            </div>
+            <div className="card-content">
+              <div className="action-buttons-grid">
+                <button
+                  className="action-btn primary"
+                  onClick={openProfileModal}
+                >
+                  <FiEdit2 size={18} />
+                  <span>Edit Profile</span>
+                </button>
+                <button className="action-btn danger" onClick={openDeleteModal}>
+                  <FiTrash2 size={18} />
+                  <span>Delete Account</span>
+                </button>
+              </div>
+              <div className="security-notice">
+                <div className="notice-icon">
+                  <FiShield size={16} />
+                </div>
+                <p>
+                  Account changes require verification for security purposes.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Keep existing modals (they're already well-designed) */}
       {showDeleteModal && (
         <div className="modal-overlay">
           <div className="delete-modal">
@@ -233,7 +332,8 @@ function ProfileManagement({ user }) {
           </div>
         </div>
       )}
-      {/* Profile Edit Modal */}
+
+      {/* Profile Edit Modal (keep existing - it's already good) */}
       {showProfileModal && (
         <div className="modal-overlay">
           <div className="modal-container">
@@ -244,7 +344,6 @@ function ProfileManagement({ user }) {
               </button>
             </div>
 
-            {/* Modal Tabs */}
             <div className="modal-tabs">
               <button
                 className={`tab-btn ${profileTab === "info" ? "active" : ""}`}
@@ -266,7 +365,6 @@ function ProfileManagement({ user }) {
 
             <form onSubmit={handleProfileSubmit}>
               <div className="modal-body">
-                {/* General Error */}
                 {profileErrors.general && (
                   <div className="error-message general-error">
                     {profileErrors.general}
@@ -275,7 +373,6 @@ function ProfileManagement({ user }) {
 
                 {profileTab === "info" && (
                   <div className="tab-content">
-                    {/* Profile Image Upload */}
                     <div className="form-group">
                       <label className="form-label">Profile Picture</label>
                       <div className="image-upload-section">
@@ -318,7 +415,6 @@ function ProfileManagement({ user }) {
                       )}
                     </div>
 
-                    {/* Basic Info */}
                     <div className="form-row">
                       <div className="form-group">
                         <label htmlFor="firstname" className="form-label">

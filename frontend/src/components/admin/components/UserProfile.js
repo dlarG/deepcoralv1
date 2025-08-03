@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+// src/components/admin/components/UserProfile.js
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
@@ -11,9 +12,15 @@ import {
   FiActivity,
   FiDownload,
   FiMoreVertical,
+  FiMail,
+  FiClock,
+  FiMapPin,
+  FiStar,
+  FiEye,
+  FiSettings,
 } from "react-icons/fi";
-import "../styles/profileStyles.css";
 import { decryptId } from "../../../utils/encryption";
+import "../styles/profileStyles.css"; // Assuming you have a CSS file for styling
 
 function UserProfile() {
   const { userId: encodedUserId } = useParams();
@@ -119,190 +126,268 @@ function UserProfile() {
 
   if (loading)
     return (
-      <div className="profile-loading">
-        <div className="loading-spinner"></div>
-        <p>Loading user profile...</p>
+      <div className="profile-loading-modern">
+        <div className="loading-wrapper">
+          <div className="loading-spinner-modern"></div>
+          <div className="loading-text">
+            <h3>Loading Profile</h3>
+            <p>Please wait while we fetch the user details...</p>
+          </div>
+        </div>
       </div>
     );
 
   if (error)
     return (
-      <div className="profile-error">
-        <div className="error-message">{error}</div>
-        <button onClick={handleGoBack} className="btn-back">
-          <FiArrowLeft /> Back to User Management
-        </button>
+      <div className="profile-error-modern">
+        <div className="error-wrapper">
+          <div className="error-icon">
+            <FiUser size={48} />
+          </div>
+          <h3>Unable to Load Profile</h3>
+          <p className="error-message">{error}</p>
+          <button onClick={handleGoBack} className="back-button-modern">
+            <FiArrowLeft size={20} />
+            <span>Back to User Management</span>
+          </button>
+        </div>
       </div>
     );
 
   if (!user)
     return (
-      <div className="profile-not-found">
-        <h2>User not found</h2>
-        <button onClick={handleGoBack} className="btn-back">
-          <FiArrowLeft /> Back to User Management
-        </button>
+      <div className="profile-not-found-modern">
+        <div className="not-found-wrapper">
+          <div className="not-found-icon">
+            <FiUser size={48} />
+          </div>
+          <h3>User Not Found</h3>
+          <p>The requested user profile could not be located.</p>
+          <button onClick={handleGoBack} className="back-button-modern">
+            <FiArrowLeft size={20} />
+            <span>Back to User Management</span>
+          </button>
+        </div>
       </div>
     );
 
   return (
-    <div className="user-profile-container">
-      {/* Header Section */}
-      <header className="profile-header">
-        <button onClick={handleGoBack} className="btn-back">
+    <div className="user-profile-modern-container">
+      {/* Navigation Header */}
+      <div className="profile-navigation">
+        <button onClick={handleGoBack} className="nav-back-button">
           <FiArrowLeft size={18} />
-          <span>Back to User Management</span>
+          <span>Back to Users</span>
         </button>
 
-        <div className="header-actions">
-          <div className="dropdown-container">
-            <button onClick={toggleDropdown} className="btn-more">
+        <div className="profile-actions">
+          <div className="action-dropdown">
+            <button onClick={toggleDropdown} className="action-menu-trigger">
               <FiMoreVertical size={20} />
             </button>
             {dropdownOpen && (
-              <div className="dropdown-menu">
-                <button onClick={handleEditUser} className="dropdown-item">
-                  <FiEdit2 size={16} /> Edit Profile
+              <div className="action-dropdown-menu">
+                <button
+                  onClick={handleEditUser}
+                  className="dropdown-action edit"
+                >
+                  <FiEdit2 size={16} />
+                  <span>Edit Profile</span>
                 </button>
                 <button
                   onClick={handleDeleteUser}
-                  className="dropdown-item delete"
+                  className="dropdown-action delete"
                 >
-                  <FiTrash2 size={16} /> Delete User
+                  <FiTrash2 size={16} />
+                  <span>Delete User</span>
                 </button>
-                <button className="dropdown-item">
-                  <FiDownload size={16} /> Export Data
+                <button className="dropdown-action download">
+                  <FiDownload size={16} />
+                  <span>Export Data</span>
                 </button>
               </div>
             )}
           </div>
         </div>
-      </header>
+      </div>
 
-      {/* Main Profile Content */}
-      <main className="profile-content">
-        {/* Profile Hero Section */}
-        <section className="profile-hero">
-          <div className="avatar-container">
-            {user.profile_image ? (
-              <img
-                src={`/profile_uploads/${user.profile_image}`}
-                alt={`${user.firstname} ${user.lastname}`}
-                onError={(e) => {
-                  e.target.style.display = "none";
-                  e.target.nextSibling.style.display = "flex";
-                }}
-              />
-            ) : null}
-            <div
-              className="avatar-initials"
-              style={{ display: user.profile_image ? "none" : "flex" }}
-            >
-              {user.firstname?.charAt(0)?.toUpperCase()}
-              {user.lastname?.charAt(0)?.toUpperCase()}
+      {/* Profile Header Section */}
+      <div className="profile-header-modern">
+        <div className="profile-cover">
+          <div className="cover-gradient"></div>
+          <div className="cover-pattern"></div>
+        </div>
+
+        <div className="profile-header-content">
+          <div className="profile-avatar-section">
+            <div className="avatar-container-modern">
+              {user.profile_image ? (
+                <img
+                  src={`/profile_uploads/${user.profile_image}`}
+                  alt={`${user.firstname} ${user.lastname}`}
+                  onError={(e) => {
+                    e.target.style.display = "none";
+                    e.target.nextSibling.style.display = "flex";
+                  }}
+                />
+              ) : null}
+              <div
+                className="avatar-initials-modern"
+                style={{ display: user.profile_image ? "none" : "flex" }}
+              >
+                {user.firstname?.charAt(0)?.toUpperCase()}
+                {user.lastname?.charAt(0)?.toUpperCase()}
+              </div>
+              <div className="avatar-status-ring">
+                <div className="status-indicator-modern active"></div>
+              </div>
             </div>
           </div>
 
-          <div className="profile-info">
-            <h1 className="profile-name">
-              {user.firstname} {user.lastname}
-              <span className="username">@{user.username}</span>
-            </h1>
+          <div className="profile-identity">
+            <div className="name-section">
+              <h1 className="profile-display-name">
+                {user.firstname} {user.lastname}
+              </h1>
+              <p className="profile-handle">@{user.username}</p>
+            </div>
 
-            <div className="profile-meta">
-              <span className={`role-badge ${user.roletype}`}>
+            <div className="role-section">
+              <div
+                className={`role-badge-modern ${user.roletype?.toLowerCase()}`}
+              >
                 <FiShield size={14} />
-                {user.roletype.charAt(0).toUpperCase() + user.roletype.slice(1)}
-              </span>
-
-              <div className="meta-item">
-                <FiCalendar size={14} />
                 <span>
-                  Joined{" "}
-                  {new Date(user.created_at).toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "long",
-                  })}
+                  {user.roletype?.charAt(0).toUpperCase() +
+                    user.roletype?.slice(1)}
                 </span>
               </div>
             </div>
           </div>
-        </section>
 
-        {/* Profile Details Grid */}
-        <section className="profile-grid">
-          {/* Personal Information Card */}
-          <div className="profile-card">
-            <div className="card-header">
-              <FiUser size={20} />
+          <div className="profile-quick-stats">
+            <div className="quick-stat">
+              <FiCalendar size={16} />
+              <span>
+                Joined{" "}
+                {new Date(user.created_at).toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "short",
+                })}
+              </span>
+            </div>
+            <div className="quick-stat">
+              <FiActivity size={16} />
+              <span>Active Member</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Profile Content Grid */}
+      <div className="profile-content-modern">
+        <div className="profile-sections-grid">
+          {/* Personal Details Section */}
+          <section className="profile-section personal-section">
+            <div className="section-header">
+              <div className="section-icon personal">
+                <FiUser size={20} />
+              </div>
               <h2>Personal Information</h2>
             </div>
-            <div className="card-body">
-              <div className="info-row">
-                <span className="info-label">First Name</span>
-                <span className="info-value">{user.firstname}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">Last Name</span>
-                <span className="info-value">{user.lastname}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Account Information Card */}
-          <div className="profile-card">
-            <div className="card-header">
-              <FiActivity size={20} />
-              <h2>Account Information</h2>
-            </div>
-            <div className="card-body">
-              <div className="info-row">
-                <span className="info-label">Username</span>
-                <span className="info-value">@{user.username}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">Account Status</span>
-                <span className="info-value status-active">Active</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">Profile Image</span>
-                <span className="info-value">
-                  {user.profile_image ? "Uploaded" : "Not set"}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Timeline Card */}
-          <div className="profile-card">
-            <div className="card-header">
-              <FiCalendar size={20} />
-              <h2>Account Timeline</h2>
-            </div>
-            <div className="card-body">
-              <div className="timeline-item">
-                <div className="timeline-dot"></div>
-                <div className="timeline-content">
-                  <h3>Account Created</h3>
-                  <p>
-                    {new Date(user.created_at).toLocaleString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </p>
+            <div className="section-content">
+              <div className="detail-group">
+                <div className="detail-item-modern">
+                  <div className="detail-label">
+                    <FiUser size={14} />
+                    <span>Full Name</span>
+                  </div>
+                  <div className="detail-value">
+                    {user.firstname} {user.lastname}
+                  </div>
+                </div>
+                <div className="detail-item-modern">
+                  <div className="detail-label">
+                    <FiMail size={14} />
+                    <span>Username</span>
+                  </div>
+                  <div className="detail-value">@{user.username}</div>
                 </div>
               </div>
-              {user.updated_at && (
-                <div className="timeline-item">
-                  <div className="timeline-dot"></div>
-                  <div className="timeline-content">
-                    <h3>Last Updated</h3>
+            </div>
+          </section>
+
+          {/* Account Status Section */}
+          <section className="profile-section security-section">
+            <div className="section-header">
+              <div className="section-icon security">
+                <FiShield size={20} />
+              </div>
+              <h2>Account Status</h2>
+            </div>
+            <div className="section-content">
+              <div className="detail-group">
+                <div className="detail-item-modern">
+                  <div className="detail-label">
+                    <FiShield size={14} />
+                    <span>Role</span>
+                  </div>
+                  <div className="detail-value">
+                    <span
+                      className={`role-chip-small ${user.roletype?.toLowerCase()}`}
+                    >
+                      {user.roletype?.charAt(0).toUpperCase() +
+                        user.roletype?.slice(1)}
+                    </span>
+                  </div>
+                </div>
+                <div className="detail-item-modern">
+                  <div className="detail-label">
+                    <FiActivity size={14} />
+                    <span>Status</span>
+                  </div>
+                  <div className="detail-value">
+                    <span className="status-indicator-small active">
+                      Active
+                    </span>
+                  </div>
+                </div>
+                <div className="detail-item-modern">
+                  <div className="detail-label">
+                    <FiEye size={14} />
+                    <span>Profile Image</span>
+                  </div>
+                  <div className="detail-value">
+                    <span
+                      className={`image-status ${
+                        user.profile_image ? "uploaded" : "not-set"
+                      }`}
+                    >
+                      {user.profile_image ? "Uploaded" : "Not Set"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Account Timeline Section */}
+          <section className="profile-section timeline-section">
+            <div className="section-header">
+              <div className="section-icon timeline">
+                <FiClock size={20} />
+              </div>
+              <h2>Account Timeline</h2>
+            </div>
+            <div className="section-content">
+              <div className="timeline-modern">
+                <div className="timeline-event">
+                  <div className="event-marker created"></div>
+                  <div className="event-content">
+                    <h4>Account Created</h4>
                     <p>
-                      {new Date(user.updated_at).toLocaleString("en-US", {
-                        month: "short",
+                      {new Date(user.created_at).toLocaleString("en-US", {
+                        month: "long",
                         day: "numeric",
                         year: "numeric",
                         hour: "2-digit",
@@ -311,18 +396,28 @@ function UserProfile() {
                     </p>
                   </div>
                 </div>
-              )}
+                {user.updated_at && (
+                  <div className="timeline-event">
+                    <div className="event-marker updated"></div>
+                    <div className="event-content">
+                      <h4>Last Updated</h4>
+                      <p>
+                        {new Date(user.updated_at).toLocaleString("en-US", {
+                          month: "long",
+                          day: "numeric",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        </section>
-      </main>
-
-      <footer className="profile-footer">
-        <div className="footer-text">
-          &copy; {new Date().getFullYear()} DeepCoral Portal. All rights
-          reserved.
+          </section>
         </div>
-      </footer>
+      </div>
     </div>
   );
 }

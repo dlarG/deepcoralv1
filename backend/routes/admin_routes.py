@@ -176,7 +176,7 @@ def update_user(user_id):
                 UPDATE users 
                 SET {', '.join(update_fields)} 
                 WHERE id = %s
-                RETURNING id, username, firstname, lastname, roletype, profile_image, created_at
+                RETURNING id, username, firstname, lastname, roletype, profile_image, created_at, status
             """
             
             cur.execute(update_query, update_values)
@@ -192,7 +192,8 @@ def update_user(user_id):
                     'lastname': updated_user[3],
                     'roletype': updated_user[4],
                     'profile_image': updated_user[5],  # Add this field
-                    'created_at': updated_user[6]      # Add this field
+                    'created_at': updated_user[6],      # Add this field
+                    'status': updated_user[7]           # Add status field
                 }
             }), 200
     except psycopg2.Error as e:

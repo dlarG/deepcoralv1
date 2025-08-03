@@ -66,15 +66,23 @@ function Register() {
 
     const strength = checks.filter(Boolean).length;
 
-    // Fixed: Make sure arrays have correct indexes
-    const labels = ["Very Weak", "Weak", "Fair", "Good", "Strong"];
-    const colors = ["red", "#f59e0b", "#eab308", "#84cc16", "#22c55e"];
+    // Create strength mapping
+    const strengthMap = {
+      0: { label: "Very Weak", color: "#ef4444" },
+      1: { label: "Weak", color: "#f59e0b" },
+      2: { label: "Fair", color: "#eab308" },
+      3: { label: "Good", color: "#84cc16" },
+      4: { label: "Strong", color: "#22c55e" },
+      5: { label: "Very Strong", color: "#16a34a" },
+    };
+
+    const current = strengthMap[strength] || strengthMap[0];
 
     return {
       score: strength,
-      label: labels[strength] || "Very Strong",
+      label: current.label,
       percentage: (strength / 5) * 100,
-      color: colors[strength] || "light-green",
+      color: current.color,
     };
   };
 
