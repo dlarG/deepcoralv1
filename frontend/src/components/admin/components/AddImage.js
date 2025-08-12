@@ -318,8 +318,7 @@ function AddImage() {
       <style>{`
         .add-image-container {
           max-width: 1600px;
-          margin: 0 auto;
-          padding: 2rem;
+          margin: 0;
           background: #f8fafc;
           min-height: 100vh;
         }
@@ -350,7 +349,6 @@ function AddImage() {
           border-radius: 24px;
           padding: 3rem;
           box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-          margin-bottom: 2rem;
           border: 2px solid #e2e8f0;
         }
 
@@ -445,9 +443,8 @@ function AddImage() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-top: 3rem;
-          padding-top: 2rem;
-          border-top: 2px solid #e2e8f0;
+          margin-top: 2rem;
+          padding-top: 1rem;
           flex-wrap: wrap;
           gap: 2rem;
         }
@@ -884,13 +881,14 @@ function AddImage() {
         .crops-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-          gap: 1.5rem;
+          gap: 9rem;
         }
 
         .crop-card {
           background: #f8fafc;
           border-radius: 16px;
           overflow: hidden;
+          width: 150%;
           transition: all 0.3s ease;
           border: 2px solid #e2e8f0;
           position: relative;

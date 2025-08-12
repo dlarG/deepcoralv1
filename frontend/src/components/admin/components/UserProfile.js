@@ -1,4 +1,3 @@
-// src/components/admin/components/UserProfile.js
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -14,13 +13,10 @@ import {
   FiMoreVertical,
   FiMail,
   FiClock,
-  FiMapPin,
-  FiStar,
   FiEye,
-  FiSettings,
 } from "react-icons/fi";
 import { decryptId } from "../../../utils/encryption";
-import "../styles/profileStyles.css"; // Assuming you have a CSS file for styling
+import "../styles/profileStyles.css";
 
 function UserProfile() {
   const { userId: encodedUserId } = useParams();
@@ -33,7 +29,6 @@ function UserProfile() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        // Decode the URL-encoded encrypted ID, then decrypt it
         const decodedEncryptedId = decodeURIComponent(encodedUserId);
         const decryptedId = decryptId(decodedEncryptedId);
 
@@ -70,7 +65,6 @@ function UserProfile() {
   };
 
   const handleEditUser = () => {
-    // Decode and decrypt the ID for editing
     const decodedEncryptedId = decodeURIComponent(encodedUserId);
     const decryptedId = decryptId(decodedEncryptedId);
 
@@ -89,7 +83,6 @@ function UserProfile() {
   const handleDeleteUser = async () => {
     if (window.confirm("Are you sure you want to delete this user?")) {
       try {
-        // Decode and decrypt the ID for deletion
         const decodedEncryptedId = decodeURIComponent(encodedUserId);
         const decryptedId = decryptId(decodedEncryptedId);
 

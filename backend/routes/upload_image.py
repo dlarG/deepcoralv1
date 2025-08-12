@@ -28,7 +28,7 @@ def enhanced_crop_inside_quadrat(image_path, bbox, crop_method='aggressive'):
     height = y2 - y1
     
     if crop_method == 'conservative':
-        margin = 0.04  # 5% margin reduction
+        margin = 0.04  # 4% margin reduction
     elif crop_method == 'moderate':
         margin = 0.12  # 12% margin reduction
     elif crop_method == 'aggressive':
@@ -121,18 +121,15 @@ def detect_and_crop_custom():
             
         file = request.files['image']
         
-        # Additional validation for empty filename
         if file.filename == '':
             return jsonify({"error": "Empty filename"}), 400
             
-        # Validate file extension
         allowed_extensions = {'jpg', 'jpeg', 'png', 'webp'}
         if '.' not in file.filename or file.filename.split('.')[-1].lower() not in allowed_extensions:
             return jsonify({"error": "Invalid file type"}), 400
 
         crop_intensity = request.form.get('intensity', 'aggressive')
         
-        # Generate a completely unique filename to prevent any path-related issues
         unique_id = str(uuid.uuid4())[:8]
         ext = file.filename.split('.')[-1].lower()
         safe_filename = f"{unique_id}.{ext}"
@@ -166,8 +163,6 @@ def detect_and_crop_custom():
             except Exception as e:
                 print(f"Error processing box {i}: {str(e)}")
                 continue
-
-        # Clean up original file
         try:
             os.remove(image_path)
         except:
@@ -176,7 +171,7 @@ def detect_and_crop_custom():
         return jsonify({
             "crops": crops,
             "method": crop_intensity,
-            "original_filename": file.filename  # Return original for reference
+            "original_filename": file.filename  
         })
         
     except Exception as e:
