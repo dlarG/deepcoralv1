@@ -1,5 +1,5 @@
 // src/components/admin/hooks/useGenerateReport.js
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import axios from "axios";
 import { useAuth } from "../../../context/AuthContext";
 import { API_ENDPOINTS, API_BASE_URL } from '../../../config/api';

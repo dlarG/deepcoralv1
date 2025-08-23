@@ -1,4 +1,3 @@
-// src/components/admin/hooks/useUserManagement.js
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
@@ -31,16 +30,69 @@ export default function useUserManagement() {
   const [currentPage, setCurrentPage] = useState(1);
   const [userSortBy, setUserSortBy] = useState("created_desc");
 
+  // Modal state
+  const [showModal, setShowModal] = useState(false);
+  const [modalConfig, setModalConfig] = useState({
+    title: "",
+    message: "",
+    type: "success",
+    autoClose: true,
+  });
+
+  // Modal helper functions
+  const showSuccessModal = (title, message, autoClose = true) => {
+    setModalConfig({
+      title,
+      message,
+      type: "success",
+      autoClose,
+    });
+    setShowModal(true);
+  };
+
+  const showErrorModal = (title, message) => {
+    setModalConfig({
+      title,
+      message,
+      type: "error",
+      autoClose: false,
+    });
+    setShowModal(true);
+  };
+
+  const showWarningModal = (title, message) => {
+    setModalConfig({
+      title,
+      message,
+      type: "warning",
+      autoClose: false,
+    });
+    setShowModal(true);
+  };
+
   // Fetch users
   useEffect(() => {
     const fetchUsers = async () => {
       try {
+<<<<<<< HEAD:frontend/src/components/admin/hooks/useUserManagement.js
         const response = await axios.get(`${API_BASE_URL}/admin/users`, {
           withCredentials: true,
         });
+=======
+        const response = await axios.get(
+          "http://localhost:5000/biologist/users",
+          {
+            withCredentials: true,
+          }
+        );
+>>>>>>> origin/main:frontend/src/components/biologist/hooks/useUserManagement.jsx
         setUsers(response.data.users);
       } catch (err) {
         setError(err.response?.data?.error || "Failed to fetch users");
+        showErrorModal(
+          "Failed to Load",
+          "Unable to fetch users. Please try refreshing the page."
+        );
       } finally {
         setLoading(false);
       }
@@ -128,7 +180,6 @@ export default function useUserManagement() {
     });
   };
 
-  // Form handling
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -141,7 +192,6 @@ export default function useUserManagement() {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Validate form - pass the current mode
     const errors = validateUserForm(formData, userModalMode);
     if (Object.keys(errors).length > 0) {
       setUserFormErrors(errors);
@@ -155,7 +205,11 @@ export default function useUserManagement() {
 
       if (userModalMode === "create") {
         response = await axios.post(
+<<<<<<< HEAD:frontend/src/components/admin/hooks/useUserManagement.js
           `${API_BASE_URL}/admin/users`,
+=======
+          "http://localhost:5000/biologist/users",
+>>>>>>> origin/main:frontend/src/components/biologist/hooks/useUserManagement.jsx
           formData,
           {
             withCredentials: true,
@@ -166,16 +220,22 @@ export default function useUserManagement() {
           }
         );
         setUsers([...users, response.data.user]);
-        alert("User created successfully!");
+        showSuccessModal(
+          "User Created Successfully!",
+          `User ${formData.firstname} ${formData.lastname} has been created with username "${formData.username}".`
+        );
       } else {
-        // For edit mode, only send password if it's provided
         const updateData = { ...formData };
         if (!updateData.password?.trim()) {
-          delete updateData.password; // Remove empty password from request
+          delete updateData.password;
         }
 
         response = await axios.put(
+<<<<<<< HEAD:frontend/src/components/admin/hooks/useUserManagement.js
           `${API_BASE_URL}/admin/users/${selectedUser.id}`,
+=======
+          `http://localhost:5000/biologist/users/${selectedUser.id}`,
+>>>>>>> origin/main:frontend/src/components/biologist/hooks/useUserManagement.jsx
           updateData,
           {
             withCredentials: true,
@@ -188,21 +248,26 @@ export default function useUserManagement() {
         setUsers(
           users.map((u) => (u.id === selectedUser.id ? response.data.user : u))
         );
-        alert("User updated successfully!");
+        showSuccessModal(
+          "User Updated Successfully!",
+          `User ${updateData.firstname} ${updateData.lastname}'s details have been updated.`
+        );
       }
 
       closeUserModal();
     } catch (error) {
       console.error("User operation failed:", error);
       if (error.response?.data?.error) {
-        // Handle specific backend errors
         if (error.response.data.error.includes("Username already")) {
           setUserFormErrors({ username: "Username already exists" });
         } else {
-          alert(`Error: ${error.response.data.error}`);
+          showErrorModal("Operation Failed", error.response.data.error);
         }
       } else {
-        alert("Operation failed. Please try again.");
+        showErrorModal(
+          "Operation Failed",
+          "Unable to save user. Please check your connection and try again."
+        );
       }
     } finally {
       setIsSubmitting(false);
@@ -210,9 +275,17 @@ export default function useUserManagement() {
   };
 
   const handleDelete = async (userId) => {
-    if (window.confirm("Are you sure you want to delete this user?")) {
+    const userToDelete = users.find((u) => u.id === userId);
+    const userName = userToDelete
+      ? `${userToDelete.firstname} ${userToDelete.lastname}`
+      : "this user";
+
+    if (
+      window.confirm(
+        `Are you sure you want to delete ${userName}? This action cannot be undone.`
+      )
+    ) {
       try {
-        // Get fresh CSRF token for important operations
         const csrfResponse = await axios.get(
           `${API_BASE_URL}/csrf-token`,
           {
@@ -221,18 +294,30 @@ export default function useUserManagement() {
         );
         const csrfToken = csrfResponse.data.csrf_token;
 
+<<<<<<< HEAD:frontend/src/components/admin/hooks/useUserManagement.js
         await axios.delete(`${API_BASE_URL}/admin/users/${userId}`, {
+=======
+        await axios.delete(`http://localhost:5000/biologist/users/${userId}`, {
+>>>>>>> origin/main:frontend/src/components/biologist/hooks/useUserManagement.jsx
           withCredentials: true,
           headers: {
             "X-CSRF-Token": csrfToken,
           },
         });
-        // Refresh users after deletion
+
         setUsers(users.filter((user) => user.id !== userId));
-        alert("User deleted successfully!");
+        showSuccessModal(
+          "User Deleted Successfully!",
+          `${userName} has been removed from the system.`
+        );
       } catch (error) {
         console.error("Delete failed:", error);
         setError("Failed to delete user");
+        showErrorModal(
+          "Delete Failed",
+          "Unable to delete user. Please try again or contact support."
+        );
+
         if (error.response?.status === 401 || error.response?.status === 403) {
           logout();
           navigate("/login");
@@ -240,20 +325,27 @@ export default function useUserManagement() {
       }
     }
   };
+
   const handleUserProfileClick = (userId) => {
     try {
       const encryptedId = encryptId(userId);
       if (encryptedId) {
         // URL encode the encrypted ID to handle special characters
         const encodedId = encodeURIComponent(encryptedId);
-        navigate(`/admin/users/${encodedId}`);
+        navigate(`/biologist/user/profile/${encodedId}`);
       } else {
         console.error("Failed to encrypt user ID");
-        alert("Error opening user profile");
+        showErrorModal(
+          "Navigation Error",
+          "Unable to open user profile. Please try again."
+        );
       }
     } catch (error) {
       console.error("Error navigating to user profile:", error);
-      alert("Error opening user profile");
+      showErrorModal(
+        "Navigation Error",
+        "Unable to open user profile. Please try again."
+      );
     }
   };
 
@@ -283,5 +375,12 @@ export default function useUserManagement() {
     setUserFilterRole,
     setUserSortBy,
     setCurrentPage,
+    // Modal states and functions
+    showModal,
+    modalConfig,
+    setShowModal,
+    showSuccessModal,
+    showErrorModal,
+    showWarningModal,
   };
 }

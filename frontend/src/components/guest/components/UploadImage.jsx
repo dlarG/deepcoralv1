@@ -14,7 +14,7 @@ import {
   FiTrash2,
 } from "react-icons/fi";
 
-function AddImage() {
+function UploadImage() {
   const [images, setImages] = useState([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [crops, setCrops] = useState([]);
@@ -265,19 +265,6 @@ function AddImage() {
     document.body.removeChild(link);
   };
 
-  const downloadAllCrops = () => {
-    if (images.length === 0 || !images[currentImageIndex]?.crops?.length) {
-      alert("No crops to download");
-      return;
-    }
-
-    images[currentImageIndex].crops.forEach((crop, i) => {
-      setTimeout(() => {
-        downloadCrop(crop, i);
-      }, i * 200);
-    });
-  };
-
   const downloadBatchCrops = () => {
     let totalCrops = 0;
     images.forEach((image, imgIndex) => {
@@ -299,22 +286,13 @@ function AddImage() {
     });
   };
 
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return "0 Bytes";
-    const k = 1024;
-    const sizes = ["Bytes", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-  };
-
   const totalCrops = images.reduce(
     (sum, img) => sum + (img.crops?.length || 0),
     0
   );
-  const completedImages = images.filter((img) => img.processed).length;
 
   return (
-    <div className="add-image-container">
+    <div className="content-section">
       <style>{`
         .add-image-container {
           max-width: 1600px;
@@ -348,6 +326,7 @@ function AddImage() {
           background: white;
           border-radius: 24px;
           padding: 3rem;
+          margin-bottom: 2rem;
           box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
           border: 2px solid #e2e8f0;
         }
@@ -1159,6 +1138,7 @@ function AddImage() {
           }
         }
       `}</style>
+      <h2 className="content-title">Upload Coral Images</h2>
 
       {images.length === 0 ? (
         <div className="upload-section">
@@ -1304,19 +1284,19 @@ function AddImage() {
             </div>
           </div>
           {/* <div className="batch-stats">
-            <div className="stat-card">
-              <div className="stat-number">{images.length}</div>
-              <div className="stat-label">Total Images</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-number">{completedImages}</div>
-              <div className="stat-label">Processed</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-number">{totalCrops}</div>
-              <div className="stat-label">Crops Detected</div>
-            </div>
-          </div> */}
+                    <div className="stat-card">
+                      <div className="stat-number">{images.length}</div>
+                      <div className="stat-label">Total Images</div>
+                    </div>
+                    <div className="stat-card">
+                      <div className="stat-number">{completedImages}</div>
+                      <div className="stat-label">Processed</div>
+                    </div>
+                    <div className="stat-card">
+                      <div className="stat-number">{totalCrops}</div>
+                      <div className="stat-label">Crops Detected</div>
+                    </div>
+                  </div> */}
 
           {/* Gallery Controls */}
           <div className="gallery-controls">
@@ -1409,71 +1389,71 @@ function AddImage() {
 
           {/* Current Image Preview */}
           {/* {images.length > 0 && (
-            <div className="current-image-section">
-              <div className="image-header">
-                <div className="image-nav">
-                  <button
-                    className="nav-button"
-                    onClick={() =>
-                      setCurrentImageIndex((prev) => {
-                        const newIndex = Math.max(0, prev - 1);
-                        setCrops(images[newIndex]?.crops || []);
-                        return newIndex;
-                      })
-                    }
-                    disabled={currentImageIndex === 0}
-                  >
-                    <FiChevronLeft size={24} />
-                  </button>
-                  <h3 className="current-filename">
-                    {images[currentImageIndex]?.file.name}
-                  </h3>
-                  <button
-                    className="nav-button"
-                    onClick={() =>
-                      setCurrentImageIndex((prev) => {
-                        const newIndex = Math.min(images.length - 1, prev + 1);
-                        setCrops(images[newIndex]?.crops || []);
-                        return newIndex;
-                      })
-                    }
-                    disabled={currentImageIndex === images.length - 1}
-                  >
-                    <FiChevronRight size={24} />
-                  </button>
-                </div>
-
-                <div className="gallery-actions">
-                  {crops.length > 0 && (
-                    <button
-                      onClick={downloadAllCrops}
-                      className="action-button download-all-button"
-                    >
-                      <FiDownload size={16} />
-                      Download Current ({crops.length})
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <div className="current-image-container">
-                <img
-                  src={images[currentImageIndex]?.preview}
-                  alt="Current Preview"
-                  className="current-image"
-                />
-              </div>
-
-              <div className="image-info">
-                <span>
-                  <strong>{images[currentImageIndex]?.file.name}</strong>
-                </span>
-                <span>
-                  {formatFileSize(images[currentImageIndex]?.file.size || 0)}
-                </span>
-              </div>
-            </div>
-          )} */}
+                    <div className="current-image-section">
+                      <div className="image-header">
+                        <div className="image-nav">
+                          <button
+                            className="nav-button"
+                            onClick={() =>
+                              setCurrentImageIndex((prev) => {
+                                const newIndex = Math.max(0, prev - 1);
+                                setCrops(images[newIndex]?.crops || []);
+                                return newIndex;
+                              })
+                            }
+                            disabled={currentImageIndex === 0}
+                          >
+                            <FiChevronLeft size={24} />
+                          </button>
+                          <h3 className="current-filename">
+                            {images[currentImageIndex]?.file.name}
+                          </h3>
+                          <button
+                            className="nav-button"
+                            onClick={() =>
+                              setCurrentImageIndex((prev) => {
+                                const newIndex = Math.min(images.length - 1, prev + 1);
+                                setCrops(images[newIndex]?.crops || []);
+                                return newIndex;
+                              })
+                            }
+                            disabled={currentImageIndex === images.length - 1}
+                          >
+                            <FiChevronRight size={24} />
+                          </button>
+                        </div>
+        
+                        <div className="gallery-actions">
+                          {crops.length > 0 && (
+                            <button
+                              onClick={downloadAllCrops}
+                              className="action-button download-all-button"
+                            >
+                              <FiDownload size={16} />
+                              Download Current ({crops.length})
+                            </button>
+                          )}
+                        </div>
+                      </div>
+        
+                      <div className="current-image-container">
+                        <img
+                          src={images[currentImageIndex]?.preview}
+                          alt="Current Preview"
+                          className="current-image"
+                        />
+                      </div>
+        
+                      <div className="image-info">
+                        <span>
+                          <strong>{images[currentImageIndex]?.file.name}</strong>
+                        </span>
+                        <span>
+                          {formatFileSize(images[currentImageIndex]?.file.size || 0)}
+                        </span>
+                      </div>
+                    </div>
+                  )} */}
 
           {/* Crops Section */}
           {crops.length > 0 && (
@@ -1548,5 +1528,4 @@ function AddImage() {
     </div>
   );
 }
-
-export default AddImage;
+export default UploadImage;

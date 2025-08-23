@@ -197,6 +197,7 @@ export const getGuestStyles = (sidebarOpen) => `
     cursor: pointer;
     color: #64748b;
     transition: all 0.2s;
+    z-index: 999;
   }
 
   .close-detail-btn:hover {

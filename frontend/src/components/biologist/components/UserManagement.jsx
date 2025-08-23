@@ -12,6 +12,8 @@ import {
 } from "react-icons/fi";
 import dayjs from "dayjs";
 // import { encryptedId } from "../../../utils/encryption";
+import React from "react";
+import SuccessModal from "../../SuccessMessage";
 
 function UserManagement() {
   const {
@@ -40,6 +42,9 @@ function UserManagement() {
     setUserSortBy,
     setCurrentPage,
     handleUserProfileClick,
+    showModal,
+    modalConfig,
+    setShowModal,
   } = useUserManagement();
 
   return (
@@ -493,9 +498,6 @@ function UserManagement() {
                           <option value="biologist">
                             Biologist - Enhanced permissions
                           </option>
-                          <option value="admin">
-                            Admin - Full system access
-                          </option>
                         </select>
                         {userFormErrors.roletype && (
                           <span className="error-text">
@@ -549,6 +551,14 @@ function UserManagement() {
           )}
         </>
       )}
+      <SuccessModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        autoClose={modalConfig.autoClose}
+        autoCloseDelay={3000}
+      />
     </div>
   );
 }

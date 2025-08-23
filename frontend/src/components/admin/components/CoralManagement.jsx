@@ -10,6 +10,7 @@ import {
   FiUpload,
 } from "react-icons/fi";
 import useCoralManagement from "../hooks/useCoralManagement";
+import SuccessModal from "../../SuccessMessage";
 
 function CoralManagement() {
   const {
@@ -26,6 +27,9 @@ function CoralManagement() {
     closeCoralModal,
     handleCoralSubmit,
     handleDeleteCoral,
+    showModal,
+    modalConfig,
+    setShowModal,
   } = useCoralManagement();
 
   return (
@@ -324,6 +328,15 @@ function CoralManagement() {
           </div>
         </div>
       )}
+      <SuccessModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+        autoClose={modalConfig.autoClose}
+        autoCloseDelay={3000}
+      />
     </div>
   );
 }
