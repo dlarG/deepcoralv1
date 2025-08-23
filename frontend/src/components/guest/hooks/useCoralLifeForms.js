@@ -1,6 +1,7 @@
 // src/components/guest/hooks/useCoralLifeForms.js
 import { useState, useEffect } from "react";
 import { useAuth } from "../../../context/AuthContext";
+import { API_ENDPOINTS, API_BASE_URL } from '../../../config/api';
 
 export default function useCoralLifeForms() {
   const { authAxios } = useAuth();

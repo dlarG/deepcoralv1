@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
+import { API_ENDPOINTS, API_BASE_URL } from '../config/api';
 import {
   FiUser,
   FiLock,
@@ -97,7 +98,7 @@ function Register() {
     document.title = "Create an Account";
     const fetchCsrfToken = async () => {
       try {
-        const response = await axios.get("http://localhost:5000/csrf-token");
+        const response = await axios.get(`${API_BASE_URL}/csrf-token`);
         setCsrfToken(response.data.csrf_token);
       } catch (err) {
         console.error("Error fetching CSRF token:", err);
@@ -148,7 +149,7 @@ function Register() {
 
     try {
       const res = await axios.post(
-        "http://localhost:5000/register",
+        API_ENDPOINTS.REGISTER,
         {
           username: form.username,
           password: form.password,

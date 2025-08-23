@@ -1,46 +1,58 @@
-
-#First is to create the enum for role_type
-
+-- Create the enum for role_type
 CREATE TYPE user_role AS ENUM ('admin', 'guest', 'biologist'); 
 
-
-# Then next is the users table creation
-
-CREATE TABLE IF NOT EXISTS users (
+-- Table: public.users
+CREATE TABLE IF NOT EXISTS public.users
+(
     id SERIAL PRIMARY KEY,
-    username VARCHAR(50) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL,
-    firstname VARCHAR(100) NOT NULL,
-    middlename VARCHAR(100),
-    lastname VARCHAR(100) NOT NULL,
-    profile_picture TEXT,
-    roletype user_role NOT NULL DEFAULT 'guest',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP,
-	deleted_at TIMESTAMP
+    username character varying(50) COLLATE pg_catalog."default" NOT NULL UNIQUE,
+    password character varying(255) COLLATE pg_catalog."default" NOT NULL,
+    firstname character varying(100) COLLATE pg_catalog."default" NOT NULL,
+    middlename character varying(100) COLLATE pg_catalog."default",
+    lastname character varying(100) COLLATE pg_catalog."default" NOT NULL,
+    profile_image text COLLATE pg_catalog."default",
+    roletype user_role NOT NULL DEFAULT 'guest'::user_role,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone,
+    deleted_at timestamp without time zone,
+    bio text COLLATE pg_catalog."default",
+    status text COLLATE pg_catalog."default"
 );
 
-
-
-
-
-
-CREATE TABLE activities (
+-- Table: public.activities
+CREATE TABLE IF NOT EXISTS public.activities
+(
     id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-    activity_type VARCHAR(50) NOT NULL,
-    activity_description TEXT NOT NULL,
-    metadata JSONB,
-    ip_address INET,
-    user_agent TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    user_id integer,
+    activity_type character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    activity_description text COLLATE pg_catalog."default" NOT NULL,
+    metadata jsonb,
+    ip_address inet,
+    user_agent text COLLATE pg_catalog."default",
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT activities_user_id_fkey FOREIGN KEY (user_id)
+        REFERENCES public.users (id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE
 );
 
--- Create indexes for better performance
-CREATE INDEX idx_activities_user_id ON activities(user_id);
-CREATE INDEX idx_activities_type ON activities(activity_type);
-CREATE INDEX idx_activities_created_at ON activities(created_at);
-CREATE INDEX idx_activities_user_type ON activities(user_id, activity_type);
+-- Create indexes for activities table
+CREATE INDEX IF NOT EXISTS idx_activities_created_at ON public.activities (created_at);
+CREATE INDEX IF NOT EXISTS idx_activities_type ON public.activities (activity_type);
+CREATE INDEX IF NOT EXISTS idx_activities_user_id ON public.activities (user_id);
+CREATE INDEX IF NOT EXISTS idx_activities_user_type ON public.activities (user_id, activity_type);
 
-
-
+-- Table: public.coral_information
+CREATE TABLE IF NOT EXISTS public.coral_information
+(
+    id SERIAL PRIMARY KEY,
+    coral_type character varying(100) COLLATE pg_catalog."default" NOT NULL,
+    coral_subtype character varying(100) COLLATE pg_catalog."default",
+    classification character varying(100) COLLATE pg_catalog."default",
+    scientific_name character varying(150) COLLATE pg_catalog."default",
+    common_name character varying(100) COLLATE pg_catalog."default",
+    identification text COLLATE pg_catalog."default",
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    image text COLLATE pg_catalog."default"
+);

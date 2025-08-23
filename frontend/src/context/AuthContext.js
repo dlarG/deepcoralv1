@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
 import axios from "axios";
+import { API_ENDPOINTS, API_BASE_URL } from '../config/api';
 
 const AuthContext = createContext();
 
@@ -12,10 +13,11 @@ export function AuthProvider({ children }) {
 
   // Initialize CSRF token
   const fetchCsrfToken = React.useCallback(async () => {
-    if (csrfInitialized && csrfToken) return csrfToken; // Return if already exists
+    if (csrfInitialized && csrfToken) return csrfToken;
 
     try {
-      const response = await axios.get("http://localhost:5000/csrf-token", {
+      // REPLACE THIS LINE:
+      const response = await axios.get(`${API_BASE_URL}/csrf-token`, {
         withCredentials: true,
       });
       setCsrfToken(response.data.csrf_token);
@@ -25,7 +27,7 @@ export function AuthProvider({ children }) {
       console.error("CSRF token fetch failed:", err);
       return "";
     }
-  }, [csrfInitialized, csrfToken]); // Add csrfToken to dependencies
+  }, [csrfInitialized, csrfToken]);
 
   // Enhanced auth check
   const checkAuthStatus = React.useCallback(async () => {
@@ -34,7 +36,8 @@ export function AuthProvider({ children }) {
     setAuthCheckInProgress(true);
     try {
       const token = csrfToken || (await fetchCsrfToken());
-      const response = await axios.get("http://localhost:5000/check-auth", {
+      // REPLACE THIS LINE:
+      const response = await axios.get(`${API_BASE_URL}/check-auth`, {
         withCredentials: true,
         headers: {
           "X-CSRF-Token": token,
@@ -85,7 +88,8 @@ export function AuthProvider({ children }) {
 
   const login = async (credentials) => {
     try {
-      const res = await axios.post("http://localhost:5000/login", credentials, {
+      // REPLACE THIS LINE:
+      const res = await axios.post(API_ENDPOINTS.LOGIN, credentials, {
         withCredentials: true,
         headers: {
           "X-CSRF-Token": csrfToken,
@@ -111,8 +115,9 @@ export function AuthProvider({ children }) {
       // Get fresh CSRF token before logout
       const token = await fetchCsrfToken();
 
+      // REPLACE THIS LINE:
       const response = await axios.post(
-        "http://localhost:5000/logout",
+        API_ENDPOINTS.LOGOUT,
         {},
         {
           withCredentials: true,
@@ -134,18 +139,19 @@ export function AuthProvider({ children }) {
       // Fetch new CSRF token for future requests
       await fetchCsrfToken();
 
-      return true; // Explicitly return true on success
+      return true;
     } catch (err) {
       console.error("Logout failed:", err);
       clearAuth();
       await fetchCsrfToken();
-      return false; // Explicitly return false on failure
+      return false;
     }
   };
 
   // Create axios instance with default credentials
   const authAxios = axios.create({
-    baseURL: "http://localhost:5000",
+    // REPLACE THIS LINE:
+    baseURL: API_BASE_URL,
     withCredentials: true,
     headers: {
       "X-CSRF-Token": csrfToken,
@@ -168,8 +174,8 @@ export function AuthProvider({ children }) {
         logout,
         checkAuthStatus,
         authAxios,
-        csrfToken, // Make sure this is exposed
-        fetchCsrfToken, // Add this to exposed functions
+        csrfToken,
+        fetchCsrfToken,
         updateUser,
       }}
     >

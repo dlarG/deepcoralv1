@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useAuth } from "../../../context/AuthContext";
+import { API_ENDPOINTS, API_BASE_URL } from '../../../config/api';
 
 export default function useCoralManagement() {
   const { fetchCsrfToken, authAxios } = useAuth();
@@ -24,7 +25,8 @@ export default function useCoralManagement() {
   useEffect(() => {
     const fetchCoralData = async () => {
       try {
-        const response = await authAxios.get("/coral_info");
+        // REPLACE: "/coral_info" with API endpoint
+        const response = await authAxios.get(`${API_BASE_URL}/coral_info`);
         setCoralData(response.data.data || []);
       } catch (err) {
         console.error("Failed to fetch coral data:", err);
@@ -114,7 +116,7 @@ export default function useCoralManagement() {
 
       if (coralModalMode === "add") {
         response = await axios.post(
-          "http://localhost:5000/admin/corals",
+          `${API_BASE_URL}/admin/corals`,
           formData,
           {
             headers: {
@@ -128,7 +130,7 @@ export default function useCoralManagement() {
         alert("Coral information added successfully!");
       } else if (coralModalMode === "edit") {
         response = await axios.put(
-          `http://localhost:5000/admin/corals/${currentCoral.id}`,
+          `${API_BASE_URL}/admin/corals/${currentCoral.id}`,
           formData,
           {
             headers: {
@@ -160,7 +162,7 @@ export default function useCoralManagement() {
 
     try {
       const csrfToken = await fetchCsrfToken();
-      await axios.delete(`http://localhost:5000/admin/corals/${coralId}`, {
+      await axios.delete(`${API_BASE_URL}/admin/corals/${coralId}`, {
         headers: { "X-CSRF-Token": csrfToken },
         withCredentials: true,
       });

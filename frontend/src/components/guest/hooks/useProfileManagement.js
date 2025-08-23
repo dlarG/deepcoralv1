@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../../../context/AuthContext";
 import axios from "axios";
+import { API_ENDPOINTS, API_BASE_URL } from '../../../config/api';
 
 export default function useProfileManagement(user) {
   const { updateUser, fetchCsrfToken, logout } = useAuth();
@@ -67,7 +68,7 @@ export default function useProfileManagement(user) {
     try {
       const csrfToken = await fetchCsrfToken();
 
-      await axios.delete("http://localhost:5000/profile", {
+      await axios.delete(`${API_BASE_URL}/profile`, {
         data: { password: deletePassword },
         headers: {
           "Content-Type": "application/json",
@@ -242,7 +243,7 @@ export default function useProfileManagement(user) {
       }
 
       const response = await axios.put(
-        "http://localhost:5000/profile",
+        `${API_BASE_URL}/profile`,
         formData,
         {
           headers: {

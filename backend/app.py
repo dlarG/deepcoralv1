@@ -14,21 +14,22 @@ def create_app():
     # Initialize routes
     init_routes(app)
     
-    # CSRF token endpoint
-    @app.route('/csrf-token', methods=['GET'])
-    def get_csrf_token():
-        if 'csrf_token' not in session:
-            session['csrf_token'] = secrets.token_hex(16)
-        return jsonify({'csrf_token': session['csrf_token']})
-    
     # CSRF protection middleware
     @app.before_request
     def csrf_protect():
-        if request.method in ['POST', 'PUT', 'DELETE', 'PATCH']:
-            # Skip CSRF for file upload endpoints (you can be more specific)
-            if request.endpoint in ['image.detect_custom', 'image.detect']:
-                return
+        # Skip CSRF for GET requests and token endpoint
+        if request.method == 'GET':
+            return
             
+        # Skip CSRF for specific endpoints
+        if request.endpoint in ['auth.get_csrf_token', 'image.detect_custom', 'image.detect']:
+            return
+        
+        # Skip CSRF for OPTIONS requests
+        if request.method == 'OPTIONS':
+            return
+            
+        if request.method in ['POST', 'PUT', 'DELETE', 'PATCH']:
             csrf_token = session.get('csrf_token')
             request_csrf = request.headers.get('X-CSRF-Token') or request.form.get('csrf_token')
             
@@ -39,4 +40,4 @@ def create_app():
 
 if __name__ == '__main__':
     app = create_app()
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)

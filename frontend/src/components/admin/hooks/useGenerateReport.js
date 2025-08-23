@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useAuth } from "../../../context/AuthContext";
+import { API_ENDPOINTS, API_BASE_URL } from '../../../config/api';
 
 export default function useGenerateReport() {
   const { fetchCsrfToken } = useAuth();
@@ -59,7 +60,7 @@ export default function useGenerateReport() {
       }
 
       const response = await axios.get(
-        `http://localhost:5000${endpoint}?${params}`,
+        `${API_BASE_URL}${endpoint}?${params}`,
         {
           withCredentials: true,
         }
@@ -84,7 +85,7 @@ export default function useGenerateReport() {
     try {
       const csrfToken = await fetchCsrfToken();
       const response = await axios.post(
-        `http://localhost:5000/admin/reports/export/${activeReportType}`,
+        `${API_BASE_URL}/admin/reports/export/${activeReportType}`,
         {
           format: format,
           filters: filters,

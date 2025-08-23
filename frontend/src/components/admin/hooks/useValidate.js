@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useAuth } from "../../../context/AuthContext";
+import { API_ENDPOINTS, API_BASE_URL } from '../../../config/api';
 
 export default function useValidate() {
   const { fetchCsrfToken } = useAuth();
@@ -15,7 +16,7 @@ export default function useValidate() {
     setLoading(true);
     try {
       const response = await axios.get(
-        "http://localhost:5000/admin/pending-users",
+        `${API_BASE_URL}/admin/pending-users`,
         {
           withCredentials: true,
         }
@@ -35,7 +36,7 @@ export default function useValidate() {
     try {
       const csrfToken = await fetchCsrfToken();
       const response = await axios.put(
-        `http://localhost:5000/admin/users/${userId}/approve`,
+        `${API_BASE_URL}/admin/users/${userId}/approve`,
         {},
         {
           headers: {
@@ -69,7 +70,7 @@ export default function useValidate() {
     setActionLoading((prev) => ({ ...prev, [userId]: "rejecting" }));
     try {
       const csrfToken = await fetchCsrfToken();
-      await axios.delete(`http://localhost:5000/admin/users/${userId}/reject`, {
+      await axios.delete(`${API_BASE_URL}/admin/users/${userId}/reject`, {
         headers: {
           "X-CSRF-Token": csrfToken,
         },

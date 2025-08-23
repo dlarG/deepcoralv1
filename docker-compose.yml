@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: deep_coral_ai
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/tables.txt:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - deepcoral-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d deep_coral_ai"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Backend Service
+  backend:
+    build: 
+      context: ./backend
+      args:
+        BUILD_TYPE: development
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./backend/.env.docker
+    volumes:
+      - ./backend/coral_uploads:/app/coral_uploads
+      - ./backend/models:/app/models
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - deepcoral-network
+    restart: unless-stopped
+
+  # Frontend Service
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - deepcoral-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  deepcoral-network:
+    driver: bridge

@@ -1,7 +1,86 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# Environment files
 .env
-backend/.env
-**/.env
-backend/__pycache__
-backend/routes/__pycache__
-backend/utils/__pycache__
-backend/coral_uploads
+.env.local
+.env.docker
+*.env
+
+# Database
+*.db
+*.sqlite3
+
+# Docker
+.dockerignore
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# React build
+frontend/build/
+frontend/dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Uploaded files
+backend/coral_uploads/
+backend/profile_uploads/
+frontend/public/coral_uploads/
+frontend/public/profile_uploads/
+frontend/public/uploaded_coral_information/
+
+# Model files (these are usually large)
+backend/models/*.pt
+backend/models/*.pth
+
+# CSV exports
+*.csv
+users_import.sql
+coral_info_import.sql
+
+# Temporary files
+*.tmp
+*.temp
+
+# Docker volumes
+postgres_data/

@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
 import { validateUserForm } from "../utils/validationUtils";
 import { encryptId } from "../../../utils/encryption";
+import { API_ENDPOINTS, API_BASE_URL } from '../../../config/api';
 
 export default function useUserManagement() {
   const navigate = useNavigate();
@@ -34,7 +35,7 @@ export default function useUserManagement() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await axios.get("http://localhost:5000/admin/users", {
+        const response = await axios.get(`${API_BASE_URL}/admin/users`, {
           withCredentials: true,
         });
         setUsers(response.data.users);
@@ -154,7 +155,7 @@ export default function useUserManagement() {
 
       if (userModalMode === "create") {
         response = await axios.post(
-          "http://localhost:5000/admin/users",
+          `${API_BASE_URL}/admin/users`,
           formData,
           {
             withCredentials: true,
@@ -174,7 +175,7 @@ export default function useUserManagement() {
         }
 
         response = await axios.put(
-          `http://localhost:5000/admin/users/${selectedUser.id}`,
+          `${API_BASE_URL}/admin/users/${selectedUser.id}`,
           updateData,
           {
             withCredentials: true,
@@ -213,14 +214,14 @@ export default function useUserManagement() {
       try {
         // Get fresh CSRF token for important operations
         const csrfResponse = await axios.get(
-          "http://localhost:5000/csrf-token",
+          `${API_BASE_URL}/csrf-token`,
           {
             withCredentials: true,
           }
         );
         const csrfToken = csrfResponse.data.csrf_token;
 
-        await axios.delete(`http://localhost:5000/admin/users/${userId}`, {
+        await axios.delete(`${API_BASE_URL}/admin/users/${userId}`, {
           withCredentials: true,
           headers: {
             "X-CSRF-Token": csrfToken,
