@@ -10,7 +10,7 @@ import AdminDashboard from "./components/AdminDashboard";
 import { AuthProvider } from "./context/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import UserProfile from "./components/admin/components/UserProfile";
-
+import BiologistUserProfile from "./components/biologist/components/UserProfile";
 import SuccessMessage from "./components/SuccessMessage";
 
 function App() {
@@ -46,6 +46,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/biologist-dashboard"
             element={
@@ -54,6 +55,23 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/biologist/user/profile/:userId"
+            element={
+              <ProtectedRoute requiredRole="biologist">
+                <BiologistUserProfile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/user-profile/:userId"
+            element={
+              <ProtectedRoute requiredRole="biologist">
+                <BiologistUserProfile />
+              </ProtectedRoute>
+            }
+          />
+
           <Route
             path="/guest-dashboard"
             element={

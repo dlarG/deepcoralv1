@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import TopNavigation from "./biologist/components/TopNavigation";
 import Sidebar from "./biologist/components/Sidebar";
 import Dashboard from "./biologist/components/Dashboard";
+import UserManagement from "./biologist/components/UserManagement";
 // import ImageAnalysis from "./biologist/components/ImageAnalysis";
 // import CoralDatabase from "./biologist/components/CoralDatabase";
 // import Reports from "./biologist/components/Reports";
@@ -55,6 +56,8 @@ function BiologistDashboard() {
     switch (activeTab) {
       case "Dashboard":
         return <Dashboard user={user} darkMode={darkMode} />;
+      case "User":
+        return <UserManagement />;
       //   case "Image Analysis":
       //     return <ImageAnalysis user={user} darkMode={darkMode} />;
       //   case "Coral Database":

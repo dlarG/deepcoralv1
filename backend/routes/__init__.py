@@ -3,6 +3,7 @@ from .coral_routes import coral_bp
 from .admin_routes import admin_bp
 from .profile_routes import profile_bp
 from .upload_image import image_bp
+from .biologist_routes import biologist_bp
 
 def init_routes(app):
     app.register_blueprint(auth_bp)
@@ -10,3 +11,4 @@ def init_routes(app):
     app.register_blueprint(admin_bp)
     app.register_blueprint(profile_bp)
     app.register_blueprint(image_bp)
+    app.register_blueprint(biologist_bp)
