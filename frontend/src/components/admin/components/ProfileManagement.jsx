@@ -17,6 +17,7 @@ import {
 } from "react-icons/fi";
 import useProfileManagement from "../hooks/useProfileManagement";
 import dayjs from "dayjs";
+import SuccessModal from "../../SuccessMessage";
 
 function ProfileManagement({ user }) {
   const {
@@ -39,11 +40,15 @@ function ProfileManagement({ user }) {
     handleProfileSubmit,
     handleDeleteProfile,
     setProfileTab,
+    showModal,
+    modalConfig,
+    setShowModal,
+    confirmDeleteProfile,
+    cancelDeleteProfile,
   } = useProfileManagement(user);
 
   return (
     <div className="modern-profile-container">
-      {/* Enhanced Header with Gradient Background */}
       <div className="profile-hero-section">
         <div className="hero-background">
           <div className="gradient-overlay"></div>
@@ -126,7 +131,6 @@ function ProfileManagement({ user }) {
         </div>
       </div>
 
-      {/* Modern Info Cards Grid */}
       <div className="profile-info-grid">
         <div className="info-card personal-info">
           <div className="card-header">
@@ -230,8 +234,6 @@ function ProfileManagement({ user }) {
           </div>
         </div>
       </div>
-
-      {/* Keep existing modals (they're already well-designed) */}
       {showDeleteModal && (
         <div className="modal-overlay">
           <div className="delete-modal">
@@ -493,6 +495,18 @@ function ProfileManagement({ user }) {
           </div>
         </div>
       )}
+      <SuccessModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+        autoClose={modalConfig.autoClose}
+        autoCloseDelay={3000}
+        customActions={modalConfig.customActions}
+        onConfirm={modalConfig.customActions ? confirmDeleteProfile : null}
+        onCancel={modalConfig.customActions ? cancelDeleteProfile : null}
+      />
     </div>
   );
 }

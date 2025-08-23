@@ -12,6 +12,7 @@ import {
 } from "react-icons/fi";
 import dayjs from "dayjs";
 // import { encryptedId } from "../../../utils/encryption";
+import SuccessModal from "../../SuccessMessage";
 
 function UserManagement() {
   const {
@@ -40,6 +41,11 @@ function UserManagement() {
     setUserSortBy,
     setCurrentPage,
     handleUserProfileClick,
+    showModal,
+    modalConfig,
+    setShowModal,
+    confirmDelete,
+    cancelDelete,
   } = useUserManagement();
 
   return (
@@ -549,6 +555,18 @@ function UserManagement() {
           )}
         </>
       )}
+      <SuccessModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+        autoClose={modalConfig.autoClose}
+        autoCloseDelay={3000}
+        customActions={modalConfig.customActions || false} // Make sure this is properly set
+        onConfirm={modalConfig.customActions ? confirmDelete : null}
+        onCancel={modalConfig.customActions ? cancelDelete : null}
+      />
     </div>
   );
 }

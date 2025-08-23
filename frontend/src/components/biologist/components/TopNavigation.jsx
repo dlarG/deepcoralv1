@@ -65,7 +65,20 @@ function TopNavigation({
           <FiMenu size={20} />
         </button>
         <div className="logo-container">
-          <div className="navbar-logo "></div>
+          <img
+            src={
+              darkMode
+                ? "/img/logos/LogoSideTextW.png"
+                : "/img/logos/LogoSideTextB.png"
+            }
+            className="navbar-logo"
+            alt="DeepCoral AI Logo"
+            onError={(e) => {
+              console.warn("Logo image failed to load:", e.target.src);
+              // Fallback to a default or hide the image
+              e.target.style.display = "none";
+            }}
+          />
         </div>
       </div>
 

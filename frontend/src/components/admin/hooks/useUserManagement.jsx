@@ -1,4 +1,3 @@
-// src/components/admin/hooks/useUserManagement.js
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
@@ -30,6 +29,47 @@ export default function useUserManagement() {
   const [currentPage, setCurrentPage] = useState(1);
   const [userSortBy, setUserSortBy] = useState("created_desc");
 
+  // Modal state for success/error messages
+  const [showModal, setShowModal] = useState(false);
+  const [modalConfig, setModalConfig] = useState({
+    title: "",
+    message: "",
+    type: "success",
+    autoClose: true,
+  });
+  const [pendingDeleteUserId, setPendingDeleteUserId] = useState(null);
+
+  // Modal helper functions
+  const showSuccessModal = (title, message, autoClose = true) => {
+    setModalConfig({
+      title,
+      message,
+      type: "success",
+      autoClose,
+    });
+    setShowModal(true);
+  };
+
+  const showErrorModal = (title, message) => {
+    setModalConfig({
+      title,
+      message,
+      type: "error",
+      autoClose: false,
+    });
+    setShowModal(true);
+  };
+
+  const showWarningModal = (title, message) => {
+    setModalConfig({
+      title,
+      message,
+      type: "warning",
+      autoClose: false,
+    });
+    setShowModal(true);
+  };
+
   // Fetch users
   useEffect(() => {
     const fetchUsers = async () => {
@@ -40,6 +80,10 @@ export default function useUserManagement() {
         setUsers(response.data.users);
       } catch (err) {
         setError(err.response?.data?.error || "Failed to fetch users");
+        showErrorModal(
+          "Failed to Load Users",
+          "Unable to fetch user data. Please refresh the page or check your connection."
+        );
       } finally {
         setLoading(false);
       }
@@ -140,11 +184,14 @@ export default function useUserManagement() {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Validate form - pass the current mode
     const errors = validateUserForm(formData, userModalMode);
     if (Object.keys(errors).length > 0) {
       setUserFormErrors(errors);
       setIsSubmitting(false);
+      showWarningModal(
+        "Form Validation Failed",
+        "Please check the highlighted fields and correct any errors before submitting."
+      );
       return;
     }
 
@@ -165,9 +212,13 @@ export default function useUserManagement() {
           }
         );
         setUsers([...users, response.data.user]);
-        alert("User created successfully!");
+
+        showSuccessModal(
+          "User Created Successfully!",
+          `${formData.firstname} ${formData.lastname} has been successfully created as a ${formData.roletype}.\n\nUsername: ${formData.username}`,
+          true
+        );
       } else {
-        // For edit mode, only send password if it's provided
         const updateData = { ...formData };
         if (!updateData.password?.trim()) {
           delete updateData.password; // Remove empty password from request
@@ -187,58 +238,165 @@ export default function useUserManagement() {
         setUsers(
           users.map((u) => (u.id === selectedUser.id ? response.data.user : u))
         );
-        alert("User updated successfully!");
+
+        showSuccessModal(
+          "User Updated Successfully!",
+          `${updateData.firstname} ${updateData.lastname}'s profile has been updated with the latest information.`,
+          true
+        );
       }
 
       closeUserModal();
     } catch (error) {
       console.error("User operation failed:", error);
+
       if (error.response?.data?.error) {
-        // Handle specific backend errors
         if (error.response.data.error.includes("Username already")) {
           setUserFormErrors({ username: "Username already exists" });
+          showErrorModal(
+            "Username Already Exists",
+            "This username is already taken. Please choose a different username."
+          );
+        } else if (error.response.data.error.includes("Invalid email")) {
+          setUserFormErrors({ email: "Invalid email format" });
+          showErrorModal(
+            "Invalid Email",
+            "Please enter a valid email address."
+          );
+        } else if (error.response.status === 400) {
+          showErrorModal(
+            "Invalid Data",
+            "Please check your input data and ensure all required fields are filled correctly."
+          );
+        } else if (error.response.status === 403) {
+          showErrorModal(
+            "Permission Denied",
+            "You don't have permission to perform this action."
+          );
+        } else if (error.response.status === 409) {
+          showErrorModal(
+            "Conflict",
+            "A user with similar information already exists in the system."
+          );
         } else {
-          alert(`Error: ${error.response.data.error}`);
+          showErrorModal("Operation Failed", error.response.data.error);
         }
+      } else if (error.code === "NETWORK_ERROR") {
+        showErrorModal(
+          "Connection Error",
+          "Unable to connect to the server. Please check your internet connection and try again."
+        );
       } else {
-        alert("Operation failed. Please try again.");
+        showErrorModal(
+          "Unexpected Error",
+          `Failed to ${userModalMode} user. Please try again or contact support if the problem persists.`
+        );
       }
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDelete = async (userId) => {
-    if (window.confirm("Are you sure you want to delete this user?")) {
-      try {
-        // Get fresh CSRF token for important operations
-        const csrfResponse = await axios.get(
-          "http://localhost:5000/csrf-token",
-          {
-            withCredentials: true,
-          }
-        );
-        const csrfToken = csrfResponse.data.csrf_token;
+  const handleDelete = (userId) => {
+    const userToDelete = users.find((u) => u.id === userId);
+    const userName = userToDelete
+      ? `${userToDelete.firstname} ${userToDelete.lastname}`
+      : "this user";
+    const userRole = userToDelete ? userToDelete.roletype : "user";
 
-        await axios.delete(`http://localhost:5000/admin/users/${userId}`, {
-          withCredentials: true,
-          headers: {
-            "X-CSRF-Token": csrfToken,
-          },
-        });
-        // Refresh users after deletion
+    setPendingDeleteUserId(userId);
+    setModalConfig({
+      title: "Confirm User Deletion",
+      message: `Are you sure you want to permanently delete ${userName} (${userRole})?\n\nThis action cannot be undone and will:\n• Remove all user data\n• Revoke all access permissions\n• Delete associated records`,
+      type: "warning",
+      autoClose: false,
+      customActions: true,
+    });
+    setShowModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDeleteUserId) return;
+
+    const userId = pendingDeleteUserId;
+    const userToDelete = users.find((u) => u.id === userId);
+    const userName = userToDelete
+      ? `${userToDelete.firstname} ${userToDelete.lastname}`
+      : "this user";
+
+    try {
+      const csrfResponse = await axios.get("http://localhost:5000/csrf-token", {
+        withCredentials: true,
+      });
+      const csrfToken = csrfResponse.data.csrf_token;
+
+      await axios.delete(`http://localhost:5000/admin/users/${userId}`, {
+        withCredentials: true,
+        headers: {
+          "X-CSRF-Token": csrfToken,
+        },
+      });
+
+      setUsers(users.filter((user) => user.id !== userId));
+
+      setPendingDeleteUserId(null);
+      setShowModal(false);
+
+      showSuccessModal(
+        "User Deleted Successfully!",
+        `${userName} has been permanently removed from the system.\n\nAll associated data and permissions have been revoked.`,
+        true
+      );
+    } catch (error) {
+      console.error("Delete failed:", error);
+      setError("Failed to delete user");
+
+      setPendingDeleteUserId(null);
+      setShowModal(false);
+
+      if (error.response?.status === 401) {
+        showErrorModal(
+          "Authentication Required",
+          "Your session has expired. Please log in again to continue."
+        );
+        logout();
+        navigate("/login");
+      } else if (error.response?.status === 403) {
+        showErrorModal(
+          "Permission Denied",
+          "You don't have permission to delete this user. Contact your administrator if you believe this is an error."
+        );
+      } else if (error.response?.status === 404) {
+        showErrorModal(
+          "User Not Found",
+          "The user you're trying to delete no longer exists or may have already been removed."
+        );
+        // Refresh the users list
         setUsers(users.filter((user) => user.id !== userId));
-        alert("User deleted successfully!");
-      } catch (error) {
-        console.error("Delete failed:", error);
-        setError("Failed to delete user");
-        if (error.response?.status === 401 || error.response?.status === 403) {
-          logout();
-          navigate("/login");
-        }
+      } else if (error.response?.status === 409) {
+        showErrorModal(
+          "Cannot Delete User",
+          "This user cannot be deleted because they have associated records or dependencies in the system."
+        );
+      } else if (error.code === "NETWORK_ERROR") {
+        showErrorModal(
+          "Connection Error",
+          "Unable to connect to the server. Please check your internet connection and try again."
+        );
+      } else {
+        showErrorModal(
+          "Delete Failed",
+          "Unable to delete the user. Please try again or contact support if the problem persists."
+        );
       }
     }
   };
+
+  const cancelDelete = () => {
+    setPendingDeleteUserId(null);
+    setShowModal(false);
+  };
+
   const handleUserProfileClick = (userId) => {
     try {
       const encryptedId = encryptId(userId);
@@ -248,11 +406,17 @@ export default function useUserManagement() {
         navigate(`/admin/users/${encodedId}`);
       } else {
         console.error("Failed to encrypt user ID");
-        alert("Error opening user profile");
+        showErrorModal(
+          "Navigation Error",
+          "Unable to encrypt user ID for secure navigation. Please try again."
+        );
       }
     } catch (error) {
       console.error("Error navigating to user profile:", error);
-      alert("Error opening user profile");
+      showErrorModal(
+        "Navigation Error",
+        "An error occurred while trying to open the user profile. Please try again."
+      );
     }
   };
 
@@ -282,5 +446,15 @@ export default function useUserManagement() {
     setUserFilterRole,
     setUserSortBy,
     setCurrentPage,
+
+    showModal,
+    modalConfig,
+    setShowModal,
+    showSuccessModal,
+    showErrorModal,
+    showWarningModal,
+    confirmDelete,
+    cancelDelete,
+    pendingDeleteUserId,
   };
 }

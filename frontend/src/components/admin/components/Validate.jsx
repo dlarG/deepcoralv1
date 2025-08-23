@@ -11,6 +11,7 @@ import {
   FiShield,
 } from "react-icons/fi";
 import useValidate from "../hooks/useValidate";
+import SuccessModal from "../../SuccessMessage";
 
 function Validate() {
   const {
@@ -21,6 +22,11 @@ function Validate() {
     actionLoading,
     approveUser,
     rejectUser,
+    showModal,
+    modalConfig,
+    setShowModal,
+    handleConfirm,
+    cancelAction,
   } = useValidate();
 
   const formatDate = (dateString) => {
@@ -44,7 +50,6 @@ function Validate() {
         </div>
       </div>
 
-      {/* Filter Tabs */}
       <div className="validation-filters">
         <button
           className={`filter-btn ${activeFilter === "users" ? "active" : ""}`}
@@ -66,7 +71,6 @@ function Validate() {
         </button>
       </div>
 
-      {/* Content Area */}
       <div className="validation-content">
         {activeFilter === "users" && (
           <div className="pending-users-section">
@@ -214,6 +218,20 @@ function Validate() {
           </div>
         )}
       </div>
+
+      {/* Updated SuccessModal with all required props */}
+      <SuccessModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+        autoClose={modalConfig.autoClose}
+        autoCloseDelay={3000}
+        customActions={modalConfig.customActions}
+        onConfirm={modalConfig.customActions ? handleConfirm : null}
+        onCancel={modalConfig.customActions ? cancelAction : null}
+      />
     </div>
   );
 }
