@@ -1331,7 +1331,7 @@ export const getAdminStyles = (sidebarOpen) => `
           justify-content: space-between;
           align-items: center;
           padding: 0 2rem;
-          height: 70px;
+          height: 90px;
           max-width: 100%;
         }
         .user-actions {
@@ -1591,7 +1591,7 @@ export const getAdminStyles = (sidebarOpen) => `
           transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           height: calc(100vh - 70px);
           position: fixed;
-          top: 70px;
+          top: 90px;
           display: flex;
           flex-direction: column;
           overflow-y: auto;
@@ -1708,7 +1708,7 @@ export const getAdminStyles = (sidebarOpen) => `
           overflow-y: auto;
           margin-left: ${sidebarOpen ? "280px" : "80px"};
           transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          height: calc(100vh - 70px);
+          height: calc(100vh - 100px);
         }
         
         .content-placeholder {

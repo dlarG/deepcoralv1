@@ -265,18 +265,18 @@ function AddImage() {
     document.body.removeChild(link);
   };
 
-  const downloadAllCrops = () => {
-    if (images.length === 0 || !images[currentImageIndex]?.crops?.length) {
-      alert("No crops to download");
-      return;
-    }
+  // const downloadAllCrops = () => {
+  //   if (images.length === 0 || !images[currentImageIndex]?.crops?.length) {
+  //     alert("No crops to download");
+  //     return;
+  //   }
 
-    images[currentImageIndex].crops.forEach((crop, i) => {
-      setTimeout(() => {
-        downloadCrop(crop, i);
-      }, i * 200);
-    });
-  };
+  //   images[currentImageIndex].crops.forEach((crop, i) => {
+  //     setTimeout(() => {
+  //       downloadCrop(crop, i);
+  //     }, i * 200);
+  //   });
+  // };
 
   const downloadBatchCrops = () => {
     let totalCrops = 0;
@@ -299,19 +299,19 @@ function AddImage() {
     });
   };
 
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return "0 Bytes";
-    const k = 1024;
-    const sizes = ["Bytes", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-  };
+  // const formatFileSize = (bytes) => {
+  //   if (bytes === 0) return "0 Bytes";
+  //   const k = 1024;
+  //   const sizes = ["Bytes", "KB", "MB", "GB"];
+  //   const i = Math.floor(Math.log(bytes) / Math.log(k));
+  //   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  // };
 
   const totalCrops = images.reduce(
     (sum, img) => sum + (img.crops?.length || 0),
     0
   );
-  const completedImages = images.filter((img) => img.processed).length;
+  // const completedImages = images.filter((img) => img.processed).length;
 
   return (
     <div className="add-image-container">
@@ -348,6 +348,7 @@ function AddImage() {
           background: white;
           border-radius: 24px;
           padding: 3rem;
+          margin-bottom: 2rem;
           box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
           border: 2px solid #e2e8f0;
         }

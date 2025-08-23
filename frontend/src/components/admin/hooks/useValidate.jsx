@@ -34,7 +34,7 @@ export default function useValidate() {
     setActionLoading((prev) => ({ ...prev, [userId]: "approving" }));
     try {
       const csrfToken = await fetchCsrfToken();
-      const response = await axios.put(
+      await axios.put(
         `http://localhost:5000/admin/users/${userId}/approve`,
         {},
         {

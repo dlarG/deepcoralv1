@@ -13,9 +13,6 @@ import {
   FiUpload,
   FiActivity,
   FiSettings,
-  FiAward,
-  FiMapPin,
-  FiMail,
 } from "react-icons/fi";
 import useProfileManagement from "../hooks/useProfileManagement";
 import dayjs from "dayjs";

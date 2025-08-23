@@ -9,9 +9,6 @@ import {
   FiFilter,
   FiFileText,
   FiBarChart,
-  FiCalendar,
-  FiChevronDown,
-  FiRefreshCw,
 } from "react-icons/fi";
 import useGenerateReport from "../hooks/useGenerateReport";
 

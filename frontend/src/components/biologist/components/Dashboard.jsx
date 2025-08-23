@@ -11,14 +11,14 @@ import {
 } from "react-icons/fi";
 
 function Dashboard({ user, darkMode }) {
-  const [stats, setStats] = useState({
+  const [stats] = useState({
     totalImages: 1247,
     analysesCompleted: 89,
     reportsGenerated: 23,
     accuracyRate: 94.7,
   });
 
-  const [recentAnalyses, setRecentAnalyses] = useState([
+  const [recentAnalyses] = useState([
     {
       id: 1,
       species: "Acropora cervicornis",
@@ -42,7 +42,7 @@ function Dashboard({ user, darkMode }) {
     },
   ]);
 
-  const [weeklyProgress, setWeeklyProgress] = useState([
+  const [weeklyProgress] = useState([
     { day: "Mon", analyses: 12, accuracy: 94.2 },
     { day: "Tue", analyses: 18, accuracy: 95.1 },
     { day: "Wed", analyses: 15, accuracy: 93.8 },

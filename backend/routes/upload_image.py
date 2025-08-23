@@ -21,14 +21,13 @@ if not os.path.exists(OUTPUT_FOLDER):
 def serve_crop(filename):
     return send_from_directory(OUTPUT_FOLDER, filename)
 
-def enhanced_crop_inside_quadrat(image_path, bbox, crop_method='aggressive'):
-    """Enhanced cropping to cut deeper inside the quadrat"""
+def enhanced_crop_inside_quadrat(image_path, bbox, crop_method='conservative'):
     x1, y1, x2, y2 = bbox
     width = x2 - x1
     height = y2 - y1
     
     if crop_method == 'conservative':
-        margin = 0.04  # 4% margin reduction
+        margin = 0.04  # 4% margin reduction 
     elif crop_method == 'moderate':
         margin = 0.12  # 12% margin reduction
     elif crop_method == 'aggressive':

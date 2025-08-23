@@ -8,7 +8,6 @@ import {
   FiClock,
   FiCalendar,
   FiUser,
-  FiMail,
   FiShield,
 } from "react-icons/fi";
 import useValidate from "../hooks/useValidate";

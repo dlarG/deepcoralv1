@@ -11,11 +11,14 @@ import { AuthProvider } from "./context/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import UserProfile from "./components/admin/components/UserProfile";
 
+import SuccessMessage from "./components/SuccessMessage";
+
 function App() {
   return (
     <Router>
       <AuthProvider>
         <Routes>
+          <Route path="/success" element={<SuccessMessage />} />
           <Route path="/" element={<HomePage />} />
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
