@@ -4,19 +4,14 @@ import {
   FiCamera,
   FiDatabase,
   FiFileText,
-  FiActivity,
   FiUser,
   FiUpload,
-  FiSearch,
-  FiTrendingUp,
-  FiAward,
-  FiEye,
+  FiUsers,
 } from "react-icons/fi";
 
 function Sidebar({ activeTab, setActiveTab, sidebarOpen, darkMode }) {
   const menuItems = [
     {
-      section: "Main",
       items: [
         {
           id: "Dashboard",
@@ -27,7 +22,7 @@ function Sidebar({ activeTab, setActiveTab, sidebarOpen, darkMode }) {
         {
           id: "Image Analysis",
           label: "Image Analysis",
-          description: "AI-Powered Detection",
+          description: "AI-Powered Segmentation",
           icon: FiCamera,
         },
         {
@@ -36,28 +31,12 @@ function Sidebar({ activeTab, setActiveTab, sidebarOpen, darkMode }) {
           description: "Species Information",
           icon: FiDatabase,
         },
-      ],
-    },
-    {
-      section: "Research",
-      items: [
         {
-          id: "Reports",
-          label: "Reports",
-          description: "Research Documentation",
-          icon: FiFileText,
+          id: "User",
+          label: "Users",
+          description: "User Management",
+          icon: FiUsers,
         },
-        {
-          id: "Research Tools",
-          label: "Research Tools",
-          description: "Advanced Analytics",
-          icon: FiActivity,
-        },
-      ],
-    },
-    {
-      section: "Account",
-      items: [
         {
           id: "Profile",
           label: "Profile",
@@ -79,34 +58,11 @@ function Sidebar({ activeTab, setActiveTab, sidebarOpen, darkMode }) {
       icon: FiFileText,
       className: "success",
     },
-    {
-      label: "Search Database",
-      icon: FiSearch,
-      className: "info",
-    },
-  ];
-
-  const stats = [
-    { label: "Analyses", value: "247", icon: FiEye },
-    { label: "Accuracy", value: "94.7%", icon: FiTrendingUp },
-    { label: "Reports", value: "23", icon: FiAward },
   ];
 
   return (
     <aside className="bio-sidebar">
       <div className="sidebar-content">
-        {sidebarOpen && (
-          <div className="sidebar-header">
-            <div className="logo-container">
-              <div className="logo-icon">🐠</div>
-              <div className="logo-text">
-                <h2>DeepCoral</h2>
-                <span>Research Platform</span>
-              </div>
-            </div>
-          </div>
-        )}
-
         <nav className="sidebar-nav">
           {menuItems.map((section) => (
             <div key={section.section} className="nav-section">
@@ -140,7 +96,6 @@ function Sidebar({ activeTab, setActiveTab, sidebarOpen, darkMode }) {
               </ul>
             </div>
           ))}
-
           {sidebarOpen && (
             <>
               <div className="nav-section">
@@ -157,37 +112,16 @@ function Sidebar({ activeTab, setActiveTab, sidebarOpen, darkMode }) {
                   ))}
                 </div>
               </div>
-
-              <div className="nav-section">
-                <div className="stats-widget">
-                  <div className="stats-header">
-                    <h4>Quick Stats</h4>
-                  </div>
-                  <div className="stats-content">
-                    {stats.map((stat, index) => (
-                      <div key={index} className="stat-item">
-                        <div className="stat-icon">
-                          <stat.icon size={16} />
-                        </div>
-                        <div className="stat-info">
-                          <span className="stat-value">{stat.value}</span>
-                          <span className="stat-label">{stat.label}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
             </>
           )}
+          <br />
         </nav>
 
         {sidebarOpen && (
           <div className="sidebar-footer">
             <div className="footer-content">
               <div className="version-info">
-                <span>DeepCoral AI v2.1</span>
-                <span>Last updated: Today</span>
+                <span>DeepCoralAI</span>
               </div>
             </div>
           </div>

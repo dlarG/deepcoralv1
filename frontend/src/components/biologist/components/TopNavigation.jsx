@@ -64,10 +64,8 @@ function TopNavigation({
         >
           <FiMenu size={20} />
         </button>
-
-        <div className="nav-brand">
-          <h1>DeepCoral AI</h1>
-          <span className="role-badge">Biologist Portal</span>
+        <div className="logo-container">
+          <div className="navbar-logo "></div>
         </div>
       </div>
 

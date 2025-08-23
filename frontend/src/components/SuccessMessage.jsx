@@ -28,10 +28,6 @@ const styles = `
         overflow: hidden;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
     }
-    h1 {
-        font-size: 60px;
-        color: green;
-    }
     .content {
         text-align: center;
         padding: 15px;

@@ -14,7 +14,13 @@ const getBiologistStyle = (sidebarOpen, darkMode = false) => `
   color: ${darkMode ? "#e2e8f0" : "#0f172a"};
   transition: all 0.3s ease;
 }
-
+.logo-container img {
+  background: ${
+    darkMode
+      ? "url('img/logos/LogoSideTextB.png')"
+      : "url('img/logos/LogoSideTextW.png')"
+  };
+}
 .biologist-dashboard.dark-mode {
   background: #0f172a;
   color: #e2e8f0;
@@ -365,7 +371,7 @@ const getBiologistStyle = (sidebarOpen, darkMode = false) => `
 }
 
 .avatar-initials {
-  background: linear-gradient(135deg, #0ea5e9 0%, #10b981 100%);
+  background: linear-gradient(135deg, #0ea5e9 0%,rgb(16, 157, 185) 100%);
   color: white;
   display: flex;
   align-items: center;
@@ -620,6 +626,7 @@ const getBiologistStyle = (sidebarOpen, darkMode = false) => `
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  color: ${darkMode ? "#94a3b8" : "#0ea5e9"};
 }
 
 .nav-content {
@@ -633,6 +640,7 @@ const getBiologistStyle = (sidebarOpen, darkMode = false) => `
   font-weight: 600;
   line-height: 1.2;
   display: block;
+  color: ${darkMode ? "#94a3b8" : "#0ea5e9"};
 }
 
 .nav-description {
@@ -649,7 +657,7 @@ const getBiologistStyle = (sidebarOpen, darkMode = false) => `
   transform: translateY(-50%);
   width: 4px;
   height: 24px;
-  background: linear-gradient(135deg, #0ea5e9 0%, #10b981 100%);
+  background: linear-gradient(135deg, #0ea5e9 0%,rgb(16, 114, 185) 100%);
   border-radius: 0 4px 4px 0;
 }
 
@@ -803,18 +811,18 @@ const getBiologistStyle = (sidebarOpen, darkMode = false) => `
   box-shadow: 0 4px 20px rgba(0, 0, 0, ${darkMode ? "0.2" : "0.08"});
 }
 
-.welcome-section h1 {
-  font-size: 2.5rem;
+.welcome-section h2 {
+  font-size: 1.9rem;
   font-weight: 800;
   margin: 0 0 0.5rem 0;
-  background: linear-gradient(135deg, #0ea5e9 0%, #10b981 100%);
+  background: ${darkMode ? "#e2e8f0" : "rgb(16, 15, 15)"};
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .welcome-section p {
-  font-size: 1.125rem;
+  font-size: 1.1rem;
   color: ${darkMode ? "#94a3b8" : "#64748b"};
   margin: 0;
 }
