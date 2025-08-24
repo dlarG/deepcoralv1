@@ -1497,9 +1497,9 @@ export const getAdminStyles = (sidebarOpen) => `
           background: white;
           border-right: 1px solid #e2e8f0;
           transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          height: calc(100vh - 70px);
+          height: calc(100vh - 50px);
           position: fixed;
-          top: 90px;
+          top: 60px;
           display: flex;
           flex-direction: column;
           overflow-y: auto;

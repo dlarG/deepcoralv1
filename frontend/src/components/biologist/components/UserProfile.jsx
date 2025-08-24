@@ -59,8 +59,8 @@ function BiologistUserProfile() {
   }, [encodedUserId]);
 
   const handleGoBack = () => {
-    navigate("/admin-dashboard", {
-      state: { activeTab: "Manage Users" },
+    navigate("/biologist-dashboard", {
+      state: { activeTab: "User" },
     });
   };
 
@@ -69,9 +69,9 @@ function BiologistUserProfile() {
     const decryptedId = decryptId(decodedEncryptedId);
 
     if (decryptedId) {
-      navigate("/admin-dashboard", {
+      navigate("/biologist-dashboard", {
         state: {
-          activeTab: "Manage Users",
+          activeTab: "User",
           editUserId: decryptedId,
         },
       });
@@ -110,8 +110,8 @@ function BiologistUserProfile() {
         );
 
         alert("User deleted successfully!");
-        navigate("/admin-dashboard", {
-          state: { activeTab: "Manage Users" },
+        navigate("/biologist-dashboard", {
+          state: { activeTab: "User" },
         });
       } catch (error) {
         console.error("Delete failed:", error);

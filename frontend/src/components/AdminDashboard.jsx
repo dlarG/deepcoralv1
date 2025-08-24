@@ -109,8 +109,8 @@ function AdminDashboard() {
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
         handleLogout={handleLogout}
+        setActiveTab={setActiveTab} // Add this prop
       />
-
       <div className="dashboard-container">
         <Sidebar
           activeTab={activeTab}

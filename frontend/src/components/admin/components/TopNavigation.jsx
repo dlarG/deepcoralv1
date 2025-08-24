@@ -10,7 +10,13 @@ import {
 } from "react-icons/fi";
 import Logo from "../../Logo";
 
-function TopNavigation({ user, sidebarOpen, setSidebarOpen, handleLogout }) {
+function TopNavigation({
+  user,
+  sidebarOpen,
+  setSidebarOpen,
+  handleLogout,
+  setActiveTab,
+}) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -32,7 +38,8 @@ function TopNavigation({ user, sidebarOpen, setSidebarOpen, handleLogout }) {
 
     switch (action) {
       case "profile":
-        console.log("Navigate to profile");
+        // Navigate to Profile Management tab
+        setActiveTab("Profile Management");
         break;
       case "settings":
         console.log("Navigate to settings");
@@ -65,7 +72,7 @@ function TopNavigation({ user, sidebarOpen, setSidebarOpen, handleLogout }) {
           justify-content: space-between;
           align-items: center;
           padding: 0 2rem;
-          height: 90px;
+          height: 70px;
           max-width: 100%;
         }
 
@@ -319,6 +326,117 @@ function TopNavigation({ user, sidebarOpen, setSidebarOpen, handleLogout }) {
             display: none;
           }
         }
+        .dropdown-header {
+          padding: 1rem;
+          border-bottom: 1px solid #f1f5f9;
+          margin: -0.75rem -0.75rem 0.5rem -0.75rem;
+          background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        }
+
+        .dropdown-profile-section {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+
+        .dropdown-user-avatar {
+          width: 48px;
+          height: 48px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #06b6d4 0%, #0ea5e9 100%);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+          overflow: hidden;
+          border: 2px solid white;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+          flex-shrink: 0;
+        }
+
+        .dropdown-user-avatar img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .dropdown-avatar-initials {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 700;
+          font-size: 1rem;
+          color: white;
+          background: linear-gradient(135deg, #06b6d4 0%, #0ea5e9 100%);
+        }
+
+        .dropdown-user-info {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+          min-width: 0;
+          flex: 1;
+        }
+
+        .dropdown-user-name {
+          font-size: 0.9rem;
+          font-weight: 600;
+          color: #0f172a;
+          margin: 0;
+          line-height: 1.2;
+        }
+
+        .dropdown-user-email {
+          font-size: 0.75rem;
+          color: #64748b;
+          font-weight: 500;
+          margin: 0;
+          line-height: 1.2;
+        }
+
+        /* Enhanced mobile responsiveness for dropdown */
+        @media (max-width: 768px) {
+          .dropdown-header {
+            padding: 0.75rem;
+          }
+
+          .dropdown-user-avatar {
+            width: 40px;
+            height: 40px;
+          }
+
+          .dropdown-avatar-initials {
+            font-size: 0.875rem;
+          }
+
+          .dropdown-user-name {
+            font-size: 0.85rem;
+          }
+
+          .dropdown-user-email {
+            font-size: 0.7rem;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .dropdown-profile-section {
+            gap: 0.5rem;
+          }
+
+          .dropdown-user-avatar {
+            width: 36px;
+            height: 36px;
+          }
+
+          .dropdown-avatar-initials {
+            font-size: 0.8rem;
+          }
+        }
       `}</style>
 
       <nav className="top-nav">
@@ -376,6 +494,40 @@ function TopNavigation({ user, sidebarOpen, setSidebarOpen, handleLogout }) {
               </button>
 
               <div className={`dropdown-menu ${dropdownOpen ? "open" : ""}`}>
+                <div className="dropdown-header">
+                  <div className="dropdown-profile-section">
+                    <div className="dropdown-user-avatar">
+                      {user.profile_image ? (
+                        <img
+                          src={`/profile_uploads/${user.profile_image}`}
+                          alt={`${user.firstname} ${user.lastname}`}
+                          onError={(e) => {
+                            e.target.style.display = "none";
+                            e.target.nextSibling.style.display = "flex";
+                          }}
+                        />
+                      ) : null}
+                      <div
+                        className="dropdown-avatar-initials"
+                        style={{
+                          display: user.profile_image ? "none" : "flex",
+                        }}
+                      >
+                        {user.firstname?.charAt(0)?.toUpperCase()}
+                        {user.lastname?.charAt(0)?.toUpperCase()}
+                      </div>
+                    </div>
+                    <div className="dropdown-user-info">
+                      <div className="dropdown-user-name">
+                        {user.firstname} {user.lastname}
+                      </div>
+                      <div className="dropdown-user-email">
+                        @{user.username}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <button
                   className="dropdown-item"
                   onClick={() => handleDropdownItemClick("profile")}

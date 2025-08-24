@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import TopNavigation from "./biologist/components/TopNavigation";
 import Sidebar from "./biologist/components/Sidebar";
@@ -15,6 +15,7 @@ import { getBiologistStyle } from "./biologist/styles/biologistStyle";
 function BiologistDashboard() {
   const { user, checkAuthStatus, logout, authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
@@ -30,6 +31,12 @@ function BiologistDashboard() {
     };
     verifyAuth();
   }, [user, checkAuthStatus, navigate]);
+
+  useEffect(() => {
+    if (location.state?.activeTab) {
+      setActiveTab(location.state.activeTab);
+    }
+  }, [location.state]);
 
   const handleLogout = async () => {
     try {
