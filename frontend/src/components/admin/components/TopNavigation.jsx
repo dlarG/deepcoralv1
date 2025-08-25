@@ -175,7 +175,7 @@ function TopNavigation({
               <span className="profile-name">
                 {user?.firstname} {user?.lastname}
               </span>
-              <span className="profile-role">Marine Biologist</span>
+              <span className="profile-role">Administrator</span>
             </div>
             <FiChevronDown className="dropdown-arrow" size={16} />
           </button>
@@ -202,7 +202,7 @@ function TopNavigation({
                       {user?.firstname} {user?.lastname}
                     </h3>
                     <p>@{user?.username}</p>
-                    <span className="role-tag">Biologist</span>
+                    <span className="role-tag">Admin</span>
                   </div>
                 </div>
               </div>
