@@ -1,4 +1,3 @@
-// src/components/AdminDashboard.js
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -20,31 +19,39 @@ function AdminDashboard() {
   const { user, loading: authLoading, logout, checkAuthStatus } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState("Dashboard");
+  const [darkMode, setDarkMode] = useState(false);
 
-  // Handle navigation state to set active tab
   useEffect(() => {
     if (location.state?.activeTab) {
       setActiveTab(location.state.activeTab);
-      // Clear the state to prevent issues with browser back/forward
+
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
 
-  // Inject dynamic styles
+  useEffect(() => {
+    const savedDarkMode = localStorage.getItem("adminDarkMode");
+    if (savedDarkMode !== null) {
+      setDarkMode(JSON.parse(savedDarkMode));
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("adminDarkMode", JSON.stringify(darkMode));
+  }, [darkMode]);
+
   useEffect(() => {
     const styleElement = document.createElement("style");
-    styleElement.innerHTML = getAdminStyles(sidebarOpen);
+    styleElement.innerHTML = getAdminStyles(sidebarOpen, darkMode); // Pass darkMode here
     document.head.appendChild(styleElement);
 
     return () => {
-      // Clean up the style element when component unmounts
       if (document.head.contains(styleElement)) {
         document.head.removeChild(styleElement);
       }
     };
-  }, [sidebarOpen]); // Re-run when sidebarOpen changes
+  }, [sidebarOpen, darkMode]);
 
-  // Verify authentication status
   useEffect(() => {
     document.title = "Admin Dashboard | DeepCoral";
     const verifyAuth = async () => {
@@ -83,39 +90,47 @@ function AdminDashboard() {
   const renderContent = () => {
     switch (activeTab) {
       case "Profile Management":
-        return <ProfileManagement user={user} />;
+        return <ProfileManagement user={user} darkMode={darkMode} />;
       case "Manage Users":
-        return <UserManagement editUserId={location.state?.editUserId} />;
+        return (
+          <UserManagement
+            editUserId={location.state?.editUserId}
+            darkMode={darkMode}
+          />
+        );
       case "Add Images":
-        return <AddImage />;
+        return <AddImage darkMode={darkMode} />;
       case "Generate Report":
-        return <GenerateReport />;
+        return <GenerateReport darkMode={darkMode} />;
       case "Manage Coral LifeForms":
-        return <CoralManagement />;
+        return <CoralManagement darkMode={darkMode} />;
       case "Coral Distribution":
-        return <CoralDistributionTrend />;
+        return <CoralDistributionTrend darkMode={darkMode} />;
       case "Validate":
-        return <Validate />;
+        return <Validate darkMode={darkMode} />;
       case "Dashboard":
       default:
-        return <Dashboard />;
+        return <Dashboard darkMode={darkMode} />;
     }
   };
 
   return (
-    <div className="admin-dashboard">
+    <div className={`admin-dashboard ${darkMode ? "dark-mode" : ""}`}>
       <TopNavigation
         user={user}
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
+        darkMode={darkMode}
+        setDarkMode={setDarkMode}
         handleLogout={handleLogout}
-        setActiveTab={setActiveTab} // Add this prop
+        setActiveTab={setActiveTab}
       />
       <div className="dashboard-container">
         <Sidebar
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           sidebarOpen={sidebarOpen}
+          darkMode={darkMode}
         />
 
         <main className="main-content">{renderContent()}</main>
