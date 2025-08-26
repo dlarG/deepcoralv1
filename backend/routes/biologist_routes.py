@@ -3,11 +3,13 @@ from utils.auth_utils import login_required
 from db import get_db_connection
 from werkzeug.security import generate_password_hash
 import psycopg2
+from utils.auth_utils import biologist_required
 
 
 biologist_bp = Blueprint("biologist", __name__)
 
 @biologist_bp.route('/biologist/users', methods=["GET"])
+@biologist_required
 @login_required
 def get_alll_users():
     conn = get_db_connection()
@@ -46,6 +48,7 @@ def get_alll_users():
             conn.close()
 
 @biologist_bp.route('/biologist/users', methods=['POST'])
+@biologist_required
 @login_required
 def create_user():
     data = request.get_json()
@@ -107,6 +110,7 @@ def create_user():
             conn.close()
 
 @biologist_bp.route('/biologist/users/<int:user_id>', methods=['PUT'])
+@biologist_required
 @login_required
 def update_user(user_id):
     data = request.get_json()
@@ -195,6 +199,7 @@ def update_user(user_id):
             conn.close()
 
 @biologist_bp.route('/admin/users/<int:user_id>', methods=['DELETE'])
+@biologist_required
 @login_required
 def delete_user(user_id):
     conn = get_db_connection()
@@ -229,6 +234,7 @@ def delete_user(user_id):
             conn.close()
 
 @biologist_bp.route('/biologist/users/<int:user_id>', methods=['GET'])
+@biologist_required
 @login_required
 def get_user_profile(user_id):
     conn = get_db_connection()

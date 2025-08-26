@@ -226,7 +226,7 @@ export default function useProfileManagement(user) {
 
       showSuccessModal(
         "Profile Updated Successfully!",
-        `Your profile has been updated with the latest information."}`,
+        `Your profile has been updated with the latest information.`,
         true
       );
     } catch (error) {

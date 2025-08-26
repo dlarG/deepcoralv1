@@ -143,7 +143,6 @@ const SuccessModal = ({
 
   // Fixed useEffect to properly handle modal state
   useEffect(() => {
-    console.log("Modal isOpen changed to:", isOpen);
     if (isOpen) {
       setIsVisible(true);
       setTimeout(() => setIsAnimating(true), 10);

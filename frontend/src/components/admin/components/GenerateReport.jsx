@@ -136,88 +136,6 @@ function GenerateReport() {
 
   const renderSummary = () => {
     if (!summary) return null;
-
-    return (
-      <div className="report-summary">
-        <h3>
-          <FiBarChart size={20} />
-          Summary Statistics
-        </h3>
-
-        <div className="summary-grid">
-          {activeReportType === "users" && (
-            <>
-              <div className="summary-card">
-                <div className="summary-value">{summary.total_users}</div>
-                <div className="summary-label">Total Users</div>
-              </div>
-              <div className="summary-card">
-                <div className="summary-value">{summary.admin_count}</div>
-                <div className="summary-label">Admins</div>
-              </div>
-              <div className="summary-card">
-                <div className="summary-value">{summary.guest_count}</div>
-                <div className="summary-label">Guests</div>
-              </div>
-              <div className="summary-card">
-                <div className="summary-value">{summary.approved_count}</div>
-                <div className="summary-label">Approved</div>
-              </div>
-              <div className="summary-card">
-                <div className="summary-value">{summary.pending_count}</div>
-                <div className="summary-label">Pending</div>
-              </div>
-              <div className="summary-card">
-                <div className="summary-value">{summary.users_with_photos}</div>
-                <div className="summary-label">With Photos</div>
-              </div>
-            </>
-          )}
-
-          {activeReportType === "corals" && (
-            <>
-              <div className="summary-card">
-                <div className="summary-value">{summary.total_corals}</div>
-                <div className="summary-label">Total Corals</div>
-              </div>
-              <div className="summary-card">
-                <div className="summary-value">{summary.unique_types}</div>
-                <div className="summary-label">Unique Types</div>
-              </div>
-              <div className="summary-card">
-                <div className="summary-value">{summary.unique_subtypes}</div>
-                <div className="summary-label">Unique Subtypes</div>
-              </div>
-              <div className="summary-card">
-                <div className="summary-value">
-                  {summary.corals_with_images}
-                </div>
-                <div className="summary-label">With Images</div>
-              </div>
-            </>
-          )}
-
-          {activeReportType === "activities" && (
-            <>
-              <div className="summary-card">
-                <div className="summary-value">{summary.total_activities}</div>
-                <div className="summary-label">Total Activities</div>
-              </div>
-              <div className="summary-card">
-                <div className="summary-value">{summary.unique_users}</div>
-                <div className="summary-label">Active Users</div>
-              </div>
-              <div className="summary-card">
-                <div className="summary-value">
-                  {summary.unique_activity_types}
-                </div>
-                <div className="summary-label">Activity Types</div>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    );
   };
 
   const renderReportData = () => {
@@ -360,40 +278,40 @@ function GenerateReport() {
         <div className="report-header-actions">
           <button
             className={`report-action-btn secondary ${
-              !reportData ? "opacity-50 cursor-not-allowed" : ""
+              !reportData ? "disabled" : ""
             }`}
             onClick={printReport}
             disabled={!reportData}
-            style={{ opacity: !reportData ? 0.5 : 1 }}
+            title="Print Report"
           >
             <FiPrinter size={16} />
-            Print
+            <span className="btn-text">Print</span>
           </button>
           <button
             className={`report-action-btn secondary ${
-              !reportData ? "opacity-50 cursor-not-allowed" : ""
+              !reportData ? "disabled" : ""
             }`}
             onClick={() => exportReport("excel")}
             disabled={!reportData}
-            style={{ opacity: !reportData ? 0.5 : 1 }}
+            title="Export to Excel"
           >
             <FiDownload size={16} />
-            Export Excel
+            <span className="btn-text">Excel</span>
           </button>
           <button
             className={`report-action-btn primary ${
-              !reportData ? "opacity-50 cursor-not-allowed" : ""
+              !reportData ? "disabled" : ""
             }`}
             onClick={() => exportReport("pdf")}
             disabled={!reportData}
-            style={{ opacity: !reportData ? 0.5 : 1 }}
+            title="Export to PDF"
           >
             <FiDownload size={16} />
-            Export PDF
+            <span className="btn-text">PDF</span>
           </button>
         </div>
       </div>
-
+      <br />
       {/* Report Type Tabs */}
       <div className="report-tabs">
         <button
@@ -403,7 +321,7 @@ function GenerateReport() {
           onClick={() => setActiveReportType("users")}
         >
           <FiUsers size={18} />
-          Users Report
+          <span className="tab-text">Users Report</span>
         </button>
         <button
           className={`report-tab-btn ${
@@ -412,7 +330,7 @@ function GenerateReport() {
           onClick={() => setActiveReportType("corals")}
         >
           <FiImage size={18} />
-          Corals Report
+          <span className="tab-text">Corals Report</span>
         </button>
         <button
           className={`report-tab-btn ${
@@ -421,12 +339,14 @@ function GenerateReport() {
           onClick={() => setActiveReportType("activities")}
         >
           <FiActivity size={18} />
-          Activities Report
+          <span className="tab-text">Activities Report</span>
         </button>
       </div>
+      <br />
 
       {/* Main Content */}
       <div className="report-content">
+        {/* Filters Sidebar */}
         <div className="report-sidebar">
           {renderFilters()}
           <div className="filter-actions">
@@ -437,22 +357,36 @@ function GenerateReport() {
             >
               {loading ? (
                 <div className="btn-loading">
-                  <div className="spinner"></div>
-                  Generating...
+                  <div className="spinner-small"></div>
+                  <span>Generating...</span>
                 </div>
               ) : (
                 <>
                   <FiBarChart size={16} />
-                  Generate Report
+                  <span>Generate Report</span>
                 </>
               )}
             </button>
           </div>
         </div>
 
+        {/* Main Report Display */}
         <div className="report-main">
           {summary && renderSummary()}
           {reportData && renderReportData()}
+
+          {/* Empty State */}
+          {!reportData && !loading && (
+            <div className="report-empty-state">
+              <div className="empty-icon">
+                <FiFileText size={48} />
+              </div>
+              <h3>No Report Generated</h3>
+              <p>
+                Configure your filters and click "Generate Report" to view data.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

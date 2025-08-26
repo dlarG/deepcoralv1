@@ -33,6 +33,30 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+def biologist_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return jsonify({'error': 'Unauthorized'}), 401
+        
+        from db import get_db_connection
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT roletype FROM users WHERE id = %s", (session['user_id'],))
+                user = cur.fetchone()
+                if not user or user[0].lower() != 'biologist':
+                    return jsonify({'error': 'Biologist access required'}), 403
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+        finally:
+            if conn:
+                conn.close()
+                
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 def rate_limit(max_per_minute):
     def decorator(f):
         calls = []

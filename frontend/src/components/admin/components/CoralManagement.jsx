@@ -33,33 +33,88 @@ function CoralManagement() {
   } = useCoralManagement();
 
   return (
-    <div className="content-section">
+    <div className="coral-management-container">
+      {/* Header Section */}
       <div className="coral-management-header">
-        <h2 className="content-title">Coral Information Management</h2>
-        <button className="add-coral-btn" onClick={() => openCoralModal("add")}>
-          <FiPlus size={20} />
-          Add New Coral
-        </button>
+        <div className="header-content">
+          <div className="header-text">
+            <h2 className="coral-management-title">
+              <FiDatabase size={28} />
+              Coral Information Management
+            </h2>
+            <p className="coral-management-subtitle">
+              Manage and organize coral species information with detailed
+              classifications
+            </p>
+          </div>
+          <div className="header-actions">
+            <button
+              className="add-coral-btn primary"
+              onClick={() => openCoralModal("add")}
+            >
+              <FiPlus size={18} />
+              <span className="btn-text">Add New Coral</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Statistics Bar */}
+        <div className="coral-stats">
+          <div className="stat-item">
+            <div className="stat-number">{coralData.length}</div>
+            <div className="stat-label">Total Species</div>
+          </div>
+          <div className="stat-item">
+            <div className="stat-number">
+              {
+                coralData.filter((c) => c.classification === "hard coral")
+                  .length
+              }
+            </div>
+            <div className="stat-label">Hard Corals</div>
+          </div>
+          <div className="stat-item">
+            <div className="stat-number">
+              {
+                coralData.filter((c) => c.classification === "soft coral")
+                  .length
+              }
+            </div>
+            <div className="stat-label">Soft Corals</div>
+          </div>
+          <div className="stat-item">
+            <div className="stat-number">
+              {new Set(coralData.map((c) => c.coral_type)).size}
+            </div>
+            <div className="stat-label">Types</div>
+          </div>
+        </div>
       </div>
 
+      {/* Main Content */}
       <div className="coral-grid-container">
         {coralData.length === 0 ? (
-          <div className="empty-state">
-            <FiDatabase size={48} />
+          <div className="coral-empty-state">
+            <div className="empty-icon">
+              <FiDatabase size={64} />
+            </div>
             <h3>No Coral Information</h3>
-            <p>Start by adding your first coral information entry.</p>
+            <p>
+              Start building your coral database by adding your first species
+              entry.
+            </p>
             <button
-              className="add-coral-btn"
+              className="add-coral-btn primary large"
               onClick={() => openCoralModal("add")}
             >
               <FiPlus size={20} />
-              Add Coral
+              <span>Add Your First Coral</span>
             </button>
           </div>
         ) : (
           <div className="coral-grid">
             {coralData.map((coral) => (
-              <div key={coral.id} className="coral-management-card">
+              <div key={coral.id} className="coral-card">
                 <div className="coral-card-image">
                   <img
                     src={
@@ -73,27 +128,29 @@ function CoralManagement() {
                     }}
                   />
                   <div className="coral-card-overlay">
-                    <button
-                      className="overlay-btn view"
-                      onClick={() => openCoralModal("view", coral)}
-                      title="View Details"
-                    >
-                      <FiEye size={18} />
-                    </button>
-                    <button
-                      className="overlay-btn edit"
-                      onClick={() => openCoralModal("edit", coral)}
-                      title="Edit"
-                    >
-                      <FiEdit size={18} />
-                    </button>
-                    <button
-                      className="overlay-btn delete"
-                      onClick={() => handleDeleteCoral(coral.id)}
-                      title="Delete"
-                    >
-                      <FiTrash size={18} />
-                    </button>
+                    <div className="overlay-actions">
+                      <button
+                        className="overlay-btn view"
+                        onClick={() => openCoralModal("view", coral)}
+                        title="View Details"
+                      >
+                        <FiEye size={16} />
+                      </button>
+                      <button
+                        className="overlay-btn edit"
+                        onClick={() => openCoralModal("edit", coral)}
+                        title="Edit Coral"
+                      >
+                        <FiEdit size={16} />
+                      </button>
+                      <button
+                        className="overlay-btn delete"
+                        onClick={() => handleDeleteCoral(coral.id)}
+                        title="Delete Coral"
+                      >
+                        <FiTrash size={16} />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -115,19 +172,40 @@ function CoralManagement() {
                   </p>
 
                   <div className="coral-card-info">
-                    <span className="info-item">
-                      <strong>Type:</strong> {coral.coral_type}
-                    </span>
-                    <span className="info-item">
-                      <strong>Subtype:</strong> {coral.coral_subtype}
-                    </span>
+                    <div className="info-row">
+                      <span className="info-label">Type:</span>
+                      <span className="info-value">{coral.coral_type}</span>
+                    </div>
+                    <div className="info-row">
+                      <span className="info-label">Subtype:</span>
+                      <span className="info-value">{coral.coral_subtype}</span>
+                    </div>
                   </div>
 
-                  <p className="coral-card-description">
-                    {coral.identification.length > 100
-                      ? `${coral.identification.substring(0, 100)}...`
-                      : coral.identification}
-                  </p>
+                  <div className="coral-card-description">
+                    <p>
+                      {coral.identification.length > 120
+                        ? `${coral.identification.substring(0, 120)}...`
+                        : coral.identification}
+                    </p>
+                  </div>
+
+                  <div className="coral-card-actions">
+                    <button
+                      className="card-action-btn secondary"
+                      onClick={() => openCoralModal("view", coral)}
+                    >
+                      <FiEye size={14} />
+                      <span>View</span>
+                    </button>
+                    <button
+                      className="card-action-btn primary"
+                      onClick={() => openCoralModal("edit", coral)}
+                    >
+                      <FiEdit size={14} />
+                      <span>Edit</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -135,19 +213,43 @@ function CoralManagement() {
         )}
       </div>
 
+      {/* Modal */}
       {showCoralModal && (
-        <div className="modal-overlay">
+        <div className="coral-modal-overlay">
           <div className="coral-modal">
             <div className="coral-modal-header">
-              <h3>
-                {coralModalMode === "add"
-                  ? "Add New Coral"
-                  : coralModalMode === "edit"
-                  ? "Edit Coral"
-                  : "View Coral"}
-              </h3>
-              <button className="close-btn" onClick={closeCoralModal}>
-                <FiX size={24} />
+              <div className="modal-title-section">
+                <h3 className="modal-title">
+                  {coralModalMode === "add" && (
+                    <>
+                      <FiPlus size={20} />
+                      Add New Coral Species
+                    </>
+                  )}
+                  {coralModalMode === "edit" && (
+                    <>
+                      <FiEdit size={20} />
+                      Edit Coral Information
+                    </>
+                  )}
+                  {coralModalMode === "view" && (
+                    <>
+                      <FiEye size={20} />
+                      Coral Species Details
+                    </>
+                  )}
+                </h3>
+                <p className="modal-subtitle">
+                  {coralModalMode === "add" &&
+                    "Add a new coral species to your database"}
+                  {coralModalMode === "edit" &&
+                    "Update coral species information"}
+                  {coralModalMode === "view" &&
+                    "Detailed information about this coral species"}
+                </p>
+              </div>
+              <button className="modal-close-btn" onClick={closeCoralModal}>
+                <FiX size={20} />
               </button>
             </div>
 
@@ -165,161 +267,249 @@ function CoralManagement() {
                     />
                   </div>
                   <div className="coral-view-info">
-                    <h2>{currentCoral?.common_name}</h2>
+                    <div className="view-header">
+                      <h2 className="view-title">
+                        {currentCoral?.common_name}
+                      </h2>
+                      <span
+                        className={`classification-badge large ${currentCoral?.classification.replace(
+                          " ",
+                          "-"
+                        )}`}
+                      >
+                        {currentCoral?.classification}
+                      </span>
+                    </div>
+
                     <p className="scientific-name">
                       {currentCoral?.scientific_name}
                     </p>
+
                     <div className="coral-details">
-                      <div className="detail-item">
-                        <span className="label">Type:</span>
-                        <span className="value">
-                          {currentCoral?.coral_type}
-                        </span>
-                      </div>
-                      <div className="detail-item">
-                        <span className="label">Subtype:</span>
-                        <span className="value">
-                          {currentCoral?.coral_subtype}
-                        </span>
-                      </div>
-                      <div className="detail-item">
-                        <span className="label">Classification:</span>
-                        <span className="value">
-                          {currentCoral.classification}
-                        </span>
+                      <div className="detail-grid">
+                        <div className="detail-item">
+                          <span className="detail-label">Coral Type:</span>
+                          <span className="detail-value">
+                            {currentCoral?.coral_type}
+                          </span>
+                        </div>
+                        <div className="detail-item">
+                          <span className="detail-label">Coral Subtype:</span>
+                          <span className="detail-value">
+                            {currentCoral?.coral_subtype}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    <div className="identification">
-                      <h4>Identification:</h4>
-                      <p>{currentCoral?.identification}</p>
+
+                    <div className="identification-section">
+                      <h4 className="section-title">
+                        Identification & Description
+                      </h4>
+                      <div className="identification-content">
+                        <p>{currentCoral?.identification}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
               ) : (
-                <form onSubmit={handleCoralSubmit}>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Coral Type *</label>
-                      <input
-                        type="text"
-                        name="coral_type"
-                        value={coralFormData.coral_type}
-                        onChange={handleCoralInputChange}
-                        required
-                        placeholder="e.g., Hard Coral, Soft Coral"
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Coral Subtype *</label>
-                      <input
-                        type="text"
-                        name="coral_subtype"
-                        value={coralFormData.coral_subtype}
-                        onChange={handleCoralInputChange}
-                        required
-                        placeholder="e.g., Branching, Massive"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Classification *</label>
-                      <select
-                        name="classification"
-                        value={coralFormData.classification}
-                        onChange={handleCoralInputChange}
-                        required
-                      >
-                        <option value="">Select Classification</option>
-                        <option value="hard coral">Hard Coral</option>
-                        <option value="soft coral">Soft Coral</option>
-                      </select>
-                    </div>
-                    <div className="form-group">
-                      <label>Common Name *</label>
-                      <input
-                        type="text"
-                        name="common_name"
-                        value={coralFormData.common_name}
-                        onChange={handleCoralInputChange}
-                        required
-                        placeholder="e.g., Staghorn Coral"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="form-group">
-                    <label>Scientific Name *</label>
-                    <input
-                      type="text"
-                      name="scientific_name"
-                      value={coralFormData.scientific_name}
-                      onChange={handleCoralInputChange}
-                      required
-                      placeholder="e.g., Acropora cervicornis"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label>
-                      Coral Image{" "}
-                      {coralModalMode === "add" ? "*" : "(optional)"}
-                    </label>
-                    <div className="image-upload-container">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleCoralImageChange}
-                        className="file-input"
-                        id="coral-image"
-                        required={coralModalMode === "add"}
-                      />
-                      <label htmlFor="coral-image" className="file-label">
-                        <FiUpload size={20} />
-                        Choose Image
-                      </label>
-                      {imagePreview && (
-                        <div className="image-preview">
-                          <img src={imagePreview} alt="Preview" />
+                <form onSubmit={handleCoralSubmit} className="coral-form">
+                  <div className="form-sections">
+                    <div className="form-section">
+                      <h4 className="section-title">Basic Information</h4>
+                      <div className="form-grid">
+                        <div className="form-group">
+                          <label htmlFor="coral_type">
+                            Coral Type <span className="required">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            id="coral_type"
+                            name="coral_type"
+                            value={coralFormData.coral_type}
+                            onChange={handleCoralInputChange}
+                            required
+                            placeholder="e.g., Hard Coral, Soft Coral"
+                            className="form-input"
+                          />
                         </div>
-                      )}
-                    </div>
-                  </div>
 
-                  <div className="form-group">
-                    <label for="identification">
-                      Identification & Description *
-                    </label>
-                    <textarea
-                      name="identification"
-                      id="identification"
-                      value={coralFormData.identification}
-                      onChange={handleCoralInputChange}
-                      required
-                      rows="4"
-                      placeholder="Describe the coral's appearance, habitat, and identifying features..."
-                    />
+                        <div className="form-group">
+                          <label htmlFor="coral_subtype">
+                            Coral Subtype <span className="required">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            id="coral_subtype"
+                            name="coral_subtype"
+                            value={coralFormData.coral_subtype}
+                            onChange={handleCoralInputChange}
+                            required
+                            placeholder="e.g., Branching, Massive"
+                            className="form-input"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="form-section">
+                      <h4 className="section-title">Classification & Names</h4>
+                      <div className="form-grid">
+                        <div className="form-group">
+                          <label htmlFor="classification">
+                            Classification <span className="required">*</span>
+                          </label>
+                          <select
+                            id="classification"
+                            name="classification"
+                            value={coralFormData.classification}
+                            onChange={handleCoralInputChange}
+                            required
+                            className="form-select"
+                          >
+                            <option value="">Select Classification</option>
+                            <option value="hard coral">Hard Coral</option>
+                            <option value="soft coral">Soft Coral</option>
+                          </select>
+                        </div>
+
+                        <div className="form-group">
+                          <label htmlFor="common_name">
+                            Common Name <span className="required">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            id="common_name"
+                            name="common_name"
+                            value={coralFormData.common_name}
+                            onChange={handleCoralInputChange}
+                            required
+                            placeholder="e.g., Staghorn Coral"
+                            className="form-input"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="form-group">
+                        <label htmlFor="scientific_name">
+                          Scientific Name <span className="required">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          id="scientific_name"
+                          name="scientific_name"
+                          value={coralFormData.scientific_name}
+                          onChange={handleCoralInputChange}
+                          required
+                          placeholder="e.g., Acropora cervicornis"
+                          className="form-input scientific"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="form-section">
+                      <h4 className="section-title">Visual & Description</h4>
+                      <div className="form-group">
+                        <label htmlFor="coral-image">
+                          Coral Image{" "}
+                          {coralModalMode === "add" ? (
+                            <span className="required">*</span>
+                          ) : (
+                            <span className="optional">(optional)</span>
+                          )}
+                        </label>
+                        <div className="image-upload-area">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleCoralImageChange}
+                            className="file-input"
+                            id="coral-image"
+                            required={coralModalMode === "add"}
+                          />
+                          <label
+                            htmlFor="coral-image"
+                            className="file-upload-label"
+                          >
+                            <div className="upload-content">
+                              <FiUpload size={24} />
+                              <span className="upload-text">
+                                {imagePreview
+                                  ? "Change Image"
+                                  : "Choose Coral Image"}
+                              </span>
+                              <span className="upload-hint">
+                                PNG, JPG up to 5MB
+                              </span>
+                            </div>
+                          </label>
+                          {imagePreview && (
+                            <div className="image-preview">
+                              <img src={imagePreview} alt="Coral Preview" />
+                              <div className="preview-overlay">
+                                <span>Preview</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="form-group">
+                        <label htmlFor="identification">
+                          Identification & Description{" "}
+                          <span className="required">*</span>
+                        </label>
+                        <textarea
+                          id="identification"
+                          name="identification"
+                          value={coralFormData.identification}
+                          onChange={handleCoralInputChange}
+                          required
+                          rows="5"
+                          placeholder="Describe the coral's appearance, habitat, identifying features, and any other relevant information..."
+                          className="form-textarea"
+                        />
+                        <div className="character-count">
+                          {coralFormData.identification.length}/1000
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="coral-modal-actions">
                     <button
                       type="button"
                       onClick={closeCoralModal}
-                      className="cancel-btn"
+                      className="modal-action-btn cancel"
                     >
-                      Cancel
+                      <FiX size={16} />
+                      <span>Cancel</span>
                     </button>
                     <button
                       type="submit"
-                      className="submit-btn"
+                      className="modal-action-btn submit"
                       disabled={coralLoading}
                     >
-                      {coralLoading
-                        ? "Saving..."
-                        : coralModalMode === "add"
-                        ? "Add Coral"
-                        : "Update Coral"}
+                      {coralLoading ? (
+                        <div className="btn-loading">
+                          <div className="spinner"></div>
+                          <span>Saving...</span>
+                        </div>
+                      ) : (
+                        <>
+                          {coralModalMode === "add" ? (
+                            <>
+                              <FiPlus size={16} />
+                              <span>Add Coral</span>
+                            </>
+                          ) : (
+                            <>
+                              <FiEdit size={16} />
+                              <span>Update Coral</span>
+                            </>
+                          )}
+                        </>
+                      )}
                     </button>
                   </div>
                 </form>
@@ -328,6 +518,7 @@ function CoralManagement() {
           </div>
         </div>
       )}
+
       <SuccessModal
         isOpen={showModal}
         onClose={() => setShowModal(false)}

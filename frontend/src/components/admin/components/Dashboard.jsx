@@ -4,7 +4,6 @@ import { FiUsers, FiImage, FiFileText, FiDatabase } from "react-icons/fi";
 const Dashboard = () => {
   return (
     <div className="content-section">
-      <h2 className="content-title">Admin Dashboard</h2>
       <div className="stats-grid">
         <div className="stat-card">
           <div className="stat-icon users">

@@ -43,8 +43,8 @@ function Validate() {
     <div className="content-section">
       <div className="user-management-header">
         <div className="header-left">
-          <h2 className="content-title">Validation Center</h2>
-          <p className="content-subtitle">
+          <h2 className="report-title">Validation Center</h2>
+          <p className="report-subtitle">
             Review and approve pending requests and submissions
           </p>
         </div>

@@ -95,8 +95,8 @@ export default function useValidate() {
 
     setPendingAction({ type: "approve", userId });
     setModalConfig({
-      title: "✅ Confirm User Approval",
-      message: `Are you sure you want to approve ${userName}?\n\nThis will:\n• Grant them access to the system\n• Send them a welcome notification\n• Allow them to use their account immediately`,
+      title: "Confirm User Approval",
+      message: `Are you sure you want to approve ${userName}?\n\nThis will:\n• Grant them access to the system\n• Allow them to use their account immediately`,
       type: "success",
       autoClose: false,
       customActions: true,
@@ -111,10 +111,8 @@ export default function useValidate() {
     // Store pending action and show warning modal
     setPendingAction({ type: "reject", userId });
     setModalConfig({
-      title: "⚠️ Confirm User Rejection",
-      message: `Are you sure you want to reject ${userName}?\n\nThis action will:\n• Permanently remove their registration\n• Send them a rejection notification\n• Cannot be undone\n\nUsername: ${
-        user?.username || "Unknown"
-      }`,
+      title: "Confirm User Rejection",
+      message: `Are you sure you want to reject ${userName}?\n\nThis action will:\n• Permanently remove their registration\n• Cannot be undone`,
       type: "warning",
       autoClose: false,
       customActions: true,
