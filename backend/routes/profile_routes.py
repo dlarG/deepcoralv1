@@ -64,17 +64,31 @@ def update_profile():
             if not current_user:
                 return jsonify({'error': 'User not found'}), 404
 
-        # Handle file upload
+        # Handle file upload with proper validation
         profile_image_filename = current_user[6] if len(current_user) > 6 else None  # Keep existing image
         if 'profile_image' in request.files:
             file = request.files['profile_image']
             if file and file.filename != '':
+                
+                # NEW: Validate file size BEFORE processing (5MB max)
+                file.seek(0, os.SEEK_END)  # Seek to end of file
+                file_size = file.tell()    # Get current position (file size)
+                file.seek(0)               # Reset to beginning
+                
+                if file_size > 5 * 1024 * 1024:  # 5MB limit
+                    return jsonify({'error': 'File too large. Maximum size is 5MB.'}), 400
+                
                 # Validate file type
                 allowed_extensions = {'png', 'jpg', 'jpeg', 'gif'}
                 file_extension = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
                 
                 if file_extension not in allowed_extensions:
                     return jsonify({'error': 'Invalid file type. Only PNG, JPG, JPEG, and GIF are allowed'}), 400
+                
+                # NEW: Validate file content (basic check)
+                allowed_mimetypes = {'image/png', 'image/jpg', 'image/jpeg', 'image/gif'}
+                if file.content_type not in allowed_mimetypes:
+                    return jsonify({'error': 'Invalid file content. Only image files are allowed.'}), 400
                 
                 # Delete old image if exists
                 if current_user[6]:  # profile_image column
@@ -84,20 +98,33 @@ def update_profile():
                         current_user[6]
                     )
                     if os.path.exists(old_image_path):
-                        os.remove(old_image_path)
+                        try:
+                            os.remove(old_image_path)
+                        except OSError as e:
+                            current_app.logger.warning(f"Could not delete old image: {e}")
 
-                # Save new image
-                filename = secure_filename(file.filename)
-                import uuid
-                unique_filename = f"{uuid.uuid4().hex}_{filename}"
-                
-                upload_path = os.path.join(
-                    current_app.root_path, 
-                    '..', 'frontend', 'public', 'profile_uploads'
-                )
-                os.makedirs(upload_path, exist_ok=True)
-                file.save(os.path.join(upload_path, unique_filename))
-                profile_image_filename = unique_filename
+                # Save new image with error handling
+                try:
+                    filename = secure_filename(file.filename)
+                    import uuid
+                    unique_filename = f"{uuid.uuid4().hex}_{filename}"
+                    
+                    # NEW: Use shared volume path instead of frontend path
+                    upload_path = os.path.join(current_app.root_path, 'profile_uploads')
+                    os.makedirs(upload_path, exist_ok=True)
+                    
+                    full_file_path = os.path.join(upload_path, unique_filename)
+                    file.save(full_file_path)
+                    
+                    # NEW: Verify file was saved correctly
+                    if not os.path.exists(full_file_path):
+                        return jsonify({'error': 'Failed to save uploaded file'}), 500
+                    
+                    profile_image_filename = unique_filename
+                    
+                except Exception as save_error:
+                    current_app.logger.error(f"File save error: {str(save_error)}")
+                    return jsonify({'error': 'Failed to save uploaded file'}), 500
 
         # Get form data
         username = request.form.get('username')

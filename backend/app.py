@@ -4,9 +4,13 @@ from config import Config
 from routes import init_routes
 import secrets
 
+
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+    
+    # Increase max file upload size (10MB)
+    app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB
     
     # Initialize CORS
     CORS(app, supports_credentials=True, origins=Config.CORS_ORIGINS)

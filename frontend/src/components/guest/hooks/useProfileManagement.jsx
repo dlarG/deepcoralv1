@@ -126,11 +126,13 @@ export default function useProfileManagement(user) {
       if (file.size > 5 * 1024 * 1024) {
         setProfileErrors((prev) => ({
           ...prev,
-          profile_image: "File size must be less than 5MB",
+          profile_image: 'File too large. Maximum size is 5MB.',
         }));
         return;
       }
 
+      setProfileErrors((prev) => ({ ...prev, profile_image: null }));
+    
       setProfileFormData((prev) => ({ ...prev, profile_image: file }));
 
       // Create preview

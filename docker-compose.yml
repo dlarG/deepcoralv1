@@ -32,8 +32,11 @@ services:
     env_file:
       - ./backend/.env.docker
     volumes:
+      - ./backend:/app
       - ./backend/coral_uploads:/app/coral_uploads
       - ./backend/models:/app/models
+      - shared_uploads:/app/shared_uploads 
+      - profile_uploads:/app/profile_uploads
     depends_on:
       db:
         condition: service_healthy
@@ -46,6 +49,10 @@ services:
     build: ./frontend
     ports:
       - "3000:80"
+    volumes:
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf
+      - shared_uploads:/usr/share/nginx/html/uploads  # NEW: Access to uploads
+      - profile_uploads:/usr/share/nginx/html/profile_uploads  # NEW: Profile uploads
     depends_on:
       - backend
     networks:
@@ -54,6 +61,8 @@ services:
 
 volumes:
   postgres_data:
+  shared_uploads:  # NEW: Shared volume for uploads
+  profile_uploads:  # NEW: Volume for profile images
 
 networks:
   deepcoral-network:
