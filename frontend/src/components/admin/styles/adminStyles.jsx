@@ -824,8 +824,8 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
       }
       
       .profile-avatar-large {
-        width: 40px;
-        height: 40px;
+        width: 60px;
+        height: 60px;
       }
       
       .avatar-fallback {
@@ -1676,14 +1676,14 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
 }
 
 .profile-details h3 {
-  font-size: 1rem;
+  font-size: 1.125rem;
   font-weight: 800;
   margin: 0 0 0.25rem 0;
   color: ${darkMode ? "#f1f5f9" : "#0f172a"};
 }
 
 .profile-details p {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   color: ${darkMode ? "#94a3b8" : "#64748b"};
   margin: 0 0 0.75rem 0;
   font-weight: 500;
@@ -1696,7 +1696,7 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
   background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
   color: #166534;
   border-radius: 20px;
-  font-size: 0.50rem;
+  font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;

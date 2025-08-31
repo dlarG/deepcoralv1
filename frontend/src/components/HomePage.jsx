@@ -1,113 +1,418 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   FiLogIn,
   FiUserPlus,
-  FiCamera,
-  FiDatabase,
-  FiBarChart2,
+  // FiCamera,
+  // FiDatabase,
+  // FiBarChart2,
+  FiChevronDown,
+  FiPlay,
+  FiArrowRight,
+  FiStar,
+  // FiGlobe,
+  FiMail,
+  FiPhone,
+  FiMapPin,
+  // FiCheckCircle,
+  // FiHeart,
+  // FiLinkedin,
+  FiGithub,
+  // FiTwitter,
+  FiMenu,
+  FiX,
 } from "react-icons/fi";
-import Logo from "./Logo"; // Import the Logo component
+import Logo from "./Logo";
+import "../styles/homepage.css";
 
 function HomePage() {
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [activeSection, setActiveSection] = useState("home");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   useEffect(() => {
-    document.title = "DeepCoral - Home";
+    document.title = "DeepCoral - AI-Powered Marine Conservation";
+
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 50);
+
+      // Update active section based on scroll position
+      const sections = ["home", "services", "about", "contact"];
+      const scrollPosition = window.scrollY + 100;
+
+      for (const section of sections) {
+        const element = document.getElementById(section);
+        if (element) {
+          const { offsetTop, offsetHeight } = element;
+          if (
+            scrollPosition >= offsetTop &&
+            scrollPosition < offsetTop + offsetHeight
+          ) {
+            setActiveSection(section);
+            break;
+          }
+        }
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  const scrollToSection = (sectionId) => {
+    document.getElementById(sectionId).scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+    setMobileMenuOpen(false);
+  };
+
+  // const services = [
+  //   {
+  //     icon: <FiCamera />,
+  //     title: "AI Image Analysis",
+  //     description:
+  //       "Advanced deep learning algorithms analyze coral reef images with 99.5% accuracy, providing instant coral coverage estimates.",
+  //     features: ["Real-time Processing", "Auto Cropping", "Batch Analysis"],
+  //     gradient: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
+  //   },
+  //   {
+  //     icon: <FiDatabase />,
+  //     title: "Smart Data Management",
+  //     description:
+  //       "Intelligent database system that tracks reef health changes over time and identifies critical trends automatically.",
+  //     features: ["Trend Analysis", "Data Visualization", "Export Options"],
+  //     gradient: "linear-gradient(135deg, #10b981, #059669)",
+  //   },
+  //   {
+  //     icon: <FiBarChart2 />,
+  //     title: "Dynamic Reporting",
+  //     description:
+  //       "Generate beautiful, interactive reports and visualizations to share insights with your research team and stakeholders.",
+  //     features: ["Custom Reports", "Interactive Charts", "Multi-format Export"],
+  //     gradient: "linear-gradient(135deg, #f59e0b, #d97706)",
+  //   },
+  // ];
+
   return (
-    <div className="homepage-container">
-      {/* Background with overlay */}
+    <div className="landing-container">
+      {/* Background */}
       <div className="background-overlay">
         <div className="background-image"></div>
-        <div className="overlay"></div>
+        <div className="gradient-overlay"></div>
+        <div className="particle-overlay"></div>
       </div>
 
-      {/* Main content */}
-      <div className="content-wrapper">
-        {/* Navigation */}
-        <nav className="navbar">
+      {/* Navigation */}
+      <nav className={`navbar ${isScrolled ? "scrolled" : ""}`}>
+        <div className="navbar-content">
           <div className="navbar-brand">
             <Logo variant="navbar" type="image" theme="dark" />
           </div>
-          <div className="nav-links">
-            <Link to="/login" className="nav-link">
+
+          <div className={`nav-links ${mobileMenuOpen ? "mobile-open" : ""}`}>
+            <a
+              href="#home"
+              className={`nav-link ${activeSection === "home" ? "active" : ""}`}
+              onClick={() => scrollToSection("home")}
+            >
+              Home
+            </a>
+            <a
+              href="#services"
+              className={`nav-link ${
+                activeSection === "services" ? "active" : ""
+              }`}
+              onClick={() => scrollToSection("services")}
+            >
+              Services
+            </a>
+            <a
+              href="#about"
+              className={`nav-link ${
+                activeSection === "about" ? "active" : ""
+              }`}
+              onClick={() => scrollToSection("about")}
+            >
+              About
+            </a>
+            <a
+              href="#contact"
+              className={`nav-link ${
+                activeSection === "contact" ? "active" : ""
+              }`}
+              onClick={() => scrollToSection("contact")}
+            >
+              Contact
+            </a>
+            <Link to="/login" className="nav-link login">
               <FiLogIn className="link-icon" />
               <span>Login</span>
             </Link>
-            <Link to="/register" className="nav-link">
+            <Link to="/register" className="nav-link register">
               <FiUserPlus className="link-icon" />
-              <span>Register</span>
+              <span>Get Started</span>
             </Link>
           </div>
-        </nav>
 
-        {/* Hero section */}
-        <main className="hero-section">
-          <div className="hero-content">
-            <h1 className="hero-title">
-              Preserving Our Reefs,
-              <br />
-              One Pixel at a Time
-            </h1>
-            <p className="hero-subtitle">
-              AI-powered coral cover estimation for marine biologists and ocean
-              lovers
-            </p>
+          <button
+            className="mobile-menu-toggle"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            {mobileMenuOpen ? <FiX /> : <FiMenu />}
+          </button>
+        </div>
+      </nav>
 
-            <div className="cta-buttons">
-              <Link to="/register" className="cta-button primary">
-                Get Started
-              </Link>
-              <Link to="/login" className="cta-button secondary">
-                Sign In
-              </Link>
-            </div>
+      {/* Hero Section */}
+      <section id="home" className="hero-section">
+        <div className="hero-content">
+          <div className="hero-badge">
+            <FiStar className="badge-icon" />
+            <span>AI Technology</span>
           </div>
-        </main>
-
-        {/* Features section */}
-        <section className="features-section">
-          <div className="feature-card">
-            <div className="feature-icon">
-              <FiCamera />
-            </div>
-            <h3>Image Analysis</h3>
-            <p>Upload reef images and get instant coral coverage estimates</p>
+          <div className="hero-badge">
+            <FiStar className="badge-icon" />
+            <span>GIS Technology</span>
+          </div>
+          <div className="hero-badge">
+            <FiStar className="badge-icon" />
+            <span>Web Development</span>
           </div>
 
-          <div className="feature-card">
-            <div className="feature-icon">
-              <FiDatabase />
-            </div>
-            <h3>Data Tracking</h3>
-            <p>Monitor reef health over time with our powerful database</p>
+          <h1 className="hero-title">
+            <span className="title-primary">Preserving Our Reefs</span>
+            <span className="title-accent">One Pixel at a Time</span>
+          </h1>
+
+          <p className="hero-subtitle">
+            AI-powered coral cover estimation platform designed for marine
+            biologists, researchers, and ocean conservation enthusiasts
+          </p>
+
+          <div className="cta-buttons">
+            <Link to="/register" className="cta-button primary">
+              <span>Start Free Trial</span>
+              <FiArrowRight className="button-arrow" />
+            </Link>
+            <button className="cta-button secondary">
+              <FiPlay className="button-icon" />
+              <span>Watch Demo</span>
+            </button>
           </div>
 
-          <div className="feature-card">
-            <div className="feature-icon">
-              <FiBarChart2 />
-            </div>
-            <h3>Visual Reports</h3>
-            <p>Generate beautiful reports to share with your team</p>
+          <div
+            className="scroll-indicator"
+            onClick={() => scrollToSection("contact")}
+          >
+            <span>Discover Our Services</span>
+            <FiChevronDown className="scroll-icon" />
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* Footer */}
-        <footer className="footer">
-          <div className="footer-content">
-            <div className="footer-column">
-              <Logo variant="footer" type="image" theme="dark" />
+      {/* Services Section */}
+      {/* <section id="services" className="services-section">
+        <div className="section-container">
+          <div className="section-header">
+            <div className="section-badge">
+              <FiGlobe className="badge-icon" />
+              <span>Our Services</span>
             </div>
-            <div className="footer-column">
-              <h4>Project</h4>
-              <p>BrAInstormers Team</p>
-              <p>Capstone Project 2025</p>
+          </div>
+
+          <div className="services-grid">
+            {services.map((service, index) => (
+              <div key={index} className="service-card">
+                <div className="service-header">
+                  <div
+                    className="service-icon"
+                    style={{ background: service.gradient }}
+                  >
+                    {service.icon}
+                  </div>
+                  <h3>{service.title}</h3>
+                </div>
+
+                <p>{service.description}</p>
+
+                <ul className="service-features">
+                  {service.features.map((feature, idx) => (
+                    <li key={idx}>
+                      <FiCheckCircle className="check-icon" />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+
+                <button className="service-cta">
+                  Learn More
+                  <FiArrowRight />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section> */}
+
+      {/* About Section */}
+      {/* <section id="about" className="about-section">
+        <div className="section-container">
+          <div className="about-content">
+            <div className="about-text">
+              <div className="section-badge">
+                <FiHeart className="badge-icon" />
+                <span>About Us</span>
+              </div>
             </div>
-            <div className="footer-column">
-              <h4>Institution</h4>
-              <p>Southern Leyte State University</p>
-              <p>GIS Tech Center</p>
+          </div>
+        </div>
+      </section> */}
+
+      {/* Contact Section */}
+      <section id="contact" className="contact-section">
+        <div className="section-container">
+          <div className="section-header">
+            <div className="section-badge">
+              <FiMail className="badge-icon" />
+              <span>Contact Us</span>
             </div>
-            <div className="footer-column">
+          </div>
+
+          <div className="contact-content">
+            <div className="contact-info">
+              <div className="contact-card">
+                <div className="contact-icon">
+                  <FiMapPin />
+                </div>
+                <div className="contact-details">
+                  <h4>Location</h4>
+                  <p>
+                    Southern Leyte State University
+                    <br />
+                    GIS Technology Center
+                    <br />
+                    Sogod, Southern Leyte, Philippines
+                  </p>
+                </div>
+              </div>
+
+              <div className="contact-card">
+                <div className="contact-icon">
+                  <FiMail />
+                </div>
+                <div className="contact-details">
+                  <h4>Email</h4>
+                  <p>
+                    dasdasdwr@deepcoral.ai
+                    <br />
+                    asdsdf@deepcoral.ai
+                  </p>
+                </div>
+              </div>
+
+              <div className="contact-card">
+                <div className="contact-icon">
+                  <FiPhone />
+                </div>
+                <div className="contact-details">
+                  <h4>Phone</h4>
+                  <p>
+                    +63 (XX) XXXX-XXXX
+                    <br />
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="contact-form">
+              <form>
+                <div className="form-group">
+                  <input type="text" placeholder="Your Name" required />
+                  <input type="email" placeholder="Your Email" required />
+                </div>
+                <div className="form-group">
+                  <input type="text" placeholder="Subject" required />
+                </div>
+                <div className="form-group">
+                  <textarea
+                    placeholder="Your Message"
+                    rows="6"
+                    required
+                  ></textarea>
+                </div>
+                <button type="submit" className="form-submit">
+                  Send Message
+                  <FiArrowRight />
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="footer">
+        <div className="footer-content">
+          <div className="footer-main">
+            <div className="footer-brand">
+              <div className="brand-info">
+                <Logo variant="footer" type="image" theme="dark" />
+                <p>
+                  Advancing marine conservation through artificial intelligence
+                  and innovative research.
+                </p>
+                <div className="social-links">
+                  {/* <a href="#" className="social-link">
+                    <FiLinkedin />
+                  </a> */}
+                  <a href="https://github.com/dlarG/" className="social-link">
+                    <FiGithub />
+                  </a>
+                  {/* <a href="#" className="social-link">
+                    <FiTwitter />
+                  </a> */}
+                </div>
+              </div>
+            </div>
+
+            <div className="footer-links">
+              <div className="footer-column">
+                <h4>Project</h4>
+                <p>BrAInstormers Team</p>
+                <p>Capstone Project 2025</p>
+                <p>Advanced AI Research</p>
+                <p>Marine Conservation</p>
+              </div>
+
+              <div className="footer-column">
+                <h4>Institution</h4>
+                <p>Southern Leyte State University</p>
+                <p>GIS Technology Center</p>
+                <p>Marine Research Division</p>
+                <p>Environmental Studies</p>
+              </div>
+
+              <div className="footer-column">
+                <h4>Technology</h4>
+                <p>Deep Learning Models</p>
+                <p>Computer Vision</p>
+                <p>Cloud Computing</p>
+                <p>Data Analytics</p>
+              </div>
+
+              <div className="footer-column">
+                <h4>Resources</h4>
+                <p>Documentation</p>
+                <p>API Reference</p>
+                <p>Research Papers</p>
+                <p>Support Center</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="footer-bottom">
+            <div className="copyright-section">
               <p className="copyright">
                 © 2025 BrAInstormers. All rights reserved.
               </p>
@@ -116,347 +421,10 @@ function HomePage() {
               </p>
             </div>
           </div>
-        </footer>
-      </div>
+        </div>
+      </footer>
     </div>
   );
 }
-
-// CSS Styles
-const styles = `
-  .homepage-container {
-    position: relative;
-    min-height: 100vh;
-    overflow-x: hidden;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  }
-
-  .background-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 1;
-  }
-
-  .background-image {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-image: url('/img/coralbg.jpg');
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
-  }
-
-  .overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(135deg, rgba(0, 96, 100, 0.85) 0%, rgba(0, 77, 64, 0.85) 100%);
-  }
-
-  .content-wrapper {
-    position: relative;
-    z-index: 2;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-  }
-
-  /* Navigation */
-  .navbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px 40px;
-    background: rgba(0, 96, 100, 0.9);
-    backdrop-filter: blur(5px);
-    box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
-  }
-
-  .navbar-brand {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    color: white;
-    font-size: 1.5rem;
-    font-weight: 600;
-  }
-
-  .logo-icon {
-    font-size: 1.8rem;
-  }
-
-  .nav-links {
-    display: flex;
-    gap: 20px;
-  }
-
-  .nav-link {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: white;
-    text-decoration: none;
-    font-weight: 500;
-    padding: 8px 16px;
-    border-radius: 20px;
-    transition: all 0.3s ease;
-  }
-
-  .nav-link:hover {
-    background: rgba(255, 255, 255, 0.15);
-  }
-
-  .link-icon {
-    font-size: 1.1rem;
-  }
-
-  /* Hero section */
-  .hero-section {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 40px 20px;
-    text-align: center;
-    color: white;
-  }
-
-  .hero-content {
-    max-width: 800px;
-    margin: 0 auto;
-  }
-
-  .hero-title {
-    font-size: 2.8rem;
-    font-weight: 700;
-    line-height: 1.2;
-    margin-bottom: 20px;
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-  }
-
-  .hero-subtitle {
-    font-size: 1.3rem;
-    font-weight: 300;
-    margin-bottom: 40px;
-    opacity: 0.9;
-  }
-
-  .cta-buttons {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
-    margin-top: 30px;
-  }
-
-  .cta-button {
-    padding: 12px 30px;
-    border-radius: 30px;
-    font-weight: 500;
-    text-decoration: none;
-    transition: all 0.3s ease;
-    display: inline-block;
-  }
-
-  .cta-button.primary {
-    background: #26c6da;
-    color: white;
-    box-shadow: 0 4px 15px rgba(38, 198, 218, 0.3);
-  }
-
-  .cta-button.primary:hover {
-    background: #00acc1;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(38, 198, 218, 0.4);
-  }
-
-  .cta-button.secondary {
-    background: transparent;
-    color: white;
-    border: 2px solid white;
-  }
-
-  .cta-button.secondary:hover {
-    background: rgba(255, 255, 255, 0.1);
-    transform: translateY(-2px);
-  }
-
-  /* Features section */
-  .features-section {
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 30px;
-    padding: 60px 20px;
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(5px);
-  }
-
-  .feature-card {
-    flex: 1;
-    min-width: 250px;
-    max-width: 300px;
-    background: rgba(255, 255, 255, 0.9);
-    padding: 30px;
-    border-radius: 15px;
-    text-align: center;
-    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-    transition: transform 0.3s ease;
-  }
-
-  .feature-card:hover {
-    transform: translateY(-10px);
-  }
-
-  .feature-icon {
-    font-size: 2.5rem;
-    color: #26c6da;
-    margin-bottom: 20px;
-  }
-
-  .feature-card h3 {
-    color: #00796b;
-    margin-bottom: 15px;
-    font-size: 1.3rem;
-  }
-
-  .feature-card p {
-    color: #555;
-    line-height: 1.5;
-  }
-
-  /* Footer */
-  .footer {
-    padding: 40px 20px 20px;
-    background: rgba(0, 77, 64, 0.95);
-    color: white;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
-  .footer-content {
-    max-width: 1200px;
-    margin: 0 auto;
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr 1fr;
-    gap: 30px;
-    align-items: start;
-  }
-
-  .footer-column {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .footer-column h4 {
-    font-size: 1rem;
-    font-weight: 600;
-    margin-bottom: 8px;
-    color: #26c6da;
-    border-bottom: 1px solid rgba(38, 198, 218, 0.3);
-    padding-bottom: 4px;
-  }
-
-  .footer-column p {
-    font-size: 0.9rem;
-    opacity: 0.8;
-    margin: 0;
-    line-height: 1.4;
-  }
-
-  .copyright {
-    font-weight: 500;
-    margin-bottom: 8px !important;
-  }
-
-  .made-with {
-    font-size: 0.85rem !important;
-    opacity: 0.7 !important;
-  }
-
-  .heart {
-    color: #26c6da;
-  }
-
-  /* Responsive design */
-  @media (max-width: 768px) {
-    .navbar {
-      padding: 15px 20px;
-    }
-
-    .hero-title {
-      font-size: 2rem;
-    }
-
-    .hero-subtitle {
-      font-size: 1.1rem;
-    }
-
-    .cta-buttons {
-      flex-direction: column;
-      gap: 15px;
-    }
-
-    .cta-button {
-      width: 100%;
-      max-width: 250px;
-      margin: 0 auto;
-    }
-
-    .features-section {
-      flex-direction: column;
-      align-items: center;
-    }
-
-    .feature-card {
-      width: 100%;
-      max-width: 350px;
-    }
-
-    .footer-content {
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-    }
-  }
-
-  @media (max-width: 480px) {
-    .navbar-brand h1 {
-      font-size: 1.3rem;
-    }
-
-    .nav-links {
-      gap: 10px;
-    }
-
-    .nav-link span {
-      display: none;
-    }
-
-    .hero-title {
-      font-size: 1.8rem;
-    }
-
-    .footer-content {
-      grid-template-columns: 1fr;
-      gap: 25px;
-      text-align: center;
-    }
-
-    .footer-column {
-      align-items: center;
-    }
-  }
-`;
-
-const styleElement = document.createElement("style");
-styleElement.innerHTML = styles;
-document.head.appendChild(styleElement);
 
 export default HomePage;

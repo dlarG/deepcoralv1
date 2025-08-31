@@ -16,7 +16,7 @@
 
 /* Text Logo for branding */
 .deepcoral-logo {
-  font-family: 'Georgia', 'Times New Roman', serif;
+  font-family: "Georgia", "Times New Roman", serif;
   font-size: 1.9rem;
   font-weight: bold;
   background: linear-gradient(to right, rgb(45, 146, 255), #00d4ff);
@@ -71,6 +71,7 @@
 
 /* Footer logo for homepage footer */
 .footer-logo {
+  margin-top: 20px;
   width: 120px;
   height: auto;
   object-fit: contain;
@@ -82,16 +83,16 @@
   .navbar-logo {
     width: 140px;
   }
-  
+
   .dashboard-logo {
     width: 120px;
   }
-  
+
   .auth-logo {
     width: 100px;
     height: 100px;
   }
-  
+
   .footer-logo {
     width: 100px;
   }
@@ -101,20 +102,20 @@
   .navbar-logo {
     width: 120px;
   }
-  
+
   .dashboard-logo {
     width: 100px;
   }
-  
+
   .auth-logo {
     width: 80px;
     height: 80px;
   }
-  
+
   .footer-logo {
     width: 80px;
   }
-  
+
   .deepcoral-logo {
     font-size: 1.5rem;
   }

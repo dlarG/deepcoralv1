@@ -152,15 +152,543 @@ function UserProfile({ darkMode }) {
       <div className={`user-profile-container ${darkMode ? "dark" : ""}`}>
         <div className="profile-loading">
           <div className="loading-content">
-            <div className="loading-spinner">
-              <div className="spinner-ring"></div>
-              <div className="spinner-ring"></div>
-              <div className="spinner-ring"></div>
+            {/* Enhanced Loading Spinner */}
+            <div className="loading-spinner-container">
+              <div className="pulse-rings">
+                <div className="pulse-ring ring-1"></div>
+                <div className="pulse-ring ring-2"></div>
+                <div className="pulse-ring ring-3"></div>
+              </div>
+              <div className="center-avatar">
+                <div className="avatar-placeholder">
+                  <FiUser size={24} />
+                </div>
+              </div>
             </div>
-            <h3>Loading Profile</h3>
-            <p>Fetching user details...</p>
+
+            {/* Loading Text with Animation */}
+            <div className="loading-text">
+              <h3>Loading Profile</h3>
+              <div className="loading-dots">
+                <span>Fetching user details</span>
+                <div className="dots-animation">
+                  <span className="dot">.</span>
+                  <span className="dot">.</span>
+                  <span className="dot">.</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Progress Indicators */}
+            <div className="loading-progress">
+              <div className="progress-steps">
+                <div className="step active">
+                  <div className="step-icon">
+                    <FiUser size={16} />
+                  </div>
+                  <span>User Info</span>
+                </div>
+                <div className="step loading">
+                  <div className="step-icon">
+                    <FiShield size={16} />
+                  </div>
+                  <span>Permissions</span>
+                </div>
+                <div className="step">
+                  <div className="step-icon">
+                    <FiActivity size={16} />
+                  </div>
+                  <span>Activity</span>
+                </div>
+              </div>
+              <div className="progress-bar">
+                <div className="progress-fill"></div>
+              </div>
+            </div>
+
+            {/* Alternative: Skeleton Cards Preview */}
+            <div className="skeleton-preview">
+              <div className="skeleton-card">
+                <div className="skeleton-header">
+                  <div className="skeleton-avatar"></div>
+                  <div className="skeleton-text">
+                    <div className="skeleton-line long"></div>
+                    <div className="skeleton-line short"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
+
+        <style jsx>{`
+          .profile-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 80vh;
+            padding: 2rem;
+          }
+
+          .loading-content {
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+          }
+
+          .loading-spinner-container {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 3rem;
+          }
+
+          .pulse-rings {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+          }
+
+          .pulse-ring {
+            position: absolute;
+            border: 2px solid #3b82f6;
+            border-radius: 50%;
+            opacity: 0;
+            animation: pulse 2s infinite;
+          }
+
+          .ring-1 {
+            width: 120px;
+            height: 120px;
+            margin: -60px 0 0 -60px;
+            animation-delay: 0s;
+          }
+
+          .ring-2 {
+            width: 90px;
+            height: 90px;
+            margin: -45px 0 0 -45px;
+            border-color: #10b981;
+            animation-delay: 0.7s;
+          }
+
+          .ring-3 {
+            width: 60px;
+            height: 60px;
+            margin: -30px 0 0 -30px;
+            border-color: #f59e0b;
+            animation-delay: 1.4s;
+          }
+
+          .dark .ring-1 {
+            border-color: #60a5fa;
+          }
+
+          .dark .ring-2 {
+            border-color: #34d399;
+          }
+
+          .dark .ring-3 {
+            border-color: #fbbf24;
+          }
+
+          @keyframes pulse {
+            0% {
+              transform: scale(0.3);
+              opacity: 1;
+            }
+            50% {
+              opacity: 0.8;
+            }
+            100% {
+              transform: scale(1);
+              opacity: 0;
+            }
+          }
+
+          .center-avatar {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+          }
+
+          .avatar-placeholder {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+            animation: float 3s ease-in-out infinite;
+          }
+
+          @keyframes float {
+            0%,
+            100% {
+              transform: translateY(0px);
+            }
+            50% {
+              transform: translateY(-10px);
+            }
+          }
+
+          .loading-text h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0 0 1rem 0;
+            color: #1f2937;
+            animation: fadeInUp 0.8s ease-out;
+          }
+
+          .dark .loading-text h3 {
+            color: #f9fafb;
+          }
+
+          .loading-dots {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            font-size: 1rem;
+            color: #6b7280;
+            animation: fadeInUp 1s ease-out;
+          }
+
+          .dark .loading-dots {
+            color: #9ca3af;
+          }
+
+          .dots-animation {
+            display: flex;
+          }
+
+          .dot {
+            animation: dotPulse 1.5s infinite;
+            opacity: 0;
+          }
+
+          .dot:nth-child(1) {
+            animation-delay: 0s;
+          }
+
+          .dot:nth-child(2) {
+            animation-delay: 0.2s;
+          }
+
+          .dot:nth-child(3) {
+            animation-delay: 0.4s;
+          }
+
+          @keyframes dotPulse {
+            0%,
+            60%,
+            100% {
+              opacity: 0;
+            }
+            30% {
+              opacity: 1;
+            }
+          }
+
+          @keyframes fadeInUp {
+            from {
+              opacity: 0;
+              transform: translateY(20px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+
+          .loading-progress {
+            margin: 3rem 0;
+            animation: fadeInUp 1.2s ease-out;
+          }
+
+          .progress-steps {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+            position: relative;
+          }
+
+          .progress-steps::before {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: rgba(0, 0, 0, 0.1);
+            transform: translateY(-50%);
+            z-index: 1;
+          }
+
+          .dark .progress-steps::before {
+            background: rgba(255, 255, 255, 0.1);
+          }
+
+          .step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            position: relative;
+            z-index: 2;
+          }
+
+          .step-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(107, 114, 128, 0.1);
+            border: 2px solid rgba(107, 114, 128, 0.3);
+            color: #6b7280;
+            transition: all 0.3s ease;
+          }
+
+          .step.active .step-icon {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            border-color: #3b82f6;
+            color: white;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+          }
+
+          .step.loading .step-icon {
+            background: linear-gradient(135deg, #10b981, #059669);
+            border-color: #10b981;
+            color: white;
+            animation: pulse-icon 1.5s infinite;
+          }
+
+          @keyframes pulse-icon {
+            0%,
+            100% {
+              transform: scale(1);
+              box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+            }
+            50% {
+              transform: scale(1.1);
+              box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+            }
+          }
+
+          .step span {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: #6b7280;
+            white-space: nowrap;
+          }
+
+          .dark .step span {
+            color: #9ca3af;
+          }
+
+          .step.active span,
+          .step.loading span {
+            color: #1f2937;
+            font-weight: 600;
+          }
+
+          .dark .step.active span,
+          .dark .step.loading span {
+            color: #f9fafb;
+          }
+
+          .progress-bar {
+            height: 4px;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 1rem;
+          }
+
+          .dark .progress-bar {
+            background: rgba(255, 255, 255, 0.1);
+          }
+
+          .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #10b981, #f59e0b);
+            border-radius: 2px;
+            animation: progressLoad 3s infinite;
+          }
+
+          @keyframes progressLoad {
+            0% {
+              width: 0%;
+              transform: translateX(-100%);
+            }
+            50% {
+              width: 100%;
+              transform: translateX(0%);
+            }
+            100% {
+              width: 100%;
+              transform: translateX(100%);
+            }
+          }
+
+          .skeleton-preview {
+            margin-top: 2rem;
+            animation: fadeInUp 1.4s ease-out;
+          }
+
+          .skeleton-card {
+            background: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+          }
+
+          .dark .skeleton-card {
+            background: #1e293b;
+            border-color: rgba(255, 255, 255, 0.1);
+          }
+
+          .skeleton-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+          }
+
+          .skeleton-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(
+              90deg,
+              #f3f4f6 25%,
+              #e5e7eb 50%,
+              #f3f4f6 75%
+            );
+            background-size: 200% 100%;
+            animation: shimmer 2s infinite;
+          }
+
+          .dark .skeleton-avatar {
+            background: linear-gradient(
+              90deg,
+              #374151 25%,
+              #4b5563 50%,
+              #374151 75%
+            );
+            background-size: 200% 100%;
+          }
+
+          .skeleton-text {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+          }
+
+          .skeleton-line {
+            height: 14px;
+            border-radius: 7px;
+            background: linear-gradient(
+              90deg,
+              #f3f4f6 25%,
+              #e5e7eb 50%,
+              #f3f4f6 75%
+            );
+            background-size: 200% 100%;
+            animation: shimmer 2s infinite;
+          }
+
+          .dark .skeleton-line {
+            background: linear-gradient(
+              90deg,
+              #374151 25%,
+              #4b5563 50%,
+              #374151 75%
+            );
+            background-size: 200% 100%;
+          }
+
+          .skeleton-line.long {
+            width: 70%;
+          }
+
+          .skeleton-line.short {
+            width: 40%;
+          }
+
+          @keyframes shimmer {
+            0% {
+              background-position: -200% 0;
+            }
+            100% {
+              background-position: 200% 0;
+            }
+          }
+
+          /* Responsive Design */
+          @media (max-width: 768px) {
+            .loading-spinner-container {
+              width: 80px;
+              height: 80px;
+              margin-bottom: 2rem;
+            }
+
+            .ring-1 {
+              width: 80px;
+              height: 80px;
+              margin: -40px 0 0 -40px;
+            }
+
+            .ring-2 {
+              width: 60px;
+              height: 60px;
+              margin: -30px 0 0 -30px;
+            }
+
+            .ring-3 {
+              width: 40px;
+              height: 40px;
+              margin: -20px 0 0 -20px;
+            }
+
+            .avatar-placeholder {
+              width: 32px;
+              height: 32px;
+            }
+
+            .loading-text h3 {
+              font-size: 1.25rem;
+            }
+
+            .progress-steps {
+              flex-direction: column;
+              gap: 1rem;
+              align-items: center;
+            }
+
+            .progress-steps::before {
+              display: none;
+            }
+
+            .step {
+              flex-direction: row;
+              gap: 1rem;
+            }
+
+            .step span {
+              white-space: normal;
+            }
+          }
+        `}</style>
       </div>
     );
 

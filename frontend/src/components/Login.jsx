@@ -11,6 +11,7 @@ import {
   FiEyeOff,
 } from "react-icons/fi";
 import Logo from "./Logo";
+import "../styles/login.css";
 
 // Configure axios to send credentials with requests
 axios.defaults.withCredentials = true;
@@ -20,12 +21,35 @@ function Login() {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [bubbles, setBubbles] = useState([]);
   const navigate = useNavigate();
   const { login, csrfToken } = useAuth();
 
-  // Fetch CSRF token when component mounts
+  // Generate bubbles for animation
   useEffect(() => {
     document.title = "Sign in to DeepCoral";
+
+    // Generate random bubbles
+    const generateBubbles = () => {
+      const newBubbles = [];
+      for (let i = 0; i < 15; i++) {
+        newBubbles.push({
+          id: i,
+          size: Math.random() * 60 + 20, // 20-80px
+          left: Math.random() * 100, // 0-100%
+          animationDuration: Math.random() * 10 + 10, // 10-20s
+          animationDelay: Math.random() * 5, // 0-5s
+          opacity: Math.random() * 0.7 + 0.3, // 0.3-1
+        });
+      }
+      setBubbles(newBubbles);
+    };
+
+    generateBubbles();
+
+    // Regenerate bubbles every 20 seconds for variety
+    const interval = setInterval(generateBubbles, 20000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleChange = (e) => {
@@ -63,6 +87,61 @@ function Login() {
 
   return (
     <div className="login-container">
+      {/* Animated Background */}
+      <div className="ocean-background">
+        {/* Gradient waves */}
+        <div className="wave wave1"></div>
+        <div className="wave wave2"></div>
+        <div className="wave wave3"></div>
+
+        {/* Floating particles */}
+        <div className="particles">
+          {Array.from({ length: 25 }).map((_, i) => (
+            <div
+              key={i}
+              className="particle"
+              style={{
+                left: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 15}s`,
+                animationDuration: `${15 + Math.random() * 10}s`,
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Animated bubbles */}
+        <div className="bubbles-container">
+          {bubbles.map((bubble) => (
+            <div
+              key={bubble.id}
+              className="bubble"
+              style={{
+                width: `${bubble.size}px`,
+                height: `${bubble.size}px`,
+                left: `${bubble.left}%`,
+                animationDuration: `${bubble.animationDuration}s`,
+                animationDelay: `${bubble.animationDelay}s`,
+                opacity: bubble.opacity,
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Coral silhouettes */}
+        <div className="coral-silhouettes">
+          <div className="coral coral1"></div>
+          <div className="coral coral2"></div>
+          <div className="coral coral3"></div>
+        </div>
+
+        {/* Light rays */}
+        <div className="light-rays">
+          <div className="ray ray1"></div>
+          <div className="ray ray2"></div>
+          <div className="ray ray3"></div>
+        </div>
+      </div>
+
       <div className="login-card">
         {/* Coral reef header */}
         <div className="login-header">
@@ -159,259 +238,5 @@ function Login() {
     </div>
   );
 }
-
-// CSS Styles
-const styles = `
-  .back-button {
-    color: white;
-    font-size: 24px;
-    text-decoration: none;
-    transition: color 0.3s;
-  }
-    
-  .back-button:hover {
-    color: #26c6da;
-  }
-
-  .login-container {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%);
-    padding: 20px;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  }
-
-  .login-card {
-    width: 100%;
-    max-width: 420px;
-    background: white;
-    border-radius: 16px;
-    overflow: hidden;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  }
-
-  .login-header {
-    background: linear-gradient(135deg, rgb(5, 113, 180) 0%,rgb(0, 94, 153) 100%);
-    padding: 30px;
-    text-align: center;
-    color: white;
-  }
-
-  .login-header h1 {
-    font-size: 24px;
-    font-weight: 600;
-    margin: 0 0 8px 0;
-  }
-
-  .login-header p {
-    font-size: 14px;
-    margin: 0;
-    opacity: 0.9;
-  }
-
-  .login-body {
-    padding: 30px;
-  }
-
-  .login-message {
-    padding: 12px;
-    border-radius: 8px;
-    margin-bottom: 24px;
-    text-align: center;
-    font-size: 14px;
-  }
-
-  .login-message.success {
-    background-color: #e8f5e9;
-    color: #2e7d32;
-  }
-
-  .login-message.error {
-    background-color: #ffebee;
-    color: #c62828;
-  }
-
-  .login-form {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-  }
-
-  .input-group {
-    position: relative;
-    width: 100%;
-    display: flex;
-    align-items: center;
-  }
-
-  .input-icon {
-    position: absolute;
-    left: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: rgb(61, 175, 245);
-    font-size: 18px;
-    z-index: 2;
-  }
-
-  .input-group input {
-    width: 100%;
-    padding: 14px 16px 14px 40px;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    font-size: 14px;
-    transition: all 0.3s;
-    padding-right: 45px; /* Add space for password toggle */
-  }
-
-  .input-group input:focus {
-    outline: none;
-    border-color: rgb(0, 94, 153);
-    box-shadow: 0 0 0 2px rgba(38, 198, 218, 0.2);
-  }
-
-  .password-toggle {
-    position: absolute;
-    right: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    color: #9e9e9e;
-    font-size: 18px;
-    cursor: pointer;
-    padding: 4px;
-    border-radius: 4px;
-    transition: all 0.2s;
-    z-index: 2;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .password-toggle:hover {
-    color: rgb(61, 175, 245);
-    background-color: rgba(61, 175, 245, 0.1);
-  }
-
-  .password-toggle:focus {
-    outline: none;
-    color: rgb(0, 94, 153);
-    background-color: rgba(0, 94, 153, 0.1);
-  }
-
-  .password-toggle:active {
-    transform: translateY(-50%) scale(0.95);
-  }
-
-  .login-button {
-    width: 100%;
-    padding: 14px;
-    background: linear-gradient(135deg, #26c6da 0%, rgb(0, 94, 153) 100%);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 16px;
-    font-weight: 500;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    transition: all 0.3s;
-  }
-
-  .login-button:hover:not(.loading) {
-    background: linear-gradient(135deg, rgb(0, 94, 153) 0%, #00838f 100%);
-    box-shadow: 0 4px 12px rgba(0, 172, 193, 0.2);
-  }
-
-  .login-button.loading {
-    background: rgb(0, 94, 153);
-    cursor: not-allowed;
-  }
-
-  .button-icon {
-    font-size: 18px;
-  }
-
-  .spinner {
-    width: 20px;
-    height: 20px;
-    border: 3px solid rgba(255, 255, 255, 0.3);
-    border-radius: 50%;
-    border-top-color: white;
-    animation: spin 1s ease-in-out infinite;
-  }
-
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-
-  .login-footer {
-    margin-top: 24px;
-    text-align: center;
-    font-size: 13px;
-    color: #616161;
-  }
-
-  .forgot-password {
-    color: #26c6da;
-    text-decoration: none;
-    font-weight: 500;
-    display: block;
-    margin-bottom: 16px;
-  }
-
-  .forgot-password:hover {
-    text-decoration: underline;
-  }
-
-  .signup-prompt a {
-    color: #26c6da;
-    text-decoration: none;
-    font-weight: 500;
-  }
-
-  .signup-prompt a:hover {
-    text-decoration: underline;
-  }
-
-  /* Responsive adjustments */
-  @media (max-width: 480px) {
-    .login-container {
-      padding: 10px;
-    }
-
-    .login-header {
-      padding: 20px;
-    }
-
-    .login-body {
-      padding: 20px;
-    }
-
-    .input-group input {
-      padding: 12px 14px 12px 38px;
-      padding-right: 42px;
-    }
-
-    .input-icon {
-      left: 10px;
-      font-size: 16px;
-    }
-
-    .password-toggle {
-      right: 10px;
-      font-size: 16px;
-    }
-  }
-`;
-
-const styleElement = document.createElement("style");
-styleElement.innerHTML = styles;
-document.head.appendChild(styleElement);
 
 export default Login;

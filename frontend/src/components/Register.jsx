@@ -14,6 +14,7 @@ import {
 } from "react-icons/fi";
 import ReCAPTCHA from "react-google-recaptcha";
 import Logo from "./Logo";
+import "../styles/register.css";
 
 // Configure axios to send credentials with requests
 axios.defaults.withCredentials = true;
@@ -31,8 +32,36 @@ function Register() {
   const [csrfToken, setCsrfToken] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [bubbles, setBubbles] = useState([]);
   const navigate = useNavigate();
   const [captchaValue, setCaptchaValue] = useState(null);
+
+  // Generate bubbles for animation
+  useEffect(() => {
+    document.title = "Create Account - DeepCoral";
+
+    // Generate random bubbles
+    const generateBubbles = () => {
+      const newBubbles = [];
+      for (let i = 0; i < 20; i++) {
+        newBubbles.push({
+          id: i,
+          size: Math.random() * 50 + 15, // 15-65px
+          left: Math.random() * 100, // 0-100%
+          animationDuration: Math.random() * 12 + 8, // 8-20s
+          animationDelay: Math.random() * 6, // 0-6s
+          opacity: Math.random() * 0.6 + 0.2, // 0.2-0.8
+        });
+      }
+      setBubbles(newBubbles);
+    };
+
+    generateBubbles();
+
+    // Regenerate bubbles every 25 seconds for variety
+    const interval = setInterval(generateBubbles, 25000);
+    return () => clearInterval(interval);
+  }, []);
 
   const validatePassword = (password) => {
     const errors = [];
@@ -66,7 +95,6 @@ function Register() {
 
     const strength = checks.filter(Boolean).length;
 
-    // Create strength mapping
     const strengthMap = {
       0: { label: "Very Weak", color: "#ef4444" },
       1: { label: "Weak", color: "#f59e0b" },
@@ -94,7 +122,6 @@ function Register() {
 
   // Fetch CSRF token when component mounts
   useEffect(() => {
-    document.title = "Create an Account";
     const fetchCsrfToken = async () => {
       try {
         const response = await axios.get("http://localhost:5000/csrf-token");
@@ -147,7 +174,7 @@ function Register() {
     }
 
     try {
-      const res = await axios.post(
+      axios.post(
         "http://localhost:5000/register",
         {
           username: form.username,
@@ -163,7 +190,7 @@ function Register() {
         }
       );
 
-      setMessage(res.data.message);
+      setMessage("Registration successful! Redirecting to login...");
       // Clear form on successful registration
       setForm({
         username: "",
@@ -173,7 +200,6 @@ function Register() {
         lastname: "",
       });
 
-      // Optionally redirect to login after successful registration
       setTimeout(() => navigate("/login"), 2000);
     } catch (err) {
       const errorMsg = err.response?.data?.error || "Registration failed";
@@ -188,8 +214,73 @@ function Register() {
 
   return (
     <div className="register-container">
+      {/* Animated Ocean Background */}
+      <div className="ocean-background">
+        {/* Gradient waves */}
+        <div className="wave wave1"></div>
+        <div className="wave wave2"></div>
+        <div className="wave wave3"></div>
+        <div className="wave wave4"></div>
+
+        {/* Floating particles */}
+        <div className="particles">
+          {Array.from({ length: 30 }).map((_, i) => (
+            <div
+              key={i}
+              className="particle"
+              style={{
+                left: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 20}s`,
+                animationDuration: `${12 + Math.random() * 8}s`,
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Animated bubbles */}
+        <div className="bubbles-container">
+          {bubbles.map((bubble) => (
+            <div
+              key={bubble.id}
+              className="bubble"
+              style={{
+                width: `${bubble.size}px`,
+                height: `${bubble.size}px`,
+                left: `${bubble.left}%`,
+                animationDuration: `${bubble.animationDuration}s`,
+                animationDelay: `${bubble.animationDelay}s`,
+                opacity: bubble.opacity,
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Coral silhouettes */}
+        <div className="coral-silhouettes">
+          <div className="coral coral1"></div>
+          <div className="coral coral2"></div>
+          <div className="coral coral3"></div>
+          <div className="coral coral4"></div>
+        </div>
+
+        {/* Light rays */}
+        <div className="light-rays">
+          <div className="ray ray1"></div>
+          <div className="ray ray2"></div>
+          <div className="ray ray3"></div>
+          <div className="ray ray4"></div>
+        </div>
+
+        {/* Seaweed animation */}
+        <div className="seaweed-container">
+          <div className="seaweed seaweed1"></div>
+          <div className="seaweed seaweed2"></div>
+          <div className="seaweed seaweed3"></div>
+        </div>
+      </div>
+
       <div className="register-card">
-        {/* Coral reef header */}
+        {/* Enhanced header with marine theme */}
         <div className="register-header">
           <Link to="/" className="back-button">
             <FiArrowLeft />
@@ -198,7 +289,7 @@ function Register() {
             <Logo variant="auth" type="image" theme="dark" />
           </div>
           <h1>Join Coral Reef Portal</h1>
-          <p>Create your account to get started</p>
+          <p>Create your account to start conserving marine life</p>
         </div>
 
         <div className="register-body">
@@ -215,14 +306,44 @@ function Register() {
           <form onSubmit={handleSubmit} className="register-form">
             <input type="hidden" name="csrf_token" value={csrfToken} />
 
+            <div className="name-fields">
+              <div className="input-group">
+                <div className="input-icon">
+                  <FiUser />
+                </div>
+                <input
+                  type="text"
+                  name="firstname"
+                  placeholder="First Name"
+                  value={form.firstname}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              <div className="input-group">
+                <div className="input-icon">
+                  <FiUser />
+                </div>
+                <input
+                  type="text"
+                  name="lastname"
+                  placeholder="Last Name"
+                  value={form.lastname}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+            </div>
+
             <div className="input-group">
               <div className="input-icon">
-                <FiUser />
+                <FiEdit2 />
               </div>
               <input
                 type="text"
                 name="username"
-                placeholder="Username"
+                placeholder="Choose a username"
                 value={form.username}
                 onChange={handleChange}
                 required
@@ -236,7 +357,7 @@ function Register() {
               <input
                 type={showPassword ? "text" : "password"}
                 name="password"
-                placeholder="Password (min 8 characters)"
+                placeholder="Create a strong password"
                 value={form.password}
                 onChange={handleChange}
                 required
@@ -252,14 +373,17 @@ function Register() {
               </button>
             </div>
 
-            {/* Password Strength Meter */}
+            {/* Enhanced Password Strength Meter */}
             {form.password && (
               <div className="password-meter">
-                <div className="meter-label">
-                  <span>Password Strength: </span>
+                <div className="meter-header">
+                  <span className="meter-title">Password Strength</span>
                   <span
-                    className="strength-text"
-                    style={{ color: passwordStrength.color }}
+                    className="strength-badge"
+                    style={{
+                      backgroundColor: passwordStrength.color,
+                      color: "white",
+                    }}
                   >
                     {passwordStrength.label}
                   </span>
@@ -280,7 +404,7 @@ function Register() {
                     }`}
                   >
                     {form.password.length >= 8 ? <FiCheck /> : <FiX />}
-                    <span>At least 8 characters</span>
+                    <span>8+ characters</span>
                   </div>
                   <div
                     className={`requirement ${
@@ -288,7 +412,7 @@ function Register() {
                     }`}
                   >
                     {/[A-Z]/.test(form.password) ? <FiCheck /> : <FiX />}
-                    <span>One uppercase letter</span>
+                    <span>Uppercase</span>
                   </div>
                   <div
                     className={`requirement ${
@@ -296,7 +420,7 @@ function Register() {
                     }`}
                   >
                     {/[a-z]/.test(form.password) ? <FiCheck /> : <FiX />}
-                    <span>One lowercase letter</span>
+                    <span>Lowercase</span>
                   </div>
                   <div
                     className={`requirement ${
@@ -304,7 +428,7 @@ function Register() {
                     }`}
                   >
                     {/[0-9]/.test(form.password) ? <FiCheck /> : <FiX />}
-                    <span>One number</span>
+                    <span>Number</span>
                   </div>
                   <div
                     className={`requirement ${
@@ -312,7 +436,7 @@ function Register() {
                     }`}
                   >
                     {/[^A-Za-z0-9]/.test(form.password) ? <FiCheck /> : <FiX />}
-                    <span>One special character</span>
+                    <span>Special char</span>
                   </div>
                 </div>
               </div>
@@ -325,7 +449,7 @@ function Register() {
               <input
                 type={showConfirmPassword ? "text" : "password"}
                 name="confirmPassword"
-                placeholder="Confirm Password"
+                placeholder="Confirm your password"
                 value={form.confirmPassword}
                 onChange={handleChange}
                 required
@@ -342,7 +466,7 @@ function Register() {
               </button>
             </div>
 
-            {/* Password Match Indicator */}
+            {/* Enhanced Password Match Indicator */}
             {form.confirmPassword && (
               <div className="password-match">
                 <div
@@ -353,47 +477,20 @@ function Register() {
                   {passwordMatch ? <FiCheck /> : <FiX />}
                   <span>
                     {passwordMatch
-                      ? "Passwords match"
-                      : "Passwords do not match"}
+                      ? "Passwords match perfectly!"
+                      : "Passwords don't match"}
                   </span>
                 </div>
               </div>
             )}
 
-            <div className="name-fields">
-              <div className="input-group">
-                <div className="input-icon">
-                  <FiEdit2 />
-                </div>
-                <input
-                  type="text"
-                  name="firstname"
-                  placeholder="First Name"
-                  value={form.firstname}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-
-              <div className="input-group">
-                <div className="input-icon">
-                  <FiEdit2 />
-                </div>
-                <input
-                  type="text"
-                  name="lastname"
-                  placeholder="Last Name"
-                  value={form.lastname}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-            </div>
-
             <div className="captcha-container">
-              <label className="captcha-label">
-                Please verify you are human
-              </label>
+              <div className="captcha-header">
+                <span className="captcha-title">Security Verification</span>
+                <span className="captcha-subtitle">
+                  Please verify you're human
+                </span>
+              </div>
               <div className="captcha-widget">
                 <ReCAPTCHA
                   sitekey="6LdXDYkrAAAAAO83PKhXnlg3zb3tCBN0qgCTYg0M"
@@ -407,7 +504,10 @@ function Register() {
             <button
               type="submit"
               disabled={
-                isLoading || !passwordMatch || passwordStrength.score < 3
+                isLoading ||
+                !passwordMatch ||
+                passwordStrength.score < 3 ||
+                !captchaValue
               }
               className={`register-button ${isLoading ? "loading" : ""}`}
             >
@@ -418,7 +518,8 @@ function Register() {
                 </>
               ) : (
                 <>
-                  Register <FiArrowRight className="button-icon" />
+                  Create Account
+                  <FiArrowRight className="button-icon" />
                 </>
               )}
             </button>
@@ -426,7 +527,7 @@ function Register() {
 
           <div className="register-footer">
             <p className="login-prompt">
-              Already have an account? <a href="/login">Sign in</a>
+              Already have an account? <Link to="/login">Sign in here</Link>
             </p>
           </div>
         </div>
@@ -434,398 +535,5 @@ function Register() {
     </div>
   );
 }
-
-// CSS Styles
-const styles = `
-  .back-button {
-    color: white;
-    font-size: 24px;
-    text-decoration: none;
-    transition: color 0.3s;
-  }
-    
-  .back-button:hover {
-    color: #26c6da;
-  }
-
-  .register-container {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%);
-    padding: 20px;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  }
-
-  .register-card {
-    width: 100%;
-    max-width: 580px;
-    background: white;
-    border-radius: 16px;
-    overflow: hidden;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  }
-
-  .register-header {
-    background: linear-gradient(135deg, rgb(5, 113, 180) 0%,rgb(0, 94, 153) 100%);
-    padding: 20px;
-    text-align: center;
-    color: white;
-  }
-
-  .register-header h1 {
-    font-size: 24px;
-    font-weight: 600;
-    margin: 0 0 8px 0;
-  }
-
-  .register-header p {
-    font-size: 14px;
-    margin: 0;
-    opacity: 0.9;
-  }
-
-  .register-body {
-    padding: 30px;
-  }
-
-  .register-message {
-    padding: 12px;
-    border-radius: 8px;
-    margin-bottom: 24px;
-    text-align: center;
-    font-size: 14px;
-  }
-
-  .register-message.success {
-    background-color: #e8f5e9;
-    color: #2e7d32;
-  }
-
-  .register-message.error {
-    background-color: #ffebee;
-    color: #c62828;
-  }
-
-  .register-form {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .name-fields {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-  }
-
-  .input-group {
-    position: relative;
-    width: 100%;
-    display: flex;
-    align-items: center;
-  }
-
-  .input-icon {
-    position: absolute;
-    left: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: rgb(61, 175, 245);
-    font-size: 18px;
-    z-index: 2;
-  }
-
-  .input-group input {
-    width: 100%;
-    padding: 14px 16px 14px 40px;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    font-size: 14px;
-    transition: all 0.3s;
-    padding-right: 45px; /* Space for password toggle */
-  }
-
-  .input-group input:focus {
-    outline: none;
-    border-color: rgb(0, 94, 153);
-    box-shadow: 0 0 0 2px rgba(38, 198, 218, 0.2);
-  }
-
-  .password-toggle {
-    position: absolute;
-    right: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    color: #9e9e9e;
-    font-size: 18px;
-    cursor: pointer;
-    padding: 4px;
-    border-radius: 4px;
-    transition: all 0.2s;
-    z-index: 2;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .password-toggle:hover {
-    color: rgb(61, 175, 245);
-    background-color: rgba(61, 175, 245, 0.1);
-  }
-
-  .password-toggle:focus {
-    outline: none;
-    color: rgb(0, 94, 153);
-    background-color: rgba(0, 94, 153, 0.1);
-  }
-
-  /* Password Strength Meter */
-  .password-meter {
-    background: #f8fffe;
-    border: 1px solid #e0f2f1;
-    border-radius: 8px;
-    padding: 12px;
-    margin-top: -8px;
-  }
-
-  .meter-label {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-    font-size: 13px;
-  }
-
-  .meter-label span:first-child {
-    color: #666;
-    font-weight: 500;
-  }
-
-  .strength-text {
-    font-weight: 600;
-    text-transform: uppercase;
-    font-size: 12px;
-  }
-
-  .meter-bar {
-    width: 100%;
-    height: 6px;
-    background: #e0e0e0;
-    border-radius: 3px;
-    overflow: hidden;
-    margin-bottom: 12px;
-  }
-
-  .meter-fill {
-    height: 100%;
-    transition: all 0.3s ease;
-    border-radius: 3px;
-  }
-
-  .password-requirements {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 6px;
-  }
-
-  .requirement {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    color: #666;
-  }
-
-  .requirement.met {
-    color: #22c55e;
-  }
-
-  .requirement svg {
-    font-size: 14px;
-    flex-shrink: 0;
-  }
-
-  .requirement.met svg {
-    color: #22c55e;
-  }
-
-  .requirement:not(.met) svg {
-    color: #ef4444;
-  }
-
-  /* Password Match Indicator */
-  .password-match {
-    margin-top: -8px;
-  }
-
-  .match-indicator {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: 500;
-  }
-
-  .match-indicator.match {
-    background: #f0fdf4;
-    color: #166534;
-    border: 1px solid #bbf7d0;
-  }
-
-  .match-indicator.no-match {
-    background: #fef2f2;
-    color: #dc2626;
-    border: 1px solid #fecaca;
-  }
-
-  .match-indicator svg {
-    font-size: 16px;
-    flex-shrink: 0;
-  }
-
-  .register-button {
-    width: 100%;
-    padding: 14px;
-    background: linear-gradient(135deg, #26c6da 0%, rgb(0, 94, 153) 100%);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 16px;
-    font-weight: 500;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    transition: all 0.3s;
-    margin-top: 8px;
-  }
-
-  .register-button:hover:not(.loading):not(:disabled) {
-    background: linear-gradient(135deg, rgb(0, 94, 153) 0%, #00838f 100%);
-    box-shadow: 0 4px 12px rgba(0, 172, 193, 0.2);
-  }
-
-  .register-button.loading,
-  .register-button:disabled {
-    background: #9e9e9e;
-    cursor: not-allowed;
-    opacity: 0.7;
-  }
-
-  .button-icon {
-    font-size: 18px;
-  }
-
-  .spinner {
-    width: 20px;
-    height: 20px;
-    border: 3px solid rgba(255, 255, 255, 0.3);
-    border-radius: 50%;
-    border-top-color: white;
-    animation: spin 1s ease-in-out infinite;
-  }
-
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-
-  .register-footer {
-    margin-top: 24px;
-    text-align: center;
-    font-size: 14px;
-    color: #616161;
-  }
-
-  .login-prompt a {
-    color: #26c6da;
-    text-decoration: none;
-    font-weight: 500;
-  }
-
-  .login-prompt a:hover {
-    text-decoration: underline;
-  }
-
-  /* Redesigned captcha styles */
-  .captcha-container {
-    margin: 12px 0 0 0;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-    padding: 12px 0;
-    background: #f1fcfd;
-    border-radius: 8px;
-    border: 1px solid #b2ebf2;
-  }
-
-  .captcha-label {
-    font-size: 13px;
-    color: #0097a7;
-    font-weight: 500;
-    margin-left: 12px;
-    margin-bottom: 2px;
-  }
-
-  .captcha-widget {
-    margin-left: 12px;
-    margin-bottom: 4px;
-    display: flex;
-    align-items: center;
-    min-height: 78px;
-  }
-
-  @media (max-width: 500px) {
-    .name-fields {
-      grid-template-columns: 1fr;
-    }
-    
-    .register-card {
-      max-width: 100%;
-    }
-    
-    .register-header {
-      padding: 24px;
-    }
-    
-    .register-body {
-      padding: 24px;
-    }
-
-    .captcha-widget {
-      margin-left: 0;
-    }
-
-    .password-requirements {
-      grid-template-columns: 1fr;
-    }
-
-    .input-group input {
-      padding: 12px 14px 12px 38px;
-      padding-right: 42px;
-    }
-
-    .input-icon {
-      left: 10px;
-      font-size: 16px;
-    }
-
-    .password-toggle {
-      right: 10px;
-      font-size: 16px;
-    }
-  }
-`;
-
-const styleElement = document.createElement("style");
-styleElement.innerHTML = styles;
-document.head.appendChild(styleElement);
 
 export default Register;
