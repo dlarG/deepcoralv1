@@ -521,7 +521,7 @@
 .login-button {
   width: 100%;
   padding: 16px;
-  background: linear-gradient(135deg, var(--btn-primary-bg) 0%, #00acc1 100%);
+  background: var(--btn-primary-bg);
   color: white;
   border: none;
   border-radius: 12px;
@@ -559,7 +559,7 @@
 }
 
 .login-button:hover:not(.loading) {
-  background: linear-gradient(135deg, #00acc1 0%, var(--btn-primary-bg) 100%);
+  background: var(--btn-primary-hover);
   box-shadow: 0 8px 25px rgba(38, 198, 218, 0.3);
   transform: translateY(-2px);
 }
