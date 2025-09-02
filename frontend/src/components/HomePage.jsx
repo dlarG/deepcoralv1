@@ -102,8 +102,7 @@ function HomePage() {
         <div className="gradient-overlay"></div>
         <div className="particle-overlay"></div>
       </div>
-
-      {/* Navigation */}
+      {/* Navbar */}
       <nav className={`navbar ${isScrolled ? "scrolled" : ""}`}>
         <div className="navbar-content">
           <div className="navbar-brand">
@@ -153,6 +152,27 @@ function HomePage() {
               <FiUserPlus className="link-icon" />
               <span>Get Started</span>
             </Link>
+            {/* X button to close nav-links on mobile */}
+            {mobileMenuOpen && (
+              <button
+                className="nav-close-btn"
+                onClick={() => setMobileMenuOpen(false)}
+                style={{
+                  position: "absolute",
+                  top: 16,
+                  right: 16,
+                  background: "none",
+                  border: "none",
+                  fontSize: "2rem",
+                  cursor: "pointer",
+                  color: "#fff",
+                  zIndex: 100,
+                }}
+                aria-label="Close navigation"
+              >
+                <FiX />
+              </button>
+            )}
           </div>
 
           <button
@@ -163,7 +183,6 @@ function HomePage() {
           </button>
         </div>
       </nav>
-
       {/* Hero Section */}
       <section id="home" className="hero-section">
         <div className="hero-content">
@@ -210,7 +229,6 @@ function HomePage() {
           </div>
         </div>
       </section>
-
       {/* Services Section */}
       {/* <section id="services" className="services-section">
         <div className="section-container">
@@ -254,7 +272,6 @@ function HomePage() {
           </div>
         </div>
       </section> */}
-
       {/* About Section */}
       {/* <section id="about" className="about-section">
         <div className="section-container">
@@ -268,7 +285,6 @@ function HomePage() {
           </div>
         </div>
       </section> */}
-
       {/* Contact Section */}
       <section id="contact" className="contact-section">
         <div className="section-container">
@@ -350,7 +366,6 @@ function HomePage() {
           </div>
         </div>
       </section>
-
       {/* Footer */}
       <footer className="footer">
         <div className="footer-content">

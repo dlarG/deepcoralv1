@@ -69,7 +69,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background-image: url("../../public/img/coralbg.jpg");
+  background-image: url("../../public/img/great-barrier-reef-3.jpg");
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
@@ -1008,5 +1008,82 @@
 
   .stat-item {
     padding: 1rem;
+  }
+  .hero-badge {
+    font-size: 0.75rem;
+    padding: 6px 12px;
+  }
+  .stat-icon {
+    font-size: 1.25rem;
+  }
+  .stat-number {
+    font-size: 1.5rem;
+  }
+  .stat-label {
+    font-size: 0.75rem;
+  }
+  .nav-link {
+    font-size: 0.85rem;
+    padding: 6px 12px;
+  }
+  .navbar-content {
+    padding: 1rem;
+  }
+  .hero-section {
+    padding: 100px 1rem 60px;
+  }
+  .hero-title {
+    font-size: clamp(2rem, 7vw, 3rem);
+  }
+  .hero-subtitle {
+    font-size: clamp(1rem, 3vw, 1.2rem);
+  }
+  .section-title {
+    font-size: clamp(1.5rem, 5vw, 2.5rem);
+  }
+  .section-subtitle {
+    font-size: 1rem;
+  }
+  .service-card {
+    padding: 1.5rem;
+  }
+  .service-icon {
+    width: 50px;
+    height: 50px;
+    font-size: 1.25rem;
+  }
+  .service-card h3 {
+    font-size: 1.25rem;
+  }
+  .contact-section {
+    padding: 80px 1rem;
+  }
+  .contact-form {
+    padding: 1.5rem;
+  }
+  .form-submit {
+    padding: 12px;
+    font-size: 0.9rem;
+  }
+  .footer-content {
+    padding: 2rem 1rem 1rem;
+  }
+  .footer-main {
+    gap: 2rem;
+  }
+  .footer-links {
+    gap: 1rem;
+  }
+  .footer-column h4 {
+    font-size: 0.95rem;
+  }
+  .footer-column p {
+    font-size: 0.825rem;
+  }
+  .footer-bottom {
+    padding-top: 1rem;
+  }
+  .made-with {
+    font-size: 0.825rem;
   }
 }

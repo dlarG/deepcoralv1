@@ -1861,6 +1861,19 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 /* Sidebar Base Styles */
 .sidebar {
   position: fixed;
@@ -2501,6 +2514,28 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
 .sidebar-nav li:nth-child(6) { animation-delay: 0.35s; }
 .sidebar-nav li:nth-child(7) { animation-delay: 0.4s; }
 .sidebar-nav li:nth-child(8) { animation-delay: 0.45s; }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
