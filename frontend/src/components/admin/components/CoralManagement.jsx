@@ -124,96 +124,84 @@ function CoralManagement() {
                     }
                     alt={coral.common_name}
                     onError={(e) => {
-                      e.target.src = "/default-coral.jpg";
-                    }}
-                  />
-                  <div className="coral-card-overlay">
-                    <div className="overlay-actions">
-                      <button
+                        e.target.src = "/default-coral.jpg";
+                      }}
+                      />
+                      <div className="coral-card-overlay">
+                      <div className="overlay-actions">
+                        <button
                         className="overlay-btn view"
                         onClick={() => openCoralModal("view", coral)}
                         title="View Details"
-                      >
+                        >
                         <FiEye size={16} />
-                      </button>
-                      <button
+                        </button>
+                        <button
                         className="overlay-btn edit"
                         onClick={() => openCoralModal("edit", coral)}
                         title="Edit Coral"
-                      >
+                        >
                         <FiEdit size={16} />
-                      </button>
-                      <button
+                        </button>
+                        <button
                         className="overlay-btn delete"
                         onClick={() => handleDeleteCoral(coral.id)}
                         title="Delete Coral"
-                      >
+                        >
                         <FiTrash size={16} />
-                      </button>
+                        </button>
+                      </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
 
-                <div className="coral-card-content">
-                  <div className="coral-card-header">
-                    <h3 className="coral-card-title">{coral.common_name}</h3>
-                    <span
-                      className={`classification-badge ${coral.classification.replace(
-                        " ",
+                    <div className="coral-card-content">
+                      <div className="coral-card-header">
+                      <h3 className="coral-card-title">{coral.common_name}<span className="coral-card-scientific">({coral.scientific_name})</span></h3>
+                      </div>
+
+                      <div className="coral-card-info-row" style={{ display: "flex", gap: "0.8rem", alignItems: "center" }}>
+                      <p className="coral-card-type" style={{ margin: 0 }}>
+                        {coral.coral_type} - {coral.coral_subtype}
+                      </p>
+                      <p className={`classification-badge ${coral.classification.replace(" ",
                         "-"
-                      )}`}
-                    >
-                      {coral.classification}
-                    </span>
-                  </div>
-
-                  <p className="coral-card-scientific">
-                    {coral.scientific_name}
-                  </p>
-
-                  <div className="coral-card-info">
-                    <div className="info-row">
-                      <span className="info-label">Type:</span>
-                      <span className="info-value">{coral.coral_type}</span>
-                    </div>
-                    <div className="info-row">
-                      <span className="info-label">Subtype:</span>
-                      <span className="info-value">{coral.coral_subtype}</span>
-                    </div>
-                  </div>
-
-                  <div className="coral-card-description">
-                    <p>
-                      {coral.identification.length > 120
+                        )}`}>
+                        {coral.classification}
+                      </p>
+                      </div>
+                      
+                      <div className="coral-card-description">
+                      <p>
+                        {coral.identification.length > 120
                         ? `${coral.identification.substring(0, 120)}...`
                         : coral.identification}
-                    </p>
-                  </div>
+                      </p>
+                      </div>
 
-                  <div className="coral-card-actions">
-                    <button
-                      className="card-action-btn secondary"
-                      onClick={() => openCoralModal("view", coral)}
-                    >
-                      <FiEye size={14} />
-                      <span>View</span>
-                    </button>
-                    <button
-                      className="card-action-btn primary"
-                      onClick={() => openCoralModal("edit", coral)}
-                    >
-                      <FiEdit size={14} />
-                      <span>Edit</span>
-                    </button>
+                      <div className="coral-card-actions">
+                      <button
+                        className="card-action-btn secondary"
+                        onClick={() => openCoralModal("view", coral)}
+                      >
+                        <FiEye size={14} />
+                        <span>View</span>
+                      </button>
+                      <button
+                        className="card-action-btn primary"
+                        onClick={() => openCoralModal("edit", coral)}
+                      >
+                        <FiEdit size={14} />
+                        <span>Edit</span>
+                      </button>
+                      </div>
+                    </div>
+                    </div>
+                  ))}
                   </div>
+                )}
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
 
-      {/* Modal */}
+                {/* Modal */}
       {showCoralModal && (
         <div className="coral-modal-overlay">
           <div className="coral-modal">

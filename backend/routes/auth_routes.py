@@ -222,3 +222,11 @@ def login_user():
     finally:
         if 'conn' in locals():
             conn.close()
+
+    return jsonify({
+                'message': 'Login successful',
+                'user': user_data,
+                'csrf_token': session['csrf_token'],
+                'redirect_to': user_data['redirect_to']
+            }), 200
+    

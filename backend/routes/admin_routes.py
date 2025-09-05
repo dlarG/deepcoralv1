@@ -105,6 +105,7 @@ def create_user():
                     'roletype': new_user[4],
                     'profile_image': new_user[5],  # Add this field
                     'created_at': new_user[6],      # Add this field
+                    'status': new_user[7],           # Add status field
                 }
             }), 201
     except psycopg2.Error as e:

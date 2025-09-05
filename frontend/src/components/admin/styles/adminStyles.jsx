@@ -908,11 +908,6 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
         font-size: 0.8rem;
       }
       
-      .profile-modal-body {
-        padding: 1.5rem;
-        max-height: calc(100vh - 240px);
-        overflow-y: auto;
-      }
       
       .image-container {
         width: 120px;
@@ -2084,6 +2079,7 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
 
 .sidebar-nav li.active .nav-text {
   font-weight: 700;
+  color: #3ddad7;
 }
 
 /* Enhanced Tooltip for Collapsed State */
@@ -2198,7 +2194,7 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
   transform: translateY(-50%);
   width: 4px;
   height: 0;
-  background: linear-gradient(135deg, #0ea5e9 0%, #10b981 100%);
+  background: linear-gradient(135deg, #012a4a 0%, #3ddad7 100%);
   border-radius: 0 4px 4px 0;
   transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 2px 0 8px rgba(14, 165, 233, 0.4);
@@ -3183,15 +3179,17 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
 }
 
 .add-user-btn.primary {
-  background: linear-gradient(135deg, #0ea5e9 0%, #3b82f6 100%);
+  background: ${darkMode ? "#ff6b6b" : "#0ea5e9"};
   color: white;
-  box-shadow: 0 4px 15px rgba(14, 165, 233, 0.3);
+  box-shadow: ${darkMode ? "0 4px 15px rgba(255, 107, 107, 0.3)" : "0 4px 15px rgba(14, 165, 233, 0.3)"};
+  // box-shadow: 0 4px 15px rgba(14, 165, 233, 0.3);
 }
 
 .add-user-btn.primary:hover {
-  background: linear-gradient(135deg, #0284c7 0%, #0891b2 100%);
+  background: ${darkMode ? "#ff4c4c" : "#0c87b8"};
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(14, 165, 233, 0.4);
+  box-shadow: ${darkMode ? "0 8px 25px rgba(255, 107, 107, 0.4)" : "0 8px 25px rgba(14, 165, 233, 0.4)"};
+  // box-shadow: 0 8px 25px rgba(14, 165, 233, 0.4);
 }
 
 /* Controls Section */
@@ -3505,7 +3503,6 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
   border-radius: 20px;
   font-size: 0.75rem;
   font-weight: 700;
-  text-transform: uppercase;
   letter-spacing: 0.5px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
@@ -3540,7 +3537,7 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
 }
 
 .status-badge.active {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: #3ddad7;
   color: white;
   box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
 }
@@ -3566,7 +3563,7 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
 }
 
 .action-btn-new.edit {
-  background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%);
+  background: #012a4a;
   color: white;
   box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3);
 }
@@ -4320,7 +4317,6 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
   .role-badge-new,
   .status-badge {
     padding: 0.25rem 0.625rem;
-    font-size: 0.7rem;
   }
   
   .action-buttons-new {
@@ -5967,7 +5963,8 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
   color: ${darkMode ? "#f1f5f9" : "#0f172a"};
   margin: 0;
   margin-bottom: 0.5rem;
-  background: linear-gradient(135deg, #0ea5e9 0%, #3b82f6 100%);
+  background: ${darkMode ? "#ff6b6b" : "#012a4a"};
+  // background: linear-gradient(135deg, #0ea5e9 0%, #3b82f6 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -7069,7 +7066,7 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
   color: ${darkMode ? "#f1f5f9" : "#0f172a"};
   margin: 0;
   margin-bottom: 0.75rem;
-  background: linear-gradient(135deg, #0ea5e9 0%, #3b82f6 100%);
+  background: ${darkMode ? "#ff6b6b" : "#012a4a"};
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -7119,15 +7116,15 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
 }
 
 .add-coral-btn.primary {
-  background: linear-gradient(135deg, #0ea5e9 0%, #3b82f6 100%);
-  color: white;
-  box-shadow: 0 4px 20px rgba(14, 165, 233, 0.3);
+  background: ${darkMode ? "#ff6b6b;" : "#012a4a"};
+  color: ${darkMode ? "#012a4a" : "#ffffff"};
+  box-shadow: ${darkMode ? "0 4px 20px rgba(255, 107, 107, 0.3)" : "0 4px 20px rgba(1, 42, 74, 0.3)"};
 }
 
 .add-coral-btn.primary:hover {
-  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+  background: ${darkMode ? "#ff4c4c;" : "#014f86"};
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(14, 165, 233, 0.4);
+  box-shadow: ${darkMode ? "0 4px 20px rgba(255, 107, 107, 0.3)" : "0 4px 20px rgba(255, 107, 107, 0.3)"};
 }
 
 .add-coral-btn.large {
@@ -7403,15 +7400,15 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
 }
 
 .classification-badge.hard-coral {
-  background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: rgba(255, 107, 107, 0.15);
+  color: #ff6b6b;
+  border: 1px solid rgba(255, 107, 107, 0.3);
 }
 
 .classification-badge.soft-coral {
-  background: rgba(16, 185, 129, 0.15);
-  color: #10b981;
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  background: rgba(61, 218, 215, 0.15);
+  color: #3ddad7;
+  border: 1px solid rgba(61, 218, 215, 0.3);
 }
 
 .classification-badge.large {
@@ -7424,8 +7421,20 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
   font-size: 0.9rem;
   color: ${darkMode ? "#cbd5e1" : "#475569"};
   margin: 0;
-  border-left: 3px solid #0ea5e9;
   padding-left: 0.75rem;
+}
+
+.coral-card-type {
+  padding: 0.375rem 0.875rem;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+  background: rgba(255, 209, 102, 0.15);
+  color: #ffd166;
+  border: 1px solid rgba(255, 209, 102, 0.3);
 }
 
 .coral-card-info {
@@ -7453,11 +7462,10 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
 
 .coral-card-description {
   background: ${
-    darkMode ? "rgba(15, 23, 42, 0.5)" : "rgba(248, 250, 252, 0.8)"
+    darkMode ? "rgba(15, 35, 42, 0.5)" : "rgba(248, 250, 252, 0.8)"
   };
   border-radius: 8px;
   padding: 0.875rem;
-  border-left: 3px solid #0ea5e9;
 }
 
 .coral-card-description p {
@@ -9325,14 +9333,13 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
 /* Modal Body */
 .profile-modal-body {
   flex: 1;
-  overflow-y: auto;
+  overflow-y: scroll;
   padding: 0 2rem;
 }
 
 .tab-content {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
 }
 
 .form-row {
@@ -9344,7 +9351,6 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
 }
 
 .form-group label {
@@ -9500,7 +9506,6 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
   border-top: 1px solid ${
     darkMode ? "rgba(51, 65, 85, 0.3)" : "rgba(226, 232, 240, 0.3)"
   };
-  margin-top: 1.5rem;
 }
 
 .cancel-btn,
@@ -11238,6 +11243,135 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
 }
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.loading-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  background: linear-gradient(180deg, #3ddad7 0%, #1e3c72 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.coral-loader {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  margin-bottom: 24px;
+}
+
+.coral-base {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 60px;
+  height: 40px;
+  background: #ff7e5f;
+  border-radius: 30px 30px 60px 60px / 20px 20px 40px 40px;
+  transform: translateX(-50%);
+  box-shadow: 0 4px 16px rgba(255,126,95,0.3);
+}
+
+.coral-branch {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  width: 12px;
+  height: 50px;
+  background: #feb47b;
+  border-radius: 6px;
+  transform: translateX(-50%) rotate(-15deg);
+  animation: coralWave 2s infinite ease-in-out;
+}
+
+.coral-branch.right {
+  left: 70%;
+  height: 40px;
+  transform: rotate(20deg);
+  background: #ffb88c;
+  animation-delay: 0.5s;
+}
+
+.coral-branch.left {
+  left: 30%;
+  height: 35px;
+  transform: rotate(-30deg);
+  background: #ff9a8b;
+  animation-delay: 1s;
+}
+
+@keyframes coralWave {
+  0%, 100% { transform: scaleY(1) rotate(var(--angle, -15deg)); }
+  50% { transform: scaleY(1.15) rotate(calc(var(--angle, -15deg) + 8deg)); }
+}
+
+/* Bubbles */
+.coral-bubble {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  background: rgba(61,218,215,0.7);
+  border-radius: 50%;
+  transform: translateX(-50%);
+  animation: bubbleUp 2.5s infinite;
+  opacity: 0.7;
+}
+
+.coral-bubble:nth-child(4) {
+  left: 40%;
+  width: 10px;
+  height: 10px;
+  animation-delay: 0.7s;
+}
+.coral-bubble:nth-child(5) {
+  left: 60%;
+  width: 12px;
+  height: 12px;
+  animation-delay: 1.2s;
+}
+.coral-bubble:nth-child(6) {
+  left: 55%;
+  width: 8px;
+  height: 8px;
+  animation-delay: 1.7s;
+}
+
+@keyframes bubbleUp {
+  0% { bottom: 10px; opacity: 0.7; }
+  60% { opacity: 1; }
+  100% { bottom: 90px; opacity: 0; }
+}
+
+/* Loading text */
+.loading-screen span {
+  color: #fff;
+  font-size: 1.2rem;
+  font-weight: 500;
+  letter-spacing: 1px;
+  text-shadow: 0 2px 8px rgba(30,60,114,0.2);
+}
 
   
 

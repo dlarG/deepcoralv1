@@ -15,7 +15,20 @@ export function ProtectedRoute({ children, requiredRole = null }) {
     }
   }, [user, loading, checkAuthStatus]);
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="loading-screen">
+        <div className="coral-loader">
+          <div className="coral-base"></div>
+          <div className="coral-branch"></div>
+          <div className="coral-branch right"></div>
+          <div className="coral-branch left"></div>
+          <div className="coral-bubble"></div>
+          <div className="coral-bubble"></div>
+          <div className="coral-bubble"></div>
+        </div>
+        <span>Loading...</span>
+      </div>
+    );
   }
 
   if (!user) {

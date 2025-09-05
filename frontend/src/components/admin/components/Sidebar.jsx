@@ -42,7 +42,7 @@ function Sidebar({ activeTab, setActiveTab, sidebarOpen }) {
               onClick={() => setActiveTab(item.value)}
             >
               <div className="nav-item-content">
-                <item.icon className="nav-icon" />
+                <item.icon className="nav-icon" style={{ color: activeTab === item.value ? "#3ddad7" : "" }} />
                 <span className="nav-text">{item.label}</span>
               </div>
               <div className="active-indicator"></div>

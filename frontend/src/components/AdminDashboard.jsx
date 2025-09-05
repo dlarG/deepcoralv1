@@ -12,6 +12,8 @@ import GenerateReport from "./admin/components/GenerateReport";
 import CoralDistributionTrend from "./admin/components/Distribution";
 import Validate from "./admin/components/Validate";
 import { getAdminStyles } from "./admin/styles/adminStyles";
+import "../styles/loadingstyles.css";
+
 
 function AdminDashboard() {
   const navigate = useNavigate();
@@ -42,7 +44,7 @@ function AdminDashboard() {
 
   useEffect(() => {
     const styleElement = document.createElement("style");
-    styleElement.innerHTML = getAdminStyles(sidebarOpen, darkMode); // Pass darkMode here
+    styleElement.innerHTML = getAdminStyles(sidebarOpen, darkMode);
     document.head.appendChild(styleElement);
 
     return () => {
@@ -76,11 +78,15 @@ function AdminDashboard() {
   };
 
   if (authLoading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        Loading...
+   return (
+    <div className="loading-screen" style={{ background: "red" }}>
+      <div className="coral-spinner"></div>
+      <span className="loading-text">Loading</span>
+      <div className="coral-progress-bar">
+        <div className="coral-progress-bar-inner"></div>
       </div>
-    );
+    </div>
+  );
   }
 
   if (!user || user.roletype.toLowerCase() !== "admin") {
