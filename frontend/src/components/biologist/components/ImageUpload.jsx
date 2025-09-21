@@ -293,7 +293,7 @@ function UploadImage() {
   );
 
   return (
-    <div className="content-section">
+    <>
       {images.length === 0 ? (
         <div className="upload-section">
           <div
@@ -679,7 +679,7 @@ function UploadImage() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 export default UploadImage;

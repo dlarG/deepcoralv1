@@ -13,6 +13,7 @@ import {
 import dayjs from "dayjs";
 // import { encryptedId } from "../../../utils/encryption";
 import SuccessModal from "../../SuccessMessage";
+import "../styles/userManagement.css";
 
 function UserManagement() {
   const {
@@ -56,26 +57,23 @@ function UserManagement() {
             Manage system users and their permissions
           </p>
         </div>
+        <div className="header-actions-fixed">
+          <button
+            className="export-btn"
+            onClick={() => alert("Export functionality coming soon!")}
+          >
+            <FiDownload size={18} />
+            Export
+          </button>
+          <button
+            className="add-user-btn primary"
+            onClick={() => openUserModal("create")}
+          >
+            <FiUserPlus size={18} />
+            Add User
+          </button>
+        </div>
       </div>
-
-      {/* Moved header actions to a separate positioned container */}
-      <div className="header-actions-fixed">
-        <button
-          className="export-btn"
-          onClick={() => alert("Export functionality coming soon!")}
-        >
-          <FiDownload size={18} />
-          Export
-        </button>
-        <button
-          className="add-user-btn primary"
-          onClick={() => openUserModal("create")}
-        >
-          <FiUserPlus size={18} />
-          Add User
-        </button>
-      </div>
-      <br />
 
       <div className="user-controls">
         <div className="controls-row">
@@ -162,7 +160,7 @@ function UserManagement() {
           <span className="stat-number">{filteredUsers.length}</span>
           <span className="stat-label">Filtered Results</span>
         </div>
-      </div> */}
+      </div> 
 
       {/* Users Table */}
       {loading ? (

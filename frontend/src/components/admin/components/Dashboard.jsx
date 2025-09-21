@@ -1,9 +1,16 @@
 import React from "react";
 import { FiUsers, FiImage, FiFileText, FiDatabase } from "react-icons/fi";
+import "../styles/dashboardStyle.css";
 
-const Dashboard = () => {
+const Dashboard = ({ user }) => {
   return (
     <div className="content-section">
+      <div className="user-greetings">
+        <h2 className="report-title">
+          Welcome back, {user.firstname} {user.lastname}
+        </h2>
+        <p>Here's a quick overview of the platform's status.</p>
+      </div>
       <div className="stats-grid">
         <div className="stat-card">
           <div className="stat-icon users">
@@ -42,10 +49,6 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
-      {/* <div className="dashboard-welcome">
-        <h2>Welcome to the Admin Dashboard</h2>
-        <p>Manage users, coral lifeforms, and more.</p>
-      </div> */}
     </div>
   );
 };

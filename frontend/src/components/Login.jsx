@@ -200,7 +200,7 @@ function Login() {
                 type="button"
                 className="password-toggle"
                 onClick={togglePasswordVisibility}
-                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-label={showPassword ? "Show password" : "Hide password"}
               >
                 {showPassword ? <FiEyeOff /> : <FiEye />}
               </button>

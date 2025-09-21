@@ -177,10 +177,39 @@ function CoralLifeForms() {
     </div>
   );
 
+  // Update the loading section
   return (
     <>
-      <h2 className="content-title">Coral LifeForms Database</h2>
-      {coralData.length > 0 ? renderCoralLifeForms() : <p>Loading...</p>}
+      {coralData.length > 0 ? (
+        renderCoralLifeForms()
+      ) : (
+        <div className="loading">
+          <div className="loading-container">
+            <div className="loading-animation">
+              <div className="wave-loader"></div>
+              <div className="bubble-container">
+                <div className="loading-bubble"></div>
+                <div className="loading-bubble"></div>
+                <div className="loading-bubble"></div>
+                <div className="loading-bubble"></div>
+              </div>
+              <div className="coral-skeleton"></div>
+            </div>
+
+            <div className="loading-text">Discovering Ocean Life</div>
+            <div className="loading-subtitle">
+              Loading coral species data from the depths of our marine
+              database...
+            </div>
+
+            <div className="loading-dots">
+              <div className="loading-dot"></div>
+              <div className="loading-dot"></div>
+              <div className="loading-dot"></div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

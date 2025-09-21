@@ -57,7 +57,6 @@ function ProfileManagement({ user }) {
       {/* Hero Section with Gradient Background */}
       <div className="guest-profile-hero">
         <div className="hero-background">
-          <div className="gradient-overlay"></div>
           <div className="floating-elements">
             <div className="float-element element-1"></div>
             <div className="float-element element-2"></div>

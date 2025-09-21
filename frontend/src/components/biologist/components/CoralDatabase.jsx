@@ -1,4 +1,3 @@
-// src/components/admin/components/CoralManagement.js
 import React from "react";
 import {
   FiPlus,
@@ -11,6 +10,7 @@ import {
 } from "react-icons/fi";
 import useCoralManagement from "../hooks/useCoralManagement";
 import SuccessModal from "../../SuccessMessage";
+import "../styles/coraldb.css";
 
 function CoralManagement() {
   const {
@@ -30,6 +30,12 @@ function CoralManagement() {
     showModal,
     modalConfig,
     setShowModal,
+    // Delete confirmation modal
+    showDeleteModal,
+    coralToDelete,
+    isDeleting,
+    hideDeleteConfirmation,
+    confirmDeleteCoral,
   } = useCoralManagement();
 
   return (
@@ -216,7 +222,7 @@ function CoralManagement() {
         )}
       </div>
 
-      {/* Modal */}
+      {/* Main Coral Modal (Add/Edit/View) */}
       {showCoralModal && (
         <div className="coral-modal-overlay">
           <div className="coral-modal">
@@ -522,6 +528,52 @@ function CoralManagement() {
         </div>
       )}
 
+      {/* Delete Confirmation Modal */}
+      {/* Delete Confirmation Modal - Simplified */}
+      {showDeleteModal && (
+        <div className="coral-modal-overlay" onClick={hideDeleteConfirmation}>
+          <div className="delete-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="delete-modal-header"></div>
+
+            <div className="delete-modal-body">
+              <h3 className="delete-title">Delete Coral Species?</h3>
+              <p className="delete-message">
+                Are you sure you want to delete{" "}
+                <strong>{coralToDelete?.common_name}</strong>? This action
+                cannot be undone.
+              </p>
+            </div>
+
+            <div className="delete-modal-actions">
+              <button
+                type="button"
+                onClick={hideDeleteConfirmation}
+                className="delete-btn-no"
+                disabled={isDeleting}
+              >
+                No, Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteCoral}
+                className="delete-btn-yes"
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <div className="delete-spinner"></div>
+                    Deleting...
+                  </>
+                ) : (
+                  "Yes, Delete"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success/Error/Info Modal */}
       <SuccessModal
         isOpen={showModal}
         onClose={() => setShowModal(false)}

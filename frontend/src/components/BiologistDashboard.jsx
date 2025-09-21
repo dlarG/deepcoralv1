@@ -5,8 +5,9 @@ import TopNavigation from "./biologist/components/TopNavigation";
 import Sidebar from "./biologist/components/Sidebar";
 import Dashboard from "./biologist/components/Dashboard";
 import UserManagement from "./biologist/components/UserManagement";
-// import ImageAnalysis from "./biologist/components/ImageAnalysis";
-// import CoralDatabase from "./biologist/components/CoralDatabase";
+import ProfileManagement from "./biologist/components/ProfileManagement";
+import ImageUpload from "./biologist/components/ImageUpload";
+import CoralDatabase from "./biologist/components/CoralDatabase";
 // import Reports from "./biologist/components/Reports";
 // import ResearchTools from "./biologist/components/ResearchTools";
 // import ProfileManagement from "./biologist/components/ProfileManagement";
@@ -65,16 +66,16 @@ function BiologistDashboard() {
         return <Dashboard user={user} darkMode={darkMode} />;
       case "User":
         return <UserManagement />;
-      //   case "Image Analysis":
-      //     return <ImageAnalysis user={user} darkMode={darkMode} />;
-      //   case "Coral Database":
-      //     return <CoralDatabase user={user} darkMode={darkMode} />;
+      case "Image Analysis":
+        return <ImageUpload user={user} darkMode={darkMode} />;
+      case "Coral Database":
+        return <CoralDatabase user={user} darkMode={darkMode} />;
       //   case "Reports":
       //     return <Reports user={user} darkMode={darkMode} />;
       //   case "Research Tools":
       //     return <ResearchTools user={user} darkMode={darkMode} />;
-      //   case "Profile":
-      //     return <ProfileManagement user={user} darkMode={darkMode} />;
+      case "Profile":
+        return <ProfileManagement user={user} darkMode={darkMode} />;
       default:
         return <Dashboard user={user} darkMode={darkMode} />;
     }

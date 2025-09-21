@@ -73,6 +73,431 @@ const getBiologistStyle = (sidebarOpen, darkMode = false) => `
 }
 
 /* Top Navigation */
+
+/* Enhanced TopNavigation CSS */
+.bio-top-nav {
+  position: relative;
+  z-index: 100;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--color-border);
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* Profile Container */
+.profile-container {
+  position: relative;
+}
+
+.profile-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: none;
+  border: none;
+  padding: 0.5rem;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: var(--text-primary);
+}
+
+.profile-trigger:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.dark-mode .profile-trigger:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.profile-container.open .profile-trigger {
+  background: rgba(61, 218, 215, 0.1);
+}
+
+/* Profile Avatar */
+.profile-avatar {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--color-accent), var(--color-highlight));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--color-border);
+}
+
+.profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-initials {
+  color: var(--text-light);
+  font-weight: 700;
+  font-size: 0.875rem;
+}
+
+.avatar-status-indicator {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 12px;
+  height: 12px;
+  background: #10b981;
+  border-radius: 50%;
+  border: 2px solid var(--bg-primary);
+}
+
+/* Profile Info */
+.profile-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.profile-name {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-role {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Dropdown Arrow */
+.dropdown-arrow {
+  color: var(--text-secondary);
+  transition: transform 0.3s ease;
+}
+
+.dropdown-arrow.open {
+  transform: rotate(180deg);
+}
+
+/* Profile Dropdown */
+.profile-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  min-width: 320px;
+  overflow: hidden;
+  animation: dropdownSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dark-mode .profile-dropdown {
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+@keyframes dropdownSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Dropdown Header */
+.profile-dropdown .dropdown-header {
+  padding: 1.5rem;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-hover));
+  color: var(--text-light);
+}
+
+.profile-summary {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.profile-avatar-large {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--color-accent), var(--color-highlight));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  flex-shrink: 0;
+}
+
+
+.avatar-initials-large {
+  color: var(--text-light);
+  font-weight: 700;
+  font-size: 1.5rem;
+}
+
+.avatar-status-indicator-large {
+  position: absolute;
+  bottom: -3px;
+  right: -3px;
+  width: 16px;
+  height: 16px;
+  background: #10b981;
+  border-radius: 50%;
+  border: 3px solid var(--color-primary);
+}
+
+.profile-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.profile-details h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.profile-details p {
+  margin: 0 0 0.5rem;
+  font-size: 0.875rem;
+  opacity: 0.9;
+}
+
+.role-badges {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.role-tag {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.role-tag.primary {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--text-light);
+}
+
+.role-tag.secondary {
+  background: linear-gradient(135deg, var(--color-highlight), #f39c12);
+  color: var(--color-dark);
+}
+
+/* Dropdown Menu */
+.dropdown-menu {
+  padding: 0.5rem 0;
+  background: var(--bg-primary);
+}
+
+.menu-section {
+  padding: 0.5rem 0;
+}
+
+.dropdown-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.875rem 1.5rem;
+  border: none;
+  background: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.dropdown-item:hover {
+  background: rgba(61, 218, 215, 0.1);
+  color: var(--color-primary);
+}
+
+.dropdown-item.logout {
+  color: var(--color-secondary);
+}
+
+.dropdown-item.logout:hover {
+  background: rgba(255, 107, 107, 0.1);
+  color: var(--color-secondary);
+}
+
+.item-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dark-mode .item-icon {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dropdown-item:hover .item-icon {
+  background: var(--color-accent);
+  color: var(--color-dark);
+}
+
+.dropdown-item.logout:hover .item-icon {
+  background: var(--color-secondary);
+  color: var(--text-light);
+}
+
+.item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.item-title {
+  display: block;
+  font-weight: 600;
+  font-size: 0.875rem;
+  margin-bottom: 0.125rem;
+}
+
+.item-subtitle {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.item-badge {
+  background: var(--color-accent);
+  color: var(--color-dark);
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  min-width: 24px;
+  text-align: center;
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: var(--color-border);
+  margin: 0.5rem 1rem;
+}
+
+/* Notification Container */
+.notification-container {
+  position: relative;
+}
+
+.notification-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  min-width: 350px;
+  max-height: 400px;
+  overflow: hidden;
+  animation: dropdownSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dark-mode .notification-dropdown {
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* Navigation Action Buttons */
+.nav-action-btn {
+  position: relative;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  padding: 0.75rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-action-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--color-primary);
+}
+
+.dark-mode .nav-action-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.notification-badge {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  background: var(--color-secondary);
+  color: var(--text-light);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.125rem 0.375rem;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+  line-height: 1;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .profile-info {
+    display: none;
+  }
+  
+  .profile-dropdown {
+    min-width: 280px;
+    right: -1rem;
+  }
+  
+  .notification-dropdown {
+    min-width: 300px;
+    right: -1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .profile-dropdown {
+    min-width: 250px;
+    left: -200px;
+    right: auto;
+  }
+  
+  .notification-dropdown {
+    min-width: 250px;
+    left: -200px;
+    right: auto;
+  }
+}
 .bio-top-nav {
   position: fixed;
   top: 0;
@@ -439,13 +864,6 @@ const getBiologistStyle = (sidebarOpen, darkMode = false) => `
   border-radius: 50%;
   overflow: hidden;
   border: 3px solid ${darkMode ? "#334155" : "#e2e8f0"};
-}
-
-.profile-avatar-large img,
-.avatar-initials-large {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
 }
 
 .avatar-initials-large {

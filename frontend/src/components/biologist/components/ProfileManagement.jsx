@@ -17,8 +17,8 @@ import {
 } from "react-icons/fi";
 import useProfileManagement from "../hooks/useProfileManagement";
 import dayjs from "dayjs";
+import "../styles/profilemanagement.css";
 import SuccessModal from "../../SuccessMessage";
-import "../styles/profileStyles.css";
 
 function ProfileManagement({ user }) {
   const {

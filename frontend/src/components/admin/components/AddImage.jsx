@@ -313,7 +313,7 @@ function AddImage() {
   // const completedImages = images.filter((img) => img.processed).length;
 
   return (
-    <div className="add-image-container">
+    <div className="content-section">
       {images.length === 0 ? (
         <div className="upload-section-empty">
           <div

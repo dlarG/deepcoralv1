@@ -150,243 +150,250 @@ function GenerateReport() {
     }
 
     return (
-      <div className="report-table-container">
-        <table className="report-table">
-          <thead>
-            <tr>
-              {activeReportType === "users" && (
-                <>
-                  <th>ID</th>
-                  <th>Username</th>
-                  <th>Full Name</th>
-                  <th>Role</th>
-                  <th>Status</th>
-                  <th>Profile Photo</th>
-                  <th>Created Date</th>
-                </>
-              )}
-
-              {activeReportType === "corals" && (
-                <>
-                  <th>ID</th>
-                  <th>Type</th>
-                  <th>Subtype</th>
-                  <th>Scientific Name</th>
-                  <th>Common Name</th>
-                  <th>Has Image</th>
-                  <th>Created Date</th>
-                </>
-              )}
-
-              {activeReportType === "activities" && (
-                <>
-                  <th>ID</th>
-                  <th>User</th>
-                  <th>Activity Type</th>
-                  <th>Description</th>
-                  <th>IP Address</th>
-                  <th>Date & Time</th>
-                </>
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {reportData.map((item, index) => (
-              <tr key={index}>
+      <div className="content-section">
+        <div className="report-table-container">
+          <table className="report-table">
+            <thead>
+              <tr>
                 {activeReportType === "users" && (
                   <>
-                    <td>{item.id}</td>
-                    <td>{item.username}</td>
-                    <td>
-                      {item.firstname} {item.lastname}
-                    </td>
-                    <td>
-                      <span className={`role-badge ${item.roletype}`}>
-                        {item.roletype}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={`status-badge ${item.status}`}>
-                        {item.status}
-                      </span>
-                    </td>
-                    <td>
-                      {item.has_profile_image === "Yes" ? (
-                        <span style={{ color: "#16a34a" }}>✓</span>
-                      ) : (
-                        <span style={{ color: "#9ca3af" }}>✗</span>
-                      )}
-                    </td>
-                    <td>{formatDate(item.created_at)}</td>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Full Name</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Profile Photo</th>
+                    <th>Created Date</th>
                   </>
                 )}
 
                 {activeReportType === "corals" && (
                   <>
-                    <td>{item.id}</td>
-                    <td>{item.coral_type}</td>
-                    <td>{item.coral_subtype}</td>
-                    <td>
-                      <em>{item.scientific_name}</em>
-                    </td>
-                    <td>{item.common_name}</td>
-                    <td>
-                      {item.has_image === "Yes" ? (
-                        <span style={{ color: "#16a34a" }}>✓</span>
-                      ) : (
-                        <span style={{ color: "#9ca3af" }}>✗</span>
-                      )}
-                    </td>
-                    <td>{formatDate(item.created_at)}</td>
+                    <th>ID</th>
+                    <th>Type</th>
+                    <th>Subtype</th>
+                    <th>Scientific Name</th>
+                    <th>Common Name</th>
+                    <th>Has Image</th>
+                    <th>Created Date</th>
                   </>
                 )}
 
                 {activeReportType === "activities" && (
                   <>
-                    <td>{item.id}</td>
-                    <td>{item.user_fullname}</td>
-                    <td>
-                      <span className={`activity-badge ${item.activity_type}`}>
-                        {item.activity_type}
-                      </span>
-                    </td>
-                    <td>{item.activity_description}</td>
-                    <td style={{ fontFamily: "monospace" }}>
-                      {item.ip_address}
-                    </td>
-                    <td>{formatDate(item.created_at)}</td>
+                    <th>ID</th>
+                    <th>User</th>
+                    <th>Activity Type</th>
+                    <th>Description</th>
+                    <th>IP Address</th>
+                    <th>Date & Time</th>
                   </>
                 )}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {reportData.map((item, index) => (
+                <tr key={index}>
+                  {activeReportType === "users" && (
+                    <>
+                      <td>{item.id}</td>
+                      <td>{item.username}</td>
+                      <td>
+                        {item.firstname} {item.lastname}
+                      </td>
+                      <td>
+                        <span className={`role-badge ${item.roletype}`}>
+                          {item.roletype}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`status-badge ${item.status}`}>
+                          {item.status}
+                        </span>
+                      </td>
+                      <td>
+                        {item.has_profile_image === "Yes" ? (
+                          <span style={{ color: "#16a34a" }}>✓</span>
+                        ) : (
+                          <span style={{ color: "#9ca3af" }}>✗</span>
+                        )}
+                      </td>
+                      <td>{formatDate(item.created_at)}</td>
+                    </>
+                  )}
+
+                  {activeReportType === "corals" && (
+                    <>
+                      <td>{item.id}</td>
+                      <td>{item.coral_type}</td>
+                      <td>{item.coral_subtype}</td>
+                      <td>
+                        <em>{item.scientific_name}</em>
+                      </td>
+                      <td>{item.common_name}</td>
+                      <td>
+                        {item.has_image === "Yes" ? (
+                          <span style={{ color: "#16a34a" }}>✓</span>
+                        ) : (
+                          <span style={{ color: "#9ca3af" }}>✗</span>
+                        )}
+                      </td>
+                      <td>{formatDate(item.created_at)}</td>
+                    </>
+                  )}
+
+                  {activeReportType === "activities" && (
+                    <>
+                      <td>{item.id}</td>
+                      <td>{item.user_fullname}</td>
+                      <td>
+                        <span
+                          className={`activity-badge ${item.activity_type}`}
+                        >
+                          {item.activity_type}
+                        </span>
+                      </td>
+                      <td>{item.activity_description}</td>
+                      <td style={{ fontFamily: "monospace" }}>
+                        {item.ip_address}
+                      </td>
+                      <td>{formatDate(item.created_at)}</td>
+                    </>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     );
   };
 
   return (
-    <div className="report-generation-container">
-      {/* Header Section */}
-      <div className="report-header">
-        <div className="report-header-text">
-          <h2 className="report-title">Report Generation</h2>
-          <p className="report-subtitle">
-            Generate comprehensive reports with filtering and export options
-          </p>
-        </div>
-        <div className="report-header-actions">
-          <button
-            className={`report-action-btn secondary ${
-              !reportData ? "disabled" : ""
-            }`}
-            onClick={printReport}
-            disabled={!reportData}
-            title="Print Report"
-          >
-            <FiPrinter size={16} />
-            <span className="btn-text">Print</span>
-          </button>
-          <button
-            className={`report-action-btn secondary ${
-              !reportData ? "disabled" : ""
-            }`}
-            onClick={() => exportReport("excel")}
-            disabled={!reportData}
-            title="Export to Excel"
-          >
-            <FiDownload size={16} />
-            <span className="btn-text">Excel</span>
-          </button>
-          <button
-            className={`report-action-btn primary ${
-              !reportData ? "disabled" : ""
-            }`}
-            onClick={() => exportReport("pdf")}
-            disabled={!reportData}
-            title="Export to PDF"
-          >
-            <FiDownload size={16} />
-            <span className="btn-text">PDF</span>
-          </button>
-        </div>
-      </div>
-      <br />
-      {/* Report Type Tabs */}
-      <div className="report-tabs">
-        <button
-          className={`report-tab-btn ${
-            activeReportType === "users" ? "active" : ""
-          }`}
-          onClick={() => setActiveReportType("users")}
-        >
-          <FiUsers size={18} />
-          <span className="tab-text">Users Report</span>
-        </button>
-        <button
-          className={`report-tab-btn ${
-            activeReportType === "corals" ? "active" : ""
-          }`}
-          onClick={() => setActiveReportType("corals")}
-        >
-          <FiImage size={18} />
-          <span className="tab-text">Corals Report</span>
-        </button>
-        <button
-          className={`report-tab-btn ${
-            activeReportType === "activities" ? "active" : ""
-          }`}
-          onClick={() => setActiveReportType("activities")}
-        >
-          <FiActivity size={18} />
-          <span className="tab-text">Activities Report</span>
-        </button>
-      </div>
-      <br />
-
-      {/* Main Content */}
-      <div className="report-content">
-        {/* Filters Sidebar */}
-        <div className="report-sidebar">
-          {renderFilters()}
-          <div className="filter-actions">
+    <div className="content-section">
+      <div className="report-generation-container">
+        {/* Header Section */}
+        <div className="report-header">
+          <div className="report-header-text">
+            <h2 className="report-title">Report Generation</h2>
+            <p className="report-subtitle">
+              Generate comprehensive reports with filtering and export options
+            </p>
+          </div>
+          <div className="report-header-actions">
             <button
-              className="generate-btn primary"
-              onClick={generateReport}
-              disabled={loading}
+              className={`report-action-btn secondary ${
+                !reportData ? "disabled" : ""
+              }`}
+              onClick={printReport}
+              disabled={!reportData}
+              title="Print Report"
             >
-              {loading ? (
-                <div className="btn-loading">
-                  <div className="spinner-small"></div>
-                  <span>Generating...</span>
-                </div>
-              ) : (
-                <>
-                  <FiBarChart size={16} />
-                  <span>Generate Report</span>
-                </>
-              )}
+              <FiPrinter size={16} />
+              <span className="btn-text">Print</span>
+            </button>
+            <button
+              className={`report-action-btn secondary ${
+                !reportData ? "disabled" : ""
+              }`}
+              onClick={() => exportReport("excel")}
+              disabled={!reportData}
+              title="Export to Excel"
+            >
+              <FiDownload size={16} />
+              <span className="btn-text">Excel</span>
+            </button>
+            <button
+              className={`report-action-btn primary ${
+                !reportData ? "disabled" : ""
+              }`}
+              onClick={() => exportReport("pdf")}
+              disabled={!reportData}
+              title="Export to PDF"
+            >
+              <FiDownload size={16} />
+              <span className="btn-text">PDF</span>
             </button>
           </div>
         </div>
+        <br />
+        {/* Report Type Tabs */}
+        <div className="report-tabs">
+          <button
+            className={`report-tab-btn ${
+              activeReportType === "users" ? "active" : ""
+            }`}
+            onClick={() => setActiveReportType("users")}
+          >
+            <FiUsers size={18} />
+            <span className="tab-text">Users Report</span>
+          </button>
+          <button
+            className={`report-tab-btn ${
+              activeReportType === "corals" ? "active" : ""
+            }`}
+            onClick={() => setActiveReportType("corals")}
+          >
+            <FiImage size={18} />
+            <span className="tab-text">Corals Report</span>
+          </button>
+          <button
+            className={`report-tab-btn ${
+              activeReportType === "activities" ? "active" : ""
+            }`}
+            onClick={() => setActiveReportType("activities")}
+          >
+            <FiActivity size={18} />
+            <span className="tab-text">Activities Report</span>
+          </button>
+        </div>
+        <br />
 
-        {/* Main Report Display */}
-        <div className="report-main">
-          {summary && renderSummary()}
-          {reportData && renderReportData()}
-
-          {/* Empty State */}
-          {!reportData && !loading && (
-            <div className="report-empty-state">
-              <div className="empty-icon">
-                <FiFileText size={48} />
-              </div>
-              <h3>No Report Generated</h3>
-              <p>
-                Configure your filters and click "Generate Report" to view data.
-              </p>
+        {/* Main Content */}
+        <div className="report-content">
+          {/* Filters Sidebar */}
+          <div className="report-sidebar">
+            {renderFilters()}
+            <div className="filter-actions">
+              <button
+                className="generate-btn primary"
+                onClick={generateReport}
+                disabled={loading}
+              >
+                {loading ? (
+                  <div className="btn-loading">
+                    <div className="spinner-small"></div>
+                    <span>Generating...</span>
+                  </div>
+                ) : (
+                  <>
+                    <FiBarChart size={16} />
+                    <span>Generate Report</span>
+                  </>
+                )}
+              </button>
             </div>
-          )}
+          </div>
+
+          {/* Main Report Display */}
+          <div className="report-main">
+            {summary && renderSummary()}
+            {reportData && renderReportData()}
+
+            {/* Empty State */}
+            {!reportData && !loading && (
+              <div className="report-empty-state">
+                <div className="empty-icon">
+                  <FiFileText size={48} />
+                </div>
+                <h3>No Report Generated</h3>
+                <p>
+                  Configure your filters and click "Generate Report" to view
+                  data.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

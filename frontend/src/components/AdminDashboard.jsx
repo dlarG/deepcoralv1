@@ -14,7 +14,6 @@ import Validate from "./admin/components/Validate";
 import { getAdminStyles } from "./admin/styles/adminStyles";
 import "../styles/loadingstyles.css";
 
-
 function AdminDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -78,15 +77,15 @@ function AdminDashboard() {
   };
 
   if (authLoading) {
-   return (
-    <div className="loading-screen" style={{ background: "red" }}>
-      <div className="coral-spinner"></div>
-      <span className="loading-text">Loading</span>
-      <div className="coral-progress-bar">
-        <div className="coral-progress-bar-inner"></div>
+    return (
+      <div className="loading-screen" style={{ background: "red" }}>
+        <div className="coral-spinner"></div>
+        <span className="loading-text">Loading</span>
+        <div className="coral-progress-bar">
+          <div className="coral-progress-bar-inner"></div>
+        </div>
       </div>
-    </div>
-  );
+    );
   }
 
   if (!user || user.roletype.toLowerCase() !== "admin") {
@@ -116,7 +115,7 @@ function AdminDashboard() {
         return <Validate darkMode={darkMode} />;
       case "Dashboard":
       default:
-        return <Dashboard darkMode={darkMode} />;
+        return <Dashboard user={user} darkMode={darkMode} />;
     }
   };
 
@@ -129,7 +128,7 @@ function AdminDashboard() {
         darkMode={darkMode}
         setDarkMode={setDarkMode}
         handleLogout={handleLogout}
-        setActiveTab={setActiveTab}
+        setActiveTab={setActiveTab} // ✅ This is already correct
       />
       <div className="dashboard-container">
         <Sidebar

@@ -473,75 +473,6 @@ export const getGuestStyles = (sidebarOpen) => `
     position: relative;
   }
 
-  .sidebar {
-    width: ${sidebarOpen ? "280px" : "80px"};
-    background: white;
-    border-right: 1px solid #e2e8f0;
-    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    height: calc(100vh - 70px);
-    position: fixed;
-    top: 70px;
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
-  }
-
-  .sidebar-header {
-    padding: 1.5rem 1.5rem 1rem;
-    border-bottom: 1px solid #f1f5f9;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .sidebar-title {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #64748b;
-    font-weight: 600;
-    margin: 0;
-    opacity: ${sidebarOpen ? "1" : "0"};
-    transition: opacity 0.2s;
-    white-space: nowrap;
-  }
-
-  .sidebar-nav {
-    flex: 1;
-    padding: 0.75rem;
-  }
-
-  .sidebar-nav ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-  }
-
-  .sidebar-nav li {
-    position: relative;
-    margin-bottom: 0.25rem;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .sidebar-nav li:hover {
-    background: #f8fafc;
-  }
-
-  .sidebar-nav li.active {
-    background: #f0f9ff;
-  }
-
-  .sidebar-nav li.active .nav-text {
-    color: #0369a1;
-    font-weight: 500;
-  }
-
-  .sidebar-nav li.active .nav-icon {
-    color: #0284c7;
-  }
 
   /* Coral Grid - Responsive to sidebar state */
   .coral-grid {
@@ -732,13 +663,6 @@ export const getGuestStyles = (sidebarOpen) => `
     border-radius: 12px;
     padding: 2rem;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  }
-
-  .content-title {
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: #0f172a;
-    margin-bottom: 1.5rem;
   }
 
   .content-placeholder {

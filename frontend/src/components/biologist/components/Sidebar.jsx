@@ -9,41 +9,37 @@ import {
   FiUsers,
 } from "react-icons/fi";
 
-function Sidebar({ activeTab, setActiveTab, sidebarOpen, darkMode }) {
-  const menuItems = [
+function Sidebar({ activeTab, setActiveTab, sidebarOpen }) {
+  const navigationItems = [
     {
-      items: [
-        {
-          id: "Dashboard",
-          label: "Dashboard",
-          description: "Overview & Analytics",
-          icon: FiHome,
-        },
-        {
-          id: "Image Analysis",
-          label: "Image Analysis",
-          description: "AI-Powered Segmentation",
-          icon: FiCamera,
-        },
-        {
-          id: "Coral Database",
-          label: "Coral Database",
-          description: "Species Information",
-          icon: FiDatabase,
-        },
-        {
-          id: "User",
-          label: "Users",
-          description: "User Management",
-          icon: FiUsers,
-        },
-        {
-          id: "Profile",
-          label: "Profile",
-          description: "Personal Settings",
-          icon: FiUser,
-        },
-      ],
+      id: "Dashboard",
+      label: "Dashboard",
+      description: "Overview & Analytics",
+      icon: FiHome,
+    },
+    {
+      id: "Image Analysis",
+      label: "Image Analysis",
+      description: "AI-Powered Segmentation",
+      icon: FiCamera,
+    },
+    {
+      id: "Coral Database",
+      label: "Coral Database",
+      description: "Species Information",
+      icon: FiDatabase,
+    },
+    {
+      id: "User",
+      label: "Users",
+      description: "User Management",
+      icon: FiUsers,
+    },
+    {
+      id: "Profile",
+      label: "Profile",
+      description: "Personal Settings",
+      icon: FiUser,
     },
   ];
 
@@ -64,38 +60,35 @@ function Sidebar({ activeTab, setActiveTab, sidebarOpen, darkMode }) {
     <aside className="bio-sidebar">
       <div className="sidebar-content">
         <nav className="sidebar-nav">
-          {menuItems.map((section) => (
-            <div key={section.section} className="nav-section">
-              <h3 className="nav-section-title">{section.section}</h3>
-              <ul className="nav-menu">
-                {section.items.map((item) => (
-                  <li key={item.id} className="nav-item">
-                    <button
-                      className={`nav-link ${
-                        activeTab === item.id ? "active" : ""
-                      }`}
-                      onClick={() => setActiveTab(item.id)}
-                    >
-                      {activeTab === item.id && (
-                        <div className="active-indicator" />
+          <div className="nav-section">
+            <ul className="nav-menu">
+              {navigationItems.map((item) => (
+                <li key={item.id} className="nav-item">
+                  <button
+                    className={`nav-link ${
+                      activeTab === item.id ? "active" : ""
+                    }`}
+                    onClick={() => setActiveTab(item.id)}
+                  >
+                    {activeTab === item.id && (
+                      <div className="active-indicator" />
+                    )}
+                    <div className="nav-icon">
+                      <item.icon size={24} />
+                    </div>
+                    <div className="nav-content">
+                      <span className="nav-label">{item.label}</span>
+                      {sidebarOpen && (
+                        <span className="nav-description">
+                          {item.description}
+                        </span>
                       )}
-                      <div className="nav-icon">
-                        <item.icon size={24} />
-                      </div>
-                      <div className="nav-content">
-                        <span className="nav-label">{item.label}</span>
-                        {sidebarOpen && (
-                          <span className="nav-description">
-                            {item.description}
-                          </span>
-                        )}
-                      </div>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+                    </div>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
           {sidebarOpen && (
             <>
               <div className="nav-section">
@@ -116,16 +109,6 @@ function Sidebar({ activeTab, setActiveTab, sidebarOpen, darkMode }) {
           )}
           <br />
         </nav>
-
-        {sidebarOpen && (
-          <div className="sidebar-footer">
-            <div className="footer-content">
-              <div className="version-info">
-                <span>DeepCoralAI</span>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </aside>
   );

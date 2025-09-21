@@ -1,6 +1,7 @@
 // src/components/guest/components/Sidebar.js
 import React from "react";
 import { FiHome, FiImage, FiMap, FiFileText, FiUser } from "react-icons/fi";
+import "../styles/sidebar.css";
 
 function Sidebar({ activeTab, setActiveTab, sidebarOpen }) {
   const navItems = [
@@ -28,7 +29,6 @@ function Sidebar({ activeTab, setActiveTab, sidebarOpen }) {
                 <item.icon className="nav-icon" />
                 <span className="nav-text">{item.label}</span>
               </div>
-              <div className="active-indicator"></div>
             </li>
           ))}
         </ul>
