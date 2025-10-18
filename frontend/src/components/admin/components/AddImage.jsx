@@ -11,7 +11,28 @@ import {
   FiList,
   FiFile,
   FiTrash2,
+  FiBarChart2,
+  FiPieChart,
 } from "react-icons/fi";
+import {
+  Chart as ChartJS,
+  ArcElement,
+  Tooltip,
+  Legend,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+} from "chart.js";
+import { Pie, Bar } from "react-chartjs-2";
+
+ChartJS.register(
+  ArcElement,
+  Tooltip,
+  Legend,
+  CategoryScale,
+  LinearScale,
+  BarElement
+);
 
 function AddImage() {
   const [images, setImages] = useState([]);
@@ -23,6 +44,9 @@ function AddImage() {
   const [dragActive, setDragActive] = useState(false);
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
   const [viewMode, setViewMode] = useState("grid");
+  const [activeTab, setActiveTab] = useState("crops");
+  const [batchResults, setBatchResults] = useState(null);
+  const [showBatchChart, setShowBatchChart] = useState(false);
   const fileInputRef = useRef(null);
   const folderInputRef = useRef(null);
 
@@ -105,6 +129,7 @@ function AddImage() {
     }
 
     setLoading(true);
+    setActiveTab("crops"); // Switch to crops tab
 
     try {
       const csrfResponse = await fetch("http://localhost:5000/csrf-token", {
@@ -148,6 +173,79 @@ function AddImage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSegmentAndDetect = async () => {
+    if (images.length === 0) {
+      alert("Please select images first!");
+      return;
+    }
+
+    setLoading(true);
+    setActiveTab("analysis"); // Switch to analysis tab
+
+    try {
+      const csrfResponse = await fetch("http://localhost:5000/csrf-token", {
+        method: "GET",
+        credentials: "include",
+      });
+
+      const csrfData = await csrfResponse.json();
+
+      const formData = new FormData();
+      formData.append("image", images[currentImageIndex].file);
+      formData.append("intensity", cropIntensity);
+      formData.append("csrf_token", csrfData.csrf_token);
+
+      const res = await fetch("http://localhost:5000/detect_and_segment", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+        headers: {
+          "X-CSRF-Token": csrfData.csrf_token,
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+
+      const data = await res.json();
+
+      // Update state with segmentation data
+      setCrops(data.crops);
+
+      setImages((prev) =>
+        prev.map((img, idx) =>
+          idx === currentImageIndex
+            ? {
+                ...img,
+                crops: data.crops,
+                processed: true,
+                segmentationData: data, // Store full segmentation data
+              }
+            : img
+        )
+      );
+
+      console.log("Segmentation results:", data);
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Failed to analyze image: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const downloadSegmentationMask = (maskUrl, index) => {
+    const link = document.createElement("a");
+    link.href = `http://localhost:5000/${maskUrl}`;
+    link.download = `segmentation_${index + 1}_${
+      images[currentImageIndex].file.name
+    }`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleBatchSubmit = async () => {
@@ -298,6 +396,230 @@ function AddImage() {
     });
   };
 
+  const handleBatchAnalyze = async () => {
+    if (images.length === 0) {
+      alert("Please select images first!");
+      return;
+    }
+
+    setBatchLoading(true);
+    setShowBatchChart(false);
+    setBatchProgress({ current: 0, total: images.length });
+
+    try {
+      const csrfResponse = await fetch("http://localhost:5000/csrf-token", {
+        method: "GET",
+        credentials: "include",
+      });
+
+      const csrfData = await csrfResponse.json();
+      const formData = new FormData();
+
+      // Add all image files to FormData
+      images.forEach((image, index) => {
+        formData.append("images", image.file);
+      });
+
+      formData.append("intensity", cropIntensity);
+      formData.append("uploader_id", "1"); // Replace with actual user ID from context
+      formData.append("csrf_token", csrfData.csrf_token);
+
+      const res = await fetch("http://localhost:5000/batch_analyze", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+        headers: {
+          "X-CSRF-Token": csrfData.csrf_token,
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+
+      const data = await res.json();
+      setBatchResults(data);
+      setShowBatchChart(true);
+      setActiveTab("batch-analysis");
+
+      // Update images with results
+      const updatedImages = images.map((image, index) => {
+        const result = data.results.find((r) => r.filename === image.file.name);
+        if (result) {
+          return {
+            ...image,
+            crops: result.crops.map((crop) => crop.crop_url),
+            processed: true,
+            segmentationData: result,
+          };
+        }
+        return image;
+      });
+
+      setImages(updatedImages);
+    } catch (error) {
+      console.error("Batch analysis error:", error);
+      alert("Batch analysis failed: " + error.message);
+    } finally {
+      setBatchLoading(false);
+      setBatchProgress({ current: 0, total: 0 });
+    }
+  };
+
+  const renderBatchAnalysisChart = () => {
+    if (!batchResults || !batchResults.batch_statistics) {
+      return (
+        <div className="no-results">No batch analysis results available</div>
+      );
+    }
+
+    const coverageData = batchResults.batch_statistics.coverage_summary;
+
+    if (!coverageData || coverageData.length === 0) {
+      return <div className="no-results">No coral coverage data found</div>;
+    }
+
+    // Prepare data for charts
+    const pieData = {
+      labels: coverageData.map((coral) => coral.class_name),
+      datasets: [
+        {
+          data: coverageData.map((coral) => coral.coverage_percent),
+          backgroundColor: coverageData.map((coral) => coral.color),
+          borderColor: coverageData.map((coral) => coral.color),
+          borderWidth: 2,
+        },
+      ],
+    };
+
+    const barData = {
+      labels: coverageData.map((coral) => coral.class_name),
+      datasets: [
+        {
+          label: "Coverage Percentage",
+          data: coverageData.map((coral) => coral.coverage_percent),
+          backgroundColor: coverageData.map((coral) => coral.color),
+          borderColor: coverageData.map((coral) => coral.color),
+          borderWidth: 1,
+        },
+      ],
+    };
+
+    const chartOptions = {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: "bottom",
+        },
+        tooltip: {
+          callbacks: {
+            label: function (context) {
+              const coral = coverageData[context.dataIndex];
+              return `${coral.class_name}: ${
+                coral.coverage_percent
+              }% (${coral.total_pixels.toLocaleString()} pixels)`;
+            },
+          },
+        },
+      },
+    };
+
+    const barOptions = {
+      ...chartOptions,
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: Math.max(...coverageData.map((c) => c.coverage_percent)) * 1.1,
+          ticks: {
+            callback: function (value) {
+              return value + "%";
+            },
+          },
+        },
+      },
+    };
+
+    return (
+      <div className="batch-analysis-results">
+        <div className="batch-header">
+          <h3>Batch Analysis Results</h3>
+          <div className="batch-stats">
+            <div className="stat-card">
+              <span className="stat-number">
+                {batchResults.batch_statistics.total_images}
+              </span>
+              <span className="stat-label">Images Analyzed</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-number">
+                {batchResults.batch_statistics.total_crops}
+              </span>
+              <span className="stat-label">Quadrats Detected</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-number">
+                {Math.round(
+                  batchResults.batch_statistics.coverage_summary.reduce(
+                    (sum, coral) => sum + coral.coverage_percent,
+                    0
+                  )
+                )}
+                %
+              </span>
+              <span className="stat-label">Total Coverage</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="charts-container">
+          <div className="chart-section">
+            <h4>Coverage Distribution - Pie Chart</h4>
+            <div className="chart-wrapper">
+              <Pie data={pieData} options={chartOptions} />
+            </div>
+          </div>
+
+          <div className="chart-section">
+            <h4>Coverage Distribution - Bar Chart</h4>
+            <div className="chart-wrapper">
+              <Bar data={barData} options={barOptions} />
+            </div>
+          </div>
+        </div>
+
+        <div className="coverage-details">
+          <h4>Detailed Coverage Results</h4>
+          <div className="coverage-table">
+            <div className="table-header">
+              <span>Coral Type</span>
+              <span>Category</span>
+              <span>Coverage %</span>
+              <span>Pixel Count</span>
+            </div>
+            {coverageData
+              .sort((a, b) => b.coverage_percent - a.coverage_percent)
+              .map((coral, index) => (
+                <div key={index} className="table-row">
+                  <div className="coral-name">
+                    <div
+                      className="color-indicator"
+                      style={{ backgroundColor: coral.color }}
+                    ></div>
+                    {coral.class_name}
+                  </div>
+                  <span className="category">{coral.category}</span>
+                  <span className="percentage">{coral.coverage_percent}%</span>
+                  <span className="pixels">
+                    {coral.total_pixels.toLocaleString()}
+                  </span>
+                </div>
+              ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // const formatFileSize = (bytes) => {
   //   if (bytes === 0) return "0 Bytes";
   //   const k = 1024;
@@ -311,6 +633,128 @@ function AddImage() {
     0
   );
   // const completedImages = images.filter((img) => img.processed).length;
+
+  const renderAnalysisResults = () => {
+    const currentImage = images[currentImageIndex];
+    if (!currentImage?.segmentationData?.crops) {
+      return <div className="no-results">No analysis results available</div>;
+    }
+
+    const segmentationData = currentImage.segmentationData;
+
+    return (
+      <div className="analysis-results">
+        <div className="analysis-header">
+          <h3>Coral Analysis Results</h3>
+          <div className="analysis-stats">
+            <span>{segmentationData.total_crops} quadrats analyzed</span>
+            <span className="method-tag">
+              {cropIntensity.charAt(0).toUpperCase() + cropIntensity.slice(1)}
+            </span>
+          </div>
+        </div>
+
+        <div className="quadrats-analysis">
+          {segmentationData.crops.map((cropData, cropIndex) => (
+            <div key={cropIndex} className="quadrat-analysis-card">
+              <div className="quadrat-header">
+                <h4>
+                  Quadrat {cropIndex + 1} - {cropData.detection_label}
+                </h4>
+                <div className="quadrat-actions">
+                  <button
+                    className="download-btn small"
+                    onClick={() => downloadCrop(cropData.crop_url, cropIndex)}
+                  >
+                    <FiDownload size={12} />
+                    Crop
+                  </button>
+                  <button
+                    className="download-btn small"
+                    onClick={() =>
+                      downloadSegmentationMask(
+                        cropData.visualization_url,
+                        cropIndex
+                      )
+                    }
+                  >
+                    <FiDownload size={12} />
+                    Mask
+                  </button>
+                </div>
+              </div>
+
+              <div className="quadrat-content">
+                <div className="quadrat-visuals">
+                  <div className="visual-item">
+                    <img
+                      src={`http://localhost:5000/${cropData.crop_url}`}
+                      alt={`Crop ${cropIndex + 1}`}
+                      className="analysis-image"
+                    />
+                    <span className="visual-label">Original Crop</span>
+                  </div>
+                  <div className="visual-item">
+                    <img
+                      src={`http://localhost:5000/${cropData.visualization_url}`}
+                      alt={`Segmentation ${cropIndex + 1}`}
+                      className="analysis-image"
+                    />
+                    <span className="visual-label">Segmentation Mask</span>
+                  </div>
+                </div>
+
+                {cropData.coverage_data &&
+                  cropData.coverage_data.length > 0 && (
+                    <div className="coverage-analysis">
+                      <h5>Coral Coverage</h5>
+                      <div className="coverage-stats">
+                        {cropData.coverage_data.map((coral, coralIndex) => (
+                          <div key={coralIndex} className="coral-stat">
+                            <div
+                              className="coral-color"
+                              style={{ backgroundColor: coral.color }}
+                            ></div>
+                            <div className="coral-info">
+                              <span className="coral-name">
+                                {coral.class_name}
+                              </span>
+                              <span className="coral-category">
+                                {coral.category}
+                              </span>
+                            </div>
+                            <div className="coral-coverage">
+                              <span className="coverage-percent">
+                                {coral.coverage_percent}%
+                              </span>
+                              <span className="pixel-count">
+                                ({coral.pixel_count.toLocaleString()} px)
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Total Coverage Summary */}
+                      <div className="total-coverage">
+                        <strong>Total Coral Coverage: </strong>
+                        {cropData.coverage_data
+                          .reduce(
+                            (sum, coral) => sum + coral.coverage_percent,
+                            0
+                          )
+                          .toFixed(1)}
+                        %
+                      </div>
+                    </div>
+                  )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="content-section">
@@ -398,7 +842,7 @@ function AddImage() {
         </div>
       ) : (
         <div className="add-image-content">
-          {/* Top Controls Bar */}
+          {/* Top Controls Bar - UPDATED */}
           <div className="top-controls">
             <div className="controls-left">
               <div className="intensity-control-compact">
@@ -426,7 +870,7 @@ function AddImage() {
                   disabled={images.length === 0 || loading || batchLoading}
                   className="process-button primary compact"
                 >
-                  {loading ? (
+                  {loading && activeTab === "crops" ? (
                     <>
                       <FiLoader size={16} className="spinning" />
                       <span className="btn-text">Processing...</span>
@@ -434,27 +878,45 @@ function AddImage() {
                   ) : (
                     <>
                       <FiEye size={16} />
-                      <span className="btn-text">Process Current</span>
+                      <span className="btn-text">Detect Only</span>
                     </>
                   )}
                 </button>
 
                 <button
-                  onClick={handleBatchSubmit}
-                  disabled={images.length === 0 || batchLoading}
+                  onClick={handleSegmentAndDetect}
+                  disabled={images.length === 0 || loading || batchLoading}
                   className="process-button secondary compact"
+                >
+                  {loading && activeTab === "analysis" ? (
+                    <>
+                      <FiLoader size={16} className="spinning" />
+                      <span className="btn-text">Analyzing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FiBarChart2 size={16} />
+                      <span className="btn-text">Analyze Single</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  onClick={handleBatchAnalyze}
+                  disabled={images.length === 0 || batchLoading}
+                  className="process-button analysis compact"
                 >
                   {batchLoading ? (
                     <>
                       <FiLoader size={16} className="spinning" />
                       <span className="btn-text">
-                        {batchProgress.current}/{batchProgress.total}
+                        Analyzing {batchProgress.current}/{batchProgress.total}
                       </span>
                     </>
                   ) : (
                     <>
-                      <FiGrid size={16} />
-                      <span className="btn-text">Process All</span>
+                      <FiPieChart size={16} />
+                      <span className="btn-text">Batch Analyze All</span>
                     </>
                   )}
                 </button>
@@ -462,154 +924,80 @@ function AddImage() {
             </div>
           </div>
 
-          {/* Gallery Section */}
+          {/* Gallery Section - Same as before */}
           <div className="gallery-section">
-            <div className="gallery-header">
-              <div className="gallery-title">
-                <FiGrid size={20} />
-                <span>Image Gallery ({images.length})</span>
-              </div>
-
-              <div className="gallery-header-actions">
-                <div className="view-toggle">
-                  <button
-                    className={`view-toggle-btn ${
-                      viewMode === "grid" ? "active" : ""
-                    }`}
-                    onClick={() => setViewMode("grid")}
-                    title="Grid view"
-                  >
-                    <FiGrid size={16} />
-                  </button>
-                  <button
-                    className={`view-toggle-btn ${
-                      viewMode === "list" ? "active" : ""
-                    }`}
-                    onClick={() => setViewMode("list")}
-                    title="List view"
-                  >
-                    <FiList size={16} />
-                  </button>
-                </div>
-
-                <div className="gallery-actions">
-                  {totalCrops > 0 && (
-                    <button
-                      onClick={downloadBatchCrops}
-                      className="action-button download-all"
-                    >
-                      <FiDownload size={14} />
-                      <span className="action-text">
-                        Download All ({totalCrops})
-                      </span>
-                    </button>
-                  )}
-                  <button onClick={clearImages} className="action-button clear">
-                    <FiTrash2 size={14} />
-                    <span className="action-text">Clear</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className={`image-gallery ${viewMode}`}>
-              {images.map((image, index) => (
-                <div
-                  key={index}
-                  className={`gallery-item ${
-                    index === currentImageIndex ? "active" : ""
-                  } ${image.processed ? "processed" : ""} ${
-                    image.error ? "error" : ""
-                  }`}
-                  onClick={() => {
-                    setCurrentImageIndex(index);
-                    setCrops(image.crops || []);
-                  }}
-                >
-                  <div className="item-thumbnail">
-                    <img src={image.preview} alt={`Thumbnail ${index}`} />
-
-                    <div className="thumbnail-overlay">
-                      {image.error && (
-                        <div
-                          className="statuss-badge error"
-                          title={image.error}
-                        >
-                          <FiX size={10} />
-                        </div>
-                      )}
-
-                      <button
-                        className="remove-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          removeImage(index);
-                        }}
-                        title="Remove image"
-                      >
-                        <FiX size={12} />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="item-info">
-                    <span className="filename" title={image.file.name}>
-                      {image.file.name}
-                    </span>
-                    {image.crops?.length > 0 && (
-                      <span className="crop-count">
-                        {image.crops.length} crop
-                        {image.crops.length > 1 ? "s" : ""}
-                      </span>
-                    )}
-                    {image.error && (
-                      <span className="error-text">Processing failed</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+            {/* ... existing gallery JSX ... */}
           </div>
 
-          {/* Crops Section */}
-          {crops.length > 0 && (
-            <div className="crops-section">
-              <div className="crops-header">
-                <div className="crops-title">
-                  <FiGrid size={20} />
+          {/* Results Section - UPDATED with new tab */}
+          {(crops.length > 0 ||
+            images[currentImageIndex]?.segmentationData ||
+            showBatchChart) && (
+            <div className="results-section">
+              <div className="results-tabs">
+                <button
+                  className={`tab-button ${
+                    activeTab === "crops" ? "active" : ""
+                  }`}
+                  onClick={() => setActiveTab("crops")}
+                >
+                  <FiGrid size={16} />
                   <span>Detected Crops ({crops.length})</span>
-                </div>
-                <div className="method-tag">
-                  {cropIntensity.charAt(0).toUpperCase() +
-                    cropIntensity.slice(1)}
-                </div>
+                </button>
+                <button
+                  className={`tab-button ${
+                    activeTab === "analysis" ? "active" : ""
+                  }`}
+                  onClick={() => setActiveTab("analysis")}
+                >
+                  <FiBarChart2 size={16} />
+                  <span>Single Analysis</span>
+                </button>
+                {showBatchChart && (
+                  <button
+                    className={`tab-button ${
+                      activeTab === "batch-analysis" ? "active" : ""
+                    }`}
+                    onClick={() => setActiveTab("batch-analysis")}
+                  >
+                    <FiPieChart size={16} />
+                    <span>Batch Analysis</span>
+                  </button>
+                )}
               </div>
 
-              <div className="crops-grid">
-                {crops.map((crop, i) => (
-                  <div key={i} className="crop-card">
-                    <div className="crop-image-container">
-                      <img
-                        src={`http://localhost:5000/${crop}`}
-                        alt={`Crop ${i + 1}`}
-                        className="crop-image"
-                      />
-                      <div className="crop-overlay">
-                        <button
-                          className="download-crop-btn"
-                          onClick={() => downloadCrop(crop, i)}
-                          title="Download crop"
-                        >
-                          <FiDownload size={14} />
-                          <span>Download</span>
-                        </button>
+              <div className="tab-content">
+                {activeTab === "crops" && (
+                  <div className="crops-grid">
+                    {crops.map((crop, i) => (
+                      <div key={i} className="crop-card">
+                        <div className="crop-image-container">
+                          <img
+                            src={`http://localhost:5000/${crop}`}
+                            alt={`Crop ${i + 1}`}
+                            className="crop-image"
+                          />
+                          <div className="crop-overlay">
+                            <button
+                              className="download-crop-btn"
+                              onClick={() => downloadCrop(crop, i)}
+                              title="Download crop"
+                            >
+                              <FiDownload size={14} />
+                              <span>Download</span>
+                            </button>
+                          </div>
+                        </div>
+                        <div className="crop-info">
+                          <span className="crop-label">Crop {i + 1}</span>
+                        </div>
                       </div>
-                    </div>
-                    <div className="crop-info">
-                      <span className="crop-label">Crop {i + 1}</span>
-                    </div>
+                    ))}
                   </div>
-                ))}
+                )}
+
+                {activeTab === "analysis" && renderAnalysisResults()}
+                {activeTab === "batch-analysis" && renderBatchAnalysisChart()}
               </div>
             </div>
           )}
@@ -622,11 +1010,11 @@ function AddImage() {
           <div className="loading-content">
             <div className="loading-spinner"></div>
             <div className="loading-text">
-              {batchLoading ? "Processing Batch..." : "Processing Image..."}
+              {batchLoading ? "Analyzing Batch..." : "Processing Image..."}
             </div>
             <div className="loading-subtext">
               {batchLoading
-                ? `${batchProgress.current} of ${batchProgress.total} images processed`
+                ? `Processing ${batchProgress.current} of ${batchProgress.total} images`
                 : "Please wait while we analyze your image"}
             </div>
             <div className="progress-bar-container">

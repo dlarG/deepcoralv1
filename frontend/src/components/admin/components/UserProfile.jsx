@@ -758,7 +758,6 @@ function UserProfile({ darkMode }) {
       {/* Profile Hero Section */}
       <div className="profile-hero">
         <div className="hero-background">
-          <div className="gradient-overlay"></div>
           <div className="pattern-overlay"></div>
         </div>
 
@@ -1204,16 +1203,6 @@ function UserProfile({ darkMode }) {
           position: absolute;
           inset: 0;
           background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-
-        .gradient-overlay {
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(
-            135deg,
-            rgba(59, 130, 246, 0.9) 0%,
-            rgba(147, 51, 234, 0.9) 100%
-          );
         }
 
         .pattern-overlay {

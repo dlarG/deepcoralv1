@@ -44,3 +44,69 @@ CREATE INDEX idx_activities_user_type ON activities(user_id, activity_type);
 
 
 
+
+-- Run this once in your database to enable PostGIS
+CREATE EXTENSION IF NOT EXISTS postgis;
+
+
+-- Images table with PostGIS geometry
+CREATE TABLE images (
+    id SERIAL PRIMARY KEY,
+    filename VARCHAR(255) NOT NULL,
+    uploader_id INTEGER REFERENCES users(id),
+    uploaded_at TIMESTAMP DEFAULT NOW(),
+    -- PostGIS geometry instead of separate lat/lng
+    location GEOMETRY(Point, 4326),  -- SRID 4326 = WGS84 (standard lat/lng)
+    quadrat_crop_path TEXT,
+    original_image_path TEXT,
+    -- Critical additions:
+    total_pixels INTEGER,          -- Total pixels in analyzed area
+    analyzed_area_px INTEGER,      -- Pixels actually analyzed (after masking invalid areas)
+    analysis_confidence NUMERIC(3,2), -- How confident the ML model was
+    processing_status VARCHAR(20) DEFAULT 'pending', -- pending, processing, completed, failed
+    -- Spatial index for performance
+    CONSTRAINT enforce_srid_location CHECK (ST_SRID(location) = 4326)
+);
+
+-- Coral lifeforms reference table (unchanged, but good as is)
+CREATE TABLE coral_lifeforms (
+    id SERIAL PRIMARY KEY,
+    class_name VARCHAR(100) NOT NULL UNIQUE,
+    scientific_name VARCHAR(255),
+    category VARCHAR(50), -- hard_coral, soft_coral, algae, etc.
+    color_hex VARCHAR(7), -- For consistent visualization
+    description TEXT
+);
+
+-- Enhanced segmentation results
+CREATE TABLE segmentation_results (
+    id SERIAL PRIMARY KEY,
+    image_id INTEGER REFERENCES images(id) ON DELETE CASCADE,
+    class_id INTEGER REFERENCES coral_lifeforms(id),
+    instance_count INTEGER DEFAULT 0,
+    area_px INTEGER NOT NULL,           -- Raw pixel count for this class
+    coverage_percent NUMERIC(5,2),      -- (area_px / total_analyzed_area) * 100
+    avg_confidence NUMERIC(3,2),        -- Average confidence for detections
+    mask_path TEXT,                     -- Path to mask file
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Individual coral instance data
+CREATE TABLE coral_instances (
+    id SERIAL PRIMARY KEY,
+    segmentation_id INTEGER REFERENCES segmentation_results(id),
+    instance_number INTEGER,           -- Instance 1, 2, 3... within same class
+    area_px INTEGER,                   -- Pixel area of this specific instance
+    confidence NUMERIC(3,2),           -- Detection confidence
+    bbox_coordinates JSONB             -- Bounding box coordinates if needed
+);
+
+
+
+-- Critical for performance with geographic queries
+CREATE INDEX idx_images_location ON images USING GIST (location);
+CREATE INDEX idx_images_uploaded_at ON images (uploaded_at);
+CREATE INDEX idx_segmentation_results_image_id ON segmentation_results (image_id);
+CREATE INDEX idx_segmentation_results_class_id ON segmentation_results (class_id);
+
+

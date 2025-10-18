@@ -6,20 +6,171 @@ import cv2
 import numpy as np
 import os
 import uuid
+import torch
+import segmentation_models_pytorch as smp
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
+from pathlib import Path
+from db import get_db_connection
+from datetime import datetime
 
 image_bp = Blueprint('image', __name__)
 
-model = YOLO("../models/autocrop_yolov11_best.pt")
+# Load detection model
+detection_model = YOLO("../models/autocrop_yolov11_best.pt")
+
+# Load segmentation model
+BASE_DIR = Path(__file__).parent.parent
+MODEL_PATH = BASE_DIR.parent / "models" / "coral_unet_best.pth"
+
+print(f"Loading segmentation model from: {MODEL_PATH}")
+print(f"Model exists: {MODEL_PATH.exists()}")
+
+NUM_CLASSES = 11  # 10 coral classes + background
+
+if MODEL_PATH.exists():
+    try:
+        segmentation_model = smp.Unet(
+            encoder_name="resnet34",
+            encoder_weights=None,
+            in_channels=3,
+            classes=NUM_CLASSES
+        )
+        segmentation_model.load_state_dict(torch.load(str(MODEL_PATH), map_location='cpu'))
+        segmentation_model.eval()
+        print("✅ Segmentation model loaded successfully!")
+    except Exception as e:
+        print(f"❌ Error loading segmentation model: {e}")
+        segmentation_model = None
+else:
+    print("❌ Segmentation model file not found!")
+    segmentation_model = None
+
 UPLOAD_FOLDER = "../backend/coral_uploads"
 OUTPUT_FOLDER = "../backend/coral_uploads/outputs"
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
-if not os.path.exists(OUTPUT_FOLDER):
-    os.makedirs(OUTPUT_FOLDER)
+MASKS_FOLDER = "../backend/coral_uploads/masks"
+
+# Create directories
+for folder in [UPLOAD_FOLDER, OUTPUT_FOLDER, MASKS_FOLDER]:
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+
+# Coral class mapping
+CORAL_CLASSES = {
+    1: {'name': 'acropora-branching', 'color': '#FF6B6B', 'category': 'hard_coral'},
+    2: {'name': 'acropora-tabulate', 'color': '#FFD166', 'category': 'hard_coral'},
+    3: {'name': 'digitate', 'color': '#06D6A0', 'category': 'hard_coral'},
+    4: {'name': 'encrusting', 'color': '#118AB2', 'category': 'hard_coral'},
+    5: {'name': 'foliose', 'color': '#073B4C', 'category': 'hard_coral'},
+    6: {'name': 'massive', 'color': '#EF476F', 'category': 'hard_coral'},
+    7: {'name': 'mushroom', 'color': '#7209B7', 'category': 'hard_coral'},
+    8: {'name': 'non-acropora-branching', 'color': '#F72585', 'category': 'soft_coral'},
+    9: {'name': 'submassive', 'color': '#4ECDC4', 'category': 'hard_coral'},
+    10: {'name': 'soft-coral', 'color': '#FFA500', 'category': 'soft_coral'}
+}
 
 @image_bp.route('/crops/<filename>')
 def serve_crop(filename):
     return send_from_directory(OUTPUT_FOLDER, filename)
+
+@image_bp.route('/masks/<filename>')
+def serve_mask(filename):
+    return send_from_directory(MASKS_FOLDER, filename)
+
+def preprocess_for_segmentation(image_path, target_size=(256, 256)):
+    """Preprocess image for segmentation model"""
+    transform = A.Compose([
+        A.Resize(target_size[0], target_size[1]),
+        A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ToTensorV2()
+    ])
+    
+    # Read image with OpenCV
+    image = cv2.imread(image_path)
+    if image is None:
+        raise ValueError(f"Could not load image from {image_path}")
+    
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    original_size = (image.shape[1], image.shape[0])  # (width, height)
+    
+    # Apply transforms
+    augmented = transform(image=image)
+    tensor = augmented['image'].unsqueeze(0)
+    
+    return tensor, original_size
+
+def segment_coral_lifeforms(image_path):
+    """Segment coral lifeforms and calculate coverage"""
+    if segmentation_model is None:
+        print("❌ Segmentation model not available")
+        return [], {}, None, 0
+    
+    try:
+        # Preprocess image
+        input_tensor, original_size = preprocess_for_segmentation(image_path)
+        
+        # Run segmentation
+        with torch.no_grad():
+            output = segmentation_model(input_tensor)
+            predictions = torch.argmax(output, dim=1).squeeze().cpu().numpy()
+        
+        # Resize predictions to original size
+        predictions_resized = cv2.resize(
+            predictions.astype(np.uint8), 
+            original_size, 
+            interpolation=cv2.INTER_NEAREST
+        )
+        
+        # Calculate coverage statistics
+        total_pixels = predictions_resized.size
+        unique_classes, pixel_counts = np.unique(predictions_resized, return_counts=True)
+        
+        coverage_data = []
+        class_masks = {}
+        
+        for class_id, pixel_count in zip(unique_classes, pixel_counts):
+            if class_id in CORAL_CLASSES:  # Only include coral classes (1-10)
+                percentage = (pixel_count / total_pixels) * 100
+                
+                coverage_data.append({
+                    'class_id': int(class_id),
+                    'class_name': CORAL_CLASSES[class_id]['name'],
+                    'category': CORAL_CLASSES[class_id]['category'],
+                    'color': CORAL_CLASSES[class_id]['color'],
+                    'pixel_count': int(pixel_count),
+                    'coverage_percent': round(percentage, 2)
+                })
+                
+                # Create individual class mask
+                class_mask = (predictions_resized == class_id).astype(np.uint8) * 255
+                class_masks[class_id] = class_mask
+        
+        # Create visualization mask
+        visualization_mask = create_visualization_mask(predictions_resized)
+        
+        return coverage_data, class_masks, visualization_mask, total_pixels
+        
+    except Exception as e:
+        print(f"Segmentation error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return [], {}, None, 0
+
+def create_visualization_mask(predictions):
+    """Create colored visualization mask"""
+    h, w = predictions.shape
+    colored_mask = np.zeros((h, w, 3), dtype=np.uint8)
+    
+    for class_id, class_info in CORAL_CLASSES.items():
+        mask = predictions == class_id
+        if np.any(mask):
+            # Convert hex color to RGB
+            hex_color = class_info['color'].lstrip('#')
+            rgb_color = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+            colored_mask[mask] = rgb_color
+    
+    # Background (class 0) remains black
+    return colored_mask
 
 def enhanced_crop_inside_quadrat(image_path, bbox, crop_method='conservative'):
     x1, y1, x2, y2 = bbox
@@ -140,7 +291,7 @@ def detect_and_crop_custom():
             return jsonify({"error": f"Failed to save file: {str(e)}"}), 500
 
         try:
-            results = model(image_path)
+            results = detection_model(image_path)
         except Exception as e:
             return jsonify({"error": f"Model processing failed: {str(e)}"}), 500
 
@@ -149,7 +300,7 @@ def detect_and_crop_custom():
             try:
                 x1, y1, x2, y2 = box.xyxy[0].tolist()
                 cls = int(box.cls)
-                label = model.names[cls]
+                label = detection_model.names[cls]
 
                 cropped = enhanced_crop_inside_quadrat(image_path, [x1, y1, x2, y2], crop_intensity)
                 cropped = enhance_cropped_image(cropped)
@@ -176,3 +327,318 @@ def detect_and_crop_custom():
     except Exception as e:
         print(f"Unexpected error: {str(e)}")
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
+
+@image_bp.route("/detect_and_segment", methods=["POST", "OPTIONS"])
+def detect_crop_and_segment():
+    """New endpoint that does both detection and segmentation"""
+    if request.method == "OPTIONS":
+        return jsonify({}), 200
+    
+    try:
+        if 'image' not in request.files:
+            return jsonify({"error": "No image file provided"}), 400
+            
+        file = request.files['image']
+        uploader_id = request.form.get('uploader_id', 1)  # Default to user ID 1, you can get this from session
+        
+        if file.filename == '':
+            return jsonify({"error": "Empty filename"}), 400
+            
+        allowed_extensions = {'jpg', 'jpeg', 'png', 'webp'}
+        if '.' not in file.filename or file.filename.split('.')[-1].lower() not in allowed_extensions:
+            return jsonify({"error": "Invalid file type"}), 400
+
+        crop_intensity = request.form.get('intensity', 'conservative')
+        unique_id = str(uuid.uuid4())[:8]
+        ext = file.filename.split('.')[-1].lower()
+        safe_filename = f"{unique_id}.{ext}"
+        image_path = os.path.join(UPLOAD_FOLDER, safe_filename)
+        
+        file.save(image_path)
+
+        # Detection and cropping
+        detection_results = detection_model(image_path)
+        crops_data = []
+        total_coverage_data = []
+        
+        for i, box in enumerate(detection_results[0].boxes):
+            try:
+                x1, y1, x2, y2 = box.xyxy[0].tolist()
+                cls = int(box.cls)
+                label = detection_model.names[cls]
+
+                # Crop the quadrat
+                cropped = enhanced_crop_inside_quadrat(image_path, [x1, y1, x2, y2], crop_intensity)
+                cropped = enhance_cropped_image(cropped)
+
+                crop_filename = f"{label}_{i}_{crop_intensity}_{safe_filename}"
+                crop_path = os.path.join(OUTPUT_FOLDER, crop_filename)
+                cropped.save(crop_path, quality=95)
+
+                # Segment the cropped image
+                coverage_data, class_masks, visualization_mask, total_pixels = segment_coral_lifeforms(crop_path)
+                
+                # Save visualization mask
+                viz_filename = f"visualization_{crop_filename}"
+                viz_path = os.path.join(MASKS_FOLDER, viz_filename)
+                if visualization_mask is not None:
+                    cv2.imwrite(viz_path, cv2.cvtColor(visualization_mask, cv2.COLOR_RGB2BGR))
+
+                # Calculate analysis confidence (average of detection confidence)
+                analysis_confidence = float(box.conf) if hasattr(box, 'conf') else 0.85
+                # Save metadata to database
+                image_id = save_image_to_database(
+                    crop_filename, 
+                    uploader_id, 
+                    total_pixels, 
+                    total_pixels,  # For now, assuming all pixels are analyzed
+                    analysis_confidence
+                )
+
+                if image_id and coverage_data:
+                    save_segmentation_results(image_id, coverage_data, f"masks/{viz_filename}")
+
+                # Accumulate coverage data for total statistics
+                total_coverage_data.extend(coverage_data)
+
+                crops_data.append({
+                    'crop_url': f"crops/{crop_filename}",
+                    'visualization_url': f"masks/{viz_filename}",
+                    'coverage_data': coverage_data,
+                    'total_pixels': total_pixels,
+                    'detection_label': label,
+                    'image_id': image_id
+                })
+
+            except Exception as e:
+                print(f"Error processing box {i}: {str(e)}")
+                continue
+        aggregated_coverage = {}
+        total_pixels_all = sum(crop['total_pixels'] for crop in crops_data)
+        
+        for crop in crops_data:
+            for coral in crop['coverage_data']:
+                class_name = coral['class_name']
+                if class_name not in aggregated_coverage:
+                    aggregated_coverage[class_name] = {
+                        'class_name': class_name,
+                        'category': coral['category'],
+                        'color': coral['color'],
+                        'total_pixels': 0,
+                        'total_coverage_percent': 0
+                    }
+                aggregated_coverage[class_name]['total_pixels'] += coral['pixel_count']
+        
+        # Calculate total percentages
+        for class_name in aggregated_coverage:
+            aggregated_coverage[class_name]['total_coverage_percent'] = round(
+                (aggregated_coverage[class_name]['total_pixels'] / total_pixels_all) * 100, 2
+            ) if total_pixels_all > 0 else 0
+
+        # Clean up original file
+        try:
+            os.remove(image_path)
+        except:
+            pass
+
+        return jsonify({
+            "crops": crops_data,
+            "method": crop_intensity,
+            "original_filename": file.filename,
+            "total_crops": len(crops_data),
+            "segmentation_available": segmentation_model is not None,
+            "aggregated_coverage": list(aggregated_coverage.values()),
+            "total_pixels": total_pixels_all
+        })
+        
+    except Exception as e:
+        print(f"Unexpected error: {str(e)}")
+        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
+
+@image_bp.route("/get_coral_classes", methods=["GET"])
+def get_coral_classes():
+    """Get available coral classes for reference"""
+    classes_list = [{'id': k, **v} for k, v in CORAL_CLASSES.items()]
+    return jsonify({"classes": classes_list})
+
+def save_image_to_database(filename, uploader_id, total_pixels, analyzed_area_px, analysis_confidence):
+    """Save image metadata to database"""
+    conn = get_db_connection()
+    if conn is None:
+        return None
+    
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO images (filename, uploader_id, uploaded_at, total_pixels, 
+                                  analyzed_area_px, analysis_confidence, processing_status)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+            """, (filename, uploader_id, datetime.now(), total_pixels, 
+                  analyzed_area_px, analysis_confidence, 'completed'))
+            
+            image_id = cur.fetchone()[0]
+            conn.commit()
+            return image_id
+    except Exception as e:
+        print(f"Database error saving image: {e}")
+        conn.rollback()
+        return None
+    finally:
+        conn.close()
+
+def save_segmentation_results(image_id, coverage_data, mask_path):
+    """Save segmentation results to database"""
+    conn = get_db_connection()
+    if conn is None:
+        return False
+    
+    try:
+        with conn.cursor() as cur:
+            for coral_data in coverage_data:
+                # First, ensure coral lifeform exists
+                cur.execute("""
+                    INSERT INTO coral_lifeforms (class_name, category, color_hex)
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (class_name) DO NOTHING
+                """, (coral_data['class_name'], coral_data['category'], coral_data['color']))
+                
+                # Get coral lifeform ID
+                cur.execute("""
+                    SELECT id FROM coral_lifeforms WHERE class_name = %s
+                """, (coral_data['class_name'],))
+                
+                class_id = cur.fetchone()[0]
+                
+                # Save segmentation result
+                cur.execute("""
+                    INSERT INTO segmentation_results 
+                    (image_id, class_id, area_px, coverage_percent, mask_path)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (image_id, class_id, coral_data['pixel_count'], 
+                      coral_data['coverage_percent'], mask_path))
+            
+            conn.commit()
+            return True
+    except Exception as e:
+        print(f"Database error saving segmentation: {e}")
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+
+@image_bp.route("/batch_analyze", methods=["POST", "OPTIONS"])
+def batch_analyze_images():
+    """New endpoint for batch analysis"""
+    if request.method == "OPTIONS":
+        return jsonify({}), 200
+    
+    try:
+        files = request.files.getlist('images')
+        if not files:
+            return jsonify({"error": "No image files provided"}), 400
+
+        uploader_id = request.form.get('uploader_id', 1)
+        crop_intensity = request.form.get('intensity', 'aggressive')
+        
+        all_results = []
+        batch_coverage_data = {}
+        batch_total_pixels = 0
+        
+        for file_index, file in enumerate(files):
+            if not file or file.filename == '':
+                continue
+                
+            # Process each file similar to detect_and_segment
+            unique_id = str(uuid.uuid4())[:8]
+            ext = file.filename.split('.')[-1].lower()
+            safe_filename = f"batch_{file_index}_{unique_id}.{ext}"
+            image_path = os.path.join(UPLOAD_FOLDER, safe_filename)
+            
+            file.save(image_path)
+            detection_results = detection_model(image_path)
+            image_crops = []
+            
+            for i, box in enumerate(detection_results[0].boxes):
+                try:
+                    x1, y1, x2, y2 = box.xyxy[0].tolist()
+                    cls = int(box.cls)
+                    label = detection_model.names[cls]
+
+                    # Crop and segment
+                    cropped = enhanced_crop_inside_quadrat(image_path, [x1, y1, x2, y2], crop_intensity)
+                    cropped = enhance_cropped_image(cropped)
+
+                    crop_filename = f"{label}_{i}_{file_index}_{safe_filename}"
+                    crop_path = os.path.join(OUTPUT_FOLDER, crop_filename)
+                    cropped.save(crop_path, quality=95)
+
+                    coverage_data, class_masks, visualization_mask, total_pixels = segment_coral_lifeforms(crop_path)
+                    
+                    viz_filename = f"batch_viz_{crop_filename}"
+                    viz_path = os.path.join(MASKS_FOLDER, viz_filename)
+                    if visualization_mask is not None:
+                        cv2.imwrite(viz_path, cv2.cvtColor(visualization_mask, cv2.COLOR_RGB2BGR))
+
+                    # Save to database
+                    analysis_confidence = float(box.conf) if hasattr(box, 'conf') else 0.85
+                    image_id = save_image_to_database(crop_filename, uploader_id, total_pixels, total_pixels, analysis_confidence)
+                    
+                    if image_id and coverage_data:
+                        save_segmentation_results(image_id, coverage_data, f"masks/{viz_filename}")
+                    batch_total_pixels += total_pixels
+                    for coral in coverage_data:
+                        class_name = coral['class_name']
+                        if class_name not in batch_coverage_data:
+                            batch_coverage_data[class_name] = {
+                                'class_name': class_name,
+                                'category': coral['category'],
+                                'color': coral['color'],
+                                'total_pixels': 0,
+                                'images_found_in': 0
+                            }
+                        batch_coverage_data[class_name]['total_pixels'] += coral['pixel_count']
+                        
+                    image_crops.append({
+                        'crop_url': f"crops/{crop_filename}",
+                        'visualization_url': f"masks/{viz_filename}",
+                        'coverage_data': coverage_data,
+                        'total_pixels': total_pixels,
+                        'detection_label': label,
+                        'image_id': image_id
+                    })
+
+                except Exception as e:
+                    print(f"Error processing crop {i} in image {file_index}: {e}")
+                    continue
+            
+            all_results.append({
+                'filename': file.filename,
+                'crops': image_crops,
+                'processed': True
+            })
+            try:
+                os.remove(image_path)
+            except:
+                pass
+        
+        # Calculate batch percentages
+        for class_name in batch_coverage_data:
+            batch_coverage_data[class_name]['coverage_percent'] = round(
+                (batch_coverage_data[class_name]['total_pixels'] / batch_total_pixels) * 100, 2
+            ) if batch_total_pixels > 0 else 0
+
+        return jsonify({
+            "results": all_results,
+            "batch_statistics": {
+                "total_images": len(files),
+                "total_crops": sum(len(result['crops']) for result in all_results),
+                "total_pixels": batch_total_pixels,
+                "coverage_summary": list(batch_coverage_data.values())
+            },
+            "method": crop_intensity
+        })
+    except Exception as e:
+        print(f"Batch analysis error: {str(e)}")
+        return jsonify({"error": f"Batch analysis failed: {str(e)}"}), 500
