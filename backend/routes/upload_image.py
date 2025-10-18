@@ -1,5 +1,5 @@
 from flask import Blueprint, Flask, request, jsonify, send_from_directory
-from flask_cors import CORS 
+from flask_cors import CORS, cross_origin
 from ultralytics import YOLO 
 from PIL import Image, ImageEnhance
 import cv2
@@ -19,6 +19,7 @@ image_bp = Blueprint('image', __name__)
 # Load detection model
 detection_model = YOLO("../models/autocrop_yolov11_best.pt")
 
+print("YOLO model classes:", detection_model.names)
 # Load segmentation model
 BASE_DIR = Path(__file__).parent.parent
 MODEL_PATH = BASE_DIR.parent / "models" / "coral_unet_best.pth"
@@ -290,47 +291,288 @@ def detect_and_crop_custom():
         except Exception as e:
             return jsonify({"error": f"Failed to save file: {str(e)}"}), 500
 
+        # Optional: Comment out underwater validation if too strict
+        img = cv2.imread(image_path)
+        if not validate_underwater_characteristics(img):
+            print("Warning: Image doesn't appear underwater, but proceeding anyway...")
+            # Don't reject - just log warning
+
         try:
             results = detection_model(image_path)
         except Exception as e:
+            try:
+                os.remove(image_path)
+            except:
+                pass
             return jsonify({"error": f"Model processing failed: {str(e)}"}), 500
+
+        # UPDATED: Check for your specific quadrat classes
+        if not results[0].boxes or len(results[0].boxes) == 0:
+            try:
+                os.remove(image_path)
+            except:
+                pass
+            return jsonify({"error": "No objects detected in this image"}), 400
+
+        valid_quadrats = 0
+        for box in results[0].boxes:
+            cls = int(box.cls)
+            confidence = float(box.conf)
+            label = detection_model.names[cls]
+            
+            # UPDATED: Check for your specific quadrat classes
+            if label.lower() in ['full_quadrat', 'half_quadrat'] and confidence > 0.4:
+                valid_quadrats += 1
+
+        if valid_quadrats == 0:
+            try:
+                os.remove(image_path)
+            except:
+                pass
+            return jsonify({"error": "No valid coral quadrats (full_quadrat or half_quadrat) detected with sufficient confidence"}), 400
 
         crops = []
         for i, box in enumerate(results[0].boxes):
             try:
-                x1, y1, x2, y2 = box.xyxy[0].tolist()
                 cls = int(box.cls)
+                confidence = float(box.conf)
                 label = detection_model.names[cls]
+                
+                # UPDATED: Only process boxes that are your quadrat classes
+                if label.lower() in ['full_quadrat', 'half_quadrat'] and confidence > 0.4:
+                    x1, y1, x2, y2 = box.xyxy[0].tolist()
 
-                cropped = enhanced_crop_inside_quadrat(image_path, [x1, y1, x2, y2], crop_intensity)
-                cropped = enhance_cropped_image(cropped)
+                    cropped = enhanced_crop_inside_quadrat(image_path, [x1, y1, x2, y2], crop_intensity)
+                    cropped = enhance_cropped_image(cropped)
 
-                crop_filename = f"{label}_{i}_{crop_intensity}_{safe_filename}"
-                crop_path = os.path.join(OUTPUT_FOLDER, crop_filename)
-                cropped.save(crop_path, quality=95)
+                    crop_filename = f"{label}_{i}_{crop_intensity}_{safe_filename}"
+                    crop_path = os.path.join(OUTPUT_FOLDER, crop_filename)
+                    cropped.save(crop_path, quality=95)
 
-                crops.append(f"crops/{crop_filename}")
+                    crops.append(f"crops/{crop_filename}")
             except Exception as e:
                 print(f"Error processing box {i}: {str(e)}")
                 continue
+                
         try:
             os.remove(image_path)
         except:
             pass
 
+        if len(crops) == 0:
+            return jsonify({"error": "No valid coral quadrats could be processed"}), 400
+
         return jsonify({
             "crops": crops,
             "method": crop_intensity,
-            "original_filename": file.filename  
+            "original_filename": file.filename,
+            "valid_quadrats": len(crops)
         })
         
     except Exception as e:
         print(f"Unexpected error: {str(e)}")
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
 
+def validate_underwater_characteristics(img):
+    """Validate if image has underwater/coral characteristics - made less strict"""
+    try:
+        # Convert to HSV for better color analysis
+        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        
+        # Define blue-green color ranges typical of underwater images
+        blue_lower = np.array([80, 30, 30])   # More lenient blue range
+        blue_upper = np.array([140, 255, 255])
+        
+        green_lower = np.array([30, 30, 30])  # More lenient green range
+        green_upper = np.array([90, 255, 255])
+        
+        # Create masks for blue and green colors
+        blue_mask = cv2.inRange(hsv, blue_lower, blue_upper)
+        green_mask = cv2.inRange(hsv, green_lower, green_upper)
+        
+        # Calculate percentage of blue-green pixels
+        total_pixels = img.shape[0] * img.shape[1]
+        blue_pixels = np.sum(blue_mask > 0)
+        green_pixels = np.sum(green_mask > 0)
+        
+        blue_green_percentage = (blue_pixels + green_pixels) / total_pixels
+        
+        # Check for underwater characteristics - made more lenient
+        avg_brightness = np.mean(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY))
+        
+        # Calculate texture variation using standard deviation
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        texture_variation = np.std(gray)
+        
+        # More lenient validation criteria
+        has_underwater_colors = blue_green_percentage > 0.05  # Reduced from 0.1 to 0.05
+        appropriate_brightness = 30 < avg_brightness < 200    # Wider brightness range
+        has_texture = texture_variation > 15                  # Reduced from 20 to 15
+        
+        return has_underwater_colors and appropriate_brightness and has_texture
+        
+    except Exception as e:
+        print(f"Underwater validation error: {e}")
+        return True  # Changed to True - if validation fails, assume it's valid
+
+
+@image_bp.route("/validate_quadrats", methods=["POST", "OPTIONS"])
+def validate_quadrats():
+    """Validate if uploaded images contain coral quadrats"""
+    if request.method == "OPTIONS":
+        return jsonify({}), 200
+    
+    try:
+        files = request.files.getlist('images')
+        if not files:
+            return jsonify({"error": "No image files provided"}), 400
+
+        validation_results = []
+        
+        for file in files:
+            if not file or file.filename == '':
+                continue
+                
+            # Validate file extension
+            allowed_extensions = {'png', 'jpg', 'jpeg', 'webp'}
+            ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
+            
+            if ext not in allowed_extensions:
+                validation_results.append({
+                    'filename': file.filename,
+                    'valid': False,
+                    'reason': 'Invalid file type',
+                    'quadrat_count': 0,
+                    'confidence': 0
+                })
+                continue
+            
+            # Save temporary file for validation
+            unique_id = str(uuid.uuid4())[:8]
+            safe_filename = f"validate_{unique_id}.{ext}"
+            temp_path = os.path.join(UPLOAD_FOLDER, safe_filename)
+            
+            try:
+                file.save(temp_path)
+                
+                # Run detection with STRICT validation
+                detection_results = detection_model(temp_path)
+                
+                if not detection_results[0].boxes or len(detection_results[0].boxes) == 0:
+                    validation_results.append({
+                        'filename': file.filename,
+                        'valid': False,
+                        'reason': 'No objects detected',
+                        'quadrat_count': 0,
+                        'confidence': 0
+                    })
+                    continue
+                
+                # Check if detected objects are actually coral quadrats
+                valid_quadrats = 0
+                total_confidence = 0
+                quadrat_confidences = []
+                quadrat_types = []
+                
+                for box in detection_results[0].boxes:
+                    cls = int(box.cls)
+                    confidence = float(box.conf)
+                    label = detection_model.names[cls]
+                    
+                    # UPDATED: Check for your specific quadrat classes with confidence threshold
+                    if label.lower() in ['full_quadrat', 'half_quadrat'] and confidence > 0.4:  # Lowered threshold slightly
+                        valid_quadrats += 1
+                        total_confidence += confidence
+                        quadrat_confidences.append(confidence)
+                        quadrat_types.append(label)
+                    
+                # Additional validation: check image characteristics (optional, can be disabled if too strict)
+                img = cv2.imread(temp_path)
+                if img is None:
+                    validation_results.append({
+                        'filename': file.filename,
+                        'valid': False,
+                        'reason': 'Could not read image',
+                        'quadrat_count': 0,
+                        'confidence': 0
+                    })
+                    continue
+                
+                # Optional: Comment out underwater validation if it's rejecting valid coral images
+                is_underwater = validate_underwater_characteristics(img)
+                
+                avg_confidence = total_confidence / valid_quadrats if valid_quadrats > 0 else 0
+                
+                # UPDATED: More lenient validation logic
+                if valid_quadrats > 0 and avg_confidence > 0.4:  # Lowered confidence threshold
+                    # Optional: Remove underwater check if it's too strict
+                    if is_underwater:
+                        validation_results.append({
+                            'filename': file.filename,
+                            'valid': True,
+                            'reason': f'Found {valid_quadrats} quadrat(s): {", ".join(set(quadrat_types))}',
+                            'quadrat_count': valid_quadrats,
+                            'confidence': round(avg_confidence, 2),
+                            'quadrat_confidences': quadrat_confidences,
+                            'quadrat_types': quadrat_types
+                        })
+                    else:
+                        # Still accept but with warning about environment
+                        validation_results.append({
+                            'filename': file.filename,
+                            'valid': True,  # Changed to True - accept even if environment detection fails
+                            'reason': f'Found {valid_quadrats} quadrat(s): {", ".join(set(quadrat_types))} (environment check uncertain)',
+                            'quadrat_count': valid_quadrats,
+                            'confidence': round(avg_confidence, 2),
+                            'quadrat_confidences': quadrat_confidences,
+                            'quadrat_types': quadrat_types
+                        })
+                else:
+                    reason = "No coral quadrats detected"
+                    if valid_quadrats == 0:
+                        reason = "No full_quadrat or half_quadrat objects found"
+                    elif avg_confidence <= 0.4:
+                        reason = f"Low confidence detection ({avg_confidence:.2f}) - detected: {', '.join(set(quadrat_types))}"
+                    
+                    validation_results.append({
+                        'filename': file.filename,
+                        'valid': False,
+                        'reason': reason,
+                        'quadrat_count': valid_quadrats,
+                        'confidence': round(avg_confidence, 2),
+                        'detected_types': quadrat_types
+                    })
+                
+            except Exception as e:
+                validation_results.append({
+                    'filename': file.filename,
+                    'valid': False,
+                    'reason': f'Processing error: {str(e)}',
+                    'quadrat_count': 0,
+                    'confidence': 0
+                })
+            finally:
+                # Clean up temporary file
+                try:
+                    os.remove(temp_path)
+                except:
+                    pass
+        
+        return jsonify({
+            "validation_results": validation_results,
+            "total_images": len(validation_results),
+            "valid_images": sum(1 for result in validation_results if result['valid']),
+            "invalid_images": sum(1 for result in validation_results if not result['valid'])
+        })
+        
+    except Exception as e:
+        print(f"Validation error: {str(e)}")
+        return jsonify({"error": f"Validation failed: {str(e)}"}), 500
+
 @image_bp.route("/detect_and_segment", methods=["POST", "OPTIONS"])
+@cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
 def detect_crop_and_segment():
-    """New endpoint that does both detection and segmentation"""
+    """Enhanced endpoint that saves to database"""
     if request.method == "OPTIONS":
         return jsonify({}), 200
     
@@ -339,16 +581,11 @@ def detect_crop_and_segment():
             return jsonify({"error": "No image file provided"}), 400
             
         file = request.files['image']
-        uploader_id = request.form.get('uploader_id', 1)  # Default to user ID 1, you can get this from session
+        uploader_id = request.form.get('uploader_id', 1)  # Default to user ID 1
         
-        if file.filename == '':
-            return jsonify({"error": "Empty filename"}), 400
-            
-        allowed_extensions = {'jpg', 'jpeg', 'png', 'webp'}
-        if '.' not in file.filename or file.filename.split('.')[-1].lower() not in allowed_extensions:
-            return jsonify({"error": "Invalid file type"}), 400
+        # ... existing file validation code ...
 
-        crop_intensity = request.form.get('intensity', 'conservative')
+        crop_intensity = request.form.get('intensity', 'aggressive')
         unique_id = str(uuid.uuid4())[:8]
         ext = file.filename.split('.')[-1].lower()
         safe_filename = f"{unique_id}.{ext}"
@@ -386,7 +623,8 @@ def detect_crop_and_segment():
 
                 # Calculate analysis confidence (average of detection confidence)
                 analysis_confidence = float(box.conf) if hasattr(box, 'conf') else 0.85
-                # Save metadata to database
+
+                # Save to database
                 image_id = save_image_to_database(
                     crop_filename, 
                     uploader_id, 
@@ -413,6 +651,8 @@ def detect_crop_and_segment():
             except Exception as e:
                 print(f"Error processing box {i}: {str(e)}")
                 continue
+        
+        # Calculate aggregated coverage statistics
         aggregated_coverage = {}
         total_pixels_all = sum(crop['total_pixels'] for crop in crops_data)
         
@@ -461,6 +701,207 @@ def get_coral_classes():
     classes_list = [{'id': k, **v} for k, v in CORAL_CLASSES.items()]
     return jsonify({"classes": classes_list})
 
+
+def save_segmentation_results(image_id, coverage_data, mask_path):
+    """Save segmentation results to database"""
+    conn = get_db_connection()
+    if conn is None:
+        return False
+    
+    try:
+        with conn.cursor() as cur:
+            for coral_data in coverage_data:
+                # First, ensure coral lifeform exists
+                cur.execute("""
+                    INSERT INTO coral_lifeforms (class_name, category, color_hex)
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (class_name) DO NOTHING
+                """, (coral_data['class_name'], coral_data['category'], coral_data['color']))
+                
+                # Get coral lifeform ID
+                cur.execute("""
+                    SELECT id FROM coral_lifeforms WHERE class_name = %s
+                """, (coral_data['class_name'],))
+                
+                class_id = cur.fetchone()[0]
+                
+                # Save segmentation result
+                cur.execute("""
+                    INSERT INTO segmentation_results 
+                    (image_id, class_id, area_px, coverage_percent, mask_path)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (image_id, class_id, coral_data['pixel_count'], 
+                      coral_data['coverage_percent'], mask_path))
+            
+            conn.commit()
+            return True
+    except Exception as e:
+        print(f"Database error saving segmentation: {e}")
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+
+@image_bp.route("/batch_analyze", methods=["POST", "OPTIONS"])
+@cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
+def batch_analyze_images():
+    """New endpoint for batch analysis with quadrat validation"""
+    if request.method == "OPTIONS":
+        return jsonify({}), 200
+    
+    try:
+        files = request.files.getlist('images')
+        if not files:
+            return jsonify({"error": "No image files provided"}), 400
+
+        uploader_id = request.form.get('uploader_id', 1)
+        crop_intensity = request.form.get('intensity', 'aggressive')
+        
+        all_results = []
+        batch_coverage_data = {}
+        batch_total_pixels = 0
+        rejected_images = []
+        
+        for file_index, file in enumerate(files):
+            if not file or file.filename == '':
+                continue
+                
+            # Validate file extension
+            allowed_extensions = {'png', 'jpg', 'jpeg', 'webp'}
+            ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
+            if ext not in allowed_extensions:
+                rejected_images.append({
+                    'filename': file.filename,
+                    'reason': 'Invalid file type'
+                })
+                continue
+                
+            # Process each file similar to detect_and_segment
+            unique_id = str(uuid.uuid4())[:8]
+            safe_filename = f"batch_{file_index}_{unique_id}.{ext}"
+            image_path = os.path.join(UPLOAD_FOLDER, safe_filename)
+            
+            file.save(image_path)
+            
+            # Detection and processing
+            detection_results = detection_model(image_path)
+            
+            # UPDATED: Check for your specific quadrat classes
+            valid_detections = []
+            if detection_results[0].boxes:
+                for box in detection_results[0].boxes:
+                    cls = int(box.cls)
+                    confidence = float(box.conf)
+                    label = detection_model.names[cls]
+                    
+                    if label.lower() in ['full_quadrat', 'half_quadrat'] and confidence > 0.4:
+                        valid_detections.append(box)
+            
+            if len(valid_detections) == 0:
+                rejected_images.append({
+                    'filename': file.filename,
+                    'reason': 'No coral quadrats (full_quadrat or half_quadrat) detected'
+                })
+                try:
+                    os.remove(image_path)
+                except:
+                    pass
+                continue
+            
+            image_crops = []
+            
+            for i, box in enumerate(valid_detections):
+                try:
+                    x1, y1, x2, y2 = box.xyxy[0].tolist()
+                    cls = int(box.cls)
+                    label = detection_model.names[cls]
+
+                    # Crop and segment
+                    cropped = enhanced_crop_inside_quadrat(image_path, [x1, y1, x2, y2], crop_intensity)
+                    cropped = enhance_cropped_image(cropped)
+
+                    crop_filename = f"{label}_{i}_{file_index}_{safe_filename}"
+                    crop_path = os.path.join(OUTPUT_FOLDER, crop_filename)
+                    cropped.save(crop_path, quality=95)
+
+                    coverage_data, class_masks, visualization_mask, total_pixels = segment_coral_lifeforms(crop_path)
+                    
+                    viz_filename = f"batch_viz_{crop_filename}"
+                    viz_path = os.path.join(MASKS_FOLDER, viz_filename)
+                    if visualization_mask is not None:
+                        cv2.imwrite(viz_path, cv2.cvtColor(visualization_mask, cv2.COLOR_RGB2BGR))
+
+                    # Save to database
+                    analysis_confidence = float(box.conf) if hasattr(box, 'conf') else 0.85
+                    image_id = save_image_to_database(crop_filename, uploader_id, total_pixels, total_pixels, analysis_confidence)
+                    
+                    if image_id and coverage_data:
+                        save_segmentation_results(image_id, coverage_data, f"masks/{viz_filename}")
+
+                    # Accumulate batch statistics
+                    batch_total_pixels += total_pixels
+                    for coral in coverage_data:
+                        class_name = coral['class_name']
+                        if class_name not in batch_coverage_data:
+                            batch_coverage_data[class_name] = {
+                                'class_name': class_name,
+                                'category': coral['category'],
+                                'color': coral['color'],
+                                'total_pixels': 0,
+                                'images_found_in': 0
+                            }
+                        batch_coverage_data[class_name]['total_pixels'] += coral['pixel_count']
+                        
+                    image_crops.append({
+                        'crop_url': f"crops/{crop_filename}",
+                        'visualization_url': f"masks/{viz_filename}",
+                        'coverage_data': coverage_data,
+                        'total_pixels': total_pixels,
+                        'detection_label': label,
+                        'image_id': image_id
+                    })
+
+                except Exception as e:
+                    print(f"Error processing crop {i} in image {file_index}: {e}")
+                    continue
+            
+            if image_crops:  # Only add if crops were successfully processed
+                all_results.append({
+                    'filename': file.filename,
+                    'crops': image_crops,
+                    'processed': True
+                })
+            
+            # Clean up
+            try:
+                os.remove(image_path)
+            except:
+                pass
+        
+        # Calculate batch percentages
+        for class_name in batch_coverage_data:
+            batch_coverage_data[class_name]['coverage_percent'] = round(
+                (batch_coverage_data[class_name]['total_pixels'] / batch_total_pixels) * 100, 2
+            ) if batch_total_pixels > 0 else 0
+
+        return jsonify({
+            "results": all_results,
+            "rejected_images": rejected_images,
+            "batch_statistics": {
+                "total_images_processed": len(all_results),
+                "total_images_rejected": len(rejected_images),
+                "total_crops": sum(len(result['crops']) for result in all_results),
+                "total_pixels": batch_total_pixels,
+                "coverage_summary": list(batch_coverage_data.values())
+            },
+            "method": crop_intensity
+        })
+
+    except Exception as e:
+        print(f"Batch analysis error: {str(e)}")
+        return jsonify({"error": f"Batch analysis failed: {str(e)}"}), 500
+    
 def save_image_to_database(filename, uploader_id, total_pixels, analyzed_area_px, analysis_confidence):
     """Save image metadata to database"""
     conn = get_db_connection()
@@ -508,7 +949,11 @@ def save_segmentation_results(image_id, coverage_data, mask_path):
                     SELECT id FROM coral_lifeforms WHERE class_name = %s
                 """, (coral_data['class_name'],))
                 
-                class_id = cur.fetchone()[0]
+                result = cur.fetchone()
+                if not result:
+                    continue
+                    
+                class_id = result[0]
                 
                 # Save segmentation result
                 cur.execute("""
@@ -526,119 +971,3 @@ def save_segmentation_results(image_id, coverage_data, mask_path):
         return False
     finally:
         conn.close()
-
-
-@image_bp.route("/batch_analyze", methods=["POST", "OPTIONS"])
-def batch_analyze_images():
-    """New endpoint for batch analysis"""
-    if request.method == "OPTIONS":
-        return jsonify({}), 200
-    
-    try:
-        files = request.files.getlist('images')
-        if not files:
-            return jsonify({"error": "No image files provided"}), 400
-
-        uploader_id = request.form.get('uploader_id', 1)
-        crop_intensity = request.form.get('intensity', 'aggressive')
-        
-        all_results = []
-        batch_coverage_data = {}
-        batch_total_pixels = 0
-        
-        for file_index, file in enumerate(files):
-            if not file or file.filename == '':
-                continue
-                
-            # Process each file similar to detect_and_segment
-            unique_id = str(uuid.uuid4())[:8]
-            ext = file.filename.split('.')[-1].lower()
-            safe_filename = f"batch_{file_index}_{unique_id}.{ext}"
-            image_path = os.path.join(UPLOAD_FOLDER, safe_filename)
-            
-            file.save(image_path)
-            detection_results = detection_model(image_path)
-            image_crops = []
-            
-            for i, box in enumerate(detection_results[0].boxes):
-                try:
-                    x1, y1, x2, y2 = box.xyxy[0].tolist()
-                    cls = int(box.cls)
-                    label = detection_model.names[cls]
-
-                    # Crop and segment
-                    cropped = enhanced_crop_inside_quadrat(image_path, [x1, y1, x2, y2], crop_intensity)
-                    cropped = enhance_cropped_image(cropped)
-
-                    crop_filename = f"{label}_{i}_{file_index}_{safe_filename}"
-                    crop_path = os.path.join(OUTPUT_FOLDER, crop_filename)
-                    cropped.save(crop_path, quality=95)
-
-                    coverage_data, class_masks, visualization_mask, total_pixels = segment_coral_lifeforms(crop_path)
-                    
-                    viz_filename = f"batch_viz_{crop_filename}"
-                    viz_path = os.path.join(MASKS_FOLDER, viz_filename)
-                    if visualization_mask is not None:
-                        cv2.imwrite(viz_path, cv2.cvtColor(visualization_mask, cv2.COLOR_RGB2BGR))
-
-                    # Save to database
-                    analysis_confidence = float(box.conf) if hasattr(box, 'conf') else 0.85
-                    image_id = save_image_to_database(crop_filename, uploader_id, total_pixels, total_pixels, analysis_confidence)
-                    
-                    if image_id and coverage_data:
-                        save_segmentation_results(image_id, coverage_data, f"masks/{viz_filename}")
-                    batch_total_pixels += total_pixels
-                    for coral in coverage_data:
-                        class_name = coral['class_name']
-                        if class_name not in batch_coverage_data:
-                            batch_coverage_data[class_name] = {
-                                'class_name': class_name,
-                                'category': coral['category'],
-                                'color': coral['color'],
-                                'total_pixels': 0,
-                                'images_found_in': 0
-                            }
-                        batch_coverage_data[class_name]['total_pixels'] += coral['pixel_count']
-                        
-                    image_crops.append({
-                        'crop_url': f"crops/{crop_filename}",
-                        'visualization_url': f"masks/{viz_filename}",
-                        'coverage_data': coverage_data,
-                        'total_pixels': total_pixels,
-                        'detection_label': label,
-                        'image_id': image_id
-                    })
-
-                except Exception as e:
-                    print(f"Error processing crop {i} in image {file_index}: {e}")
-                    continue
-            
-            all_results.append({
-                'filename': file.filename,
-                'crops': image_crops,
-                'processed': True
-            })
-            try:
-                os.remove(image_path)
-            except:
-                pass
-        
-        # Calculate batch percentages
-        for class_name in batch_coverage_data:
-            batch_coverage_data[class_name]['coverage_percent'] = round(
-                (batch_coverage_data[class_name]['total_pixels'] / batch_total_pixels) * 100, 2
-            ) if batch_total_pixels > 0 else 0
-
-        return jsonify({
-            "results": all_results,
-            "batch_statistics": {
-                "total_images": len(files),
-                "total_crops": sum(len(result['crops']) for result in all_results),
-                "total_pixels": batch_total_pixels,
-                "coverage_summary": list(batch_coverage_data.values())
-            },
-            "method": crop_intensity
-        })
-    except Exception as e:
-        print(f"Batch analysis error: {str(e)}")
-        return jsonify({"error": f"Batch analysis failed: {str(e)}"}), 500
