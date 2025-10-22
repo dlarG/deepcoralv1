@@ -1066,7 +1066,9 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
         min-width: 44px;
         min-height: 44px;
       }
-    }.admin-top-nav {
+    }
+  
+  .admin-top-nav {
   position: fixed;
   top: 0;
   left: 0;
@@ -1216,50 +1218,7 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
   gap: 1rem;
 }
 
-.nav-action-btn {
-  width: 44px;
-  height: 44px;
-  border: none;
-  border-radius: 12px;
-  background: ${
-    darkMode ? "rgba(51, 65, 85, 0.8)" : "rgba(241, 245, 249, 0.8)"
-  };
-  color: ${darkMode ? "#e2e8f0" : "#475569"};
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-}
 
-.nav-action-btn::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: ${
-    darkMode ? "rgba(71, 85, 105, 0.5)" : "rgba(226, 232, 240, 0.5)"
-  };
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.nav-action-btn:hover::before {
-  opacity: 1;
-}
-
-.nav-action-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, ${darkMode ? "0.3" : "0.15"});
-}
-
-.nav-action-btn:active {
-  transform: translateY(-1px);
-}
 
 .notification-badge {
   position: absolute;
@@ -1291,28 +1250,7 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
   position: relative;
 }
 
-.notification-dropdown {
-  position: absolute;
-  top: calc(100% + 1rem);
-  right: 0;
-  width: 380px;
-  background: ${
-    darkMode ? "rgba(30, 41, 59, 0.98)" : "rgba(255, 255, 255, 0.98)"
-  };
-  border: 1px solid ${
-    darkMode ? "rgba(51, 65, 85, 0.8)" : "rgba(226, 232, 240, 0.8)"
-  };
-  border-radius: 20px;
-  box-shadow: 0 25px 60px rgba(0, 0, 0, ${darkMode ? "0.4" : "0.15"}), 
-              0 0 0 1px ${
-                darkMode ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.02)"
-              };
-  z-index: 100;
-  animation: dropdownSlide 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  overflow: hidden;
-}
+
 
 @keyframes dropdownSlide {
   from {
@@ -1521,41 +1459,7 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
   box-shadow: 0 8px 25px rgba(14, 165, 233, 0.4);
 }
 
-.profile-trigger {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem 1rem 0.5rem 0.5rem;
-  background: none;
-  border: none;
-  border-radius: 14px;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-}
 
-.profile-trigger::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: ${
-    darkMode ? "rgba(51, 65, 85, 0.5)" : "rgba(241, 245, 249, 0.5)"
-  };
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.profile-trigger:hover::before {
-  opacity: 1;
-}
-
-.profile-trigger:hover {
-  transform: translateY(-1px);
-}
 
 .profile-avatar {
   width: 42px;
@@ -1622,9 +1526,6 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
   transform: rotate(180deg);
 }
 
-.profile-dropdown {
-  width: 320px;
-}
 
 .profile-summary {
   display: flex;
@@ -1792,13 +1693,6 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
     display: none;
   }
   
-  .notification-dropdown,
-  .profile-dropdown {
-    width: 95vw;
-    left: 50%;
-    transform: translateX(-50%);
-    right: auto;
-  }
 }
 
 @media (max-width: 480px) {

@@ -605,7 +605,7 @@ function Distribution() {
   return (
     <div className="content-section">
       {/* Header */}
-      <div className="user-greetings">
+      <div className="user-management-header">
         <div className="header-content">
           <div className="header-left">
             <h1 className="report-title">Coral Distribution Analysis</h1>
@@ -626,7 +626,7 @@ function Distribution() {
       </div>
 
       {/* Filters */}
-      <div className="user-greetings">
+      <div className="user-management-header">
         <div className="date-range-filter">
           <div className="filter-group">
             <label>
@@ -676,14 +676,14 @@ function Distribution() {
         </div>
 
         <div className="stats-summary">
-          <div className="stat-card">
+          <div className="distribution-stat-card">
             <FiMapPin size={20} />
             <div>
               <span className="stat-number">{locations.length}</span>
               <span className="stat-label">Locations</span>
             </div>
           </div>
-          <div className="stat-card">
+          <div className="distribution-stat-card">
             <FiImage size={20} />
             <div>
               <span className="stat-number">
@@ -695,7 +695,7 @@ function Distribution() {
               <span className="stat-label">Images</span>
             </div>
           </div>
-          <div className="stat-card">
+          <div className="distribution-stat-card">
             <FiCalendar size={20} />
             <div>
               <span className="stat-number">

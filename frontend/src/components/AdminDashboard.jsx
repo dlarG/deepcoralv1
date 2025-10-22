@@ -115,7 +115,13 @@ function AdminDashboard() {
         return <Validate darkMode={darkMode} />;
       case "Dashboard":
       default:
-        return <Dashboard user={user} darkMode={darkMode} />;
+        return (
+          <Dashboard
+            user={user}
+            setActiveTab={setActiveTab}
+            darkMode={darkMode}
+          />
+        );
     }
   };
 
@@ -128,7 +134,8 @@ function AdminDashboard() {
         darkMode={darkMode}
         setDarkMode={setDarkMode}
         handleLogout={handleLogout}
-        setActiveTab={setActiveTab} // ✅ This is already correct
+        setActiveTab={setActiveTab}
+        activeTab={activeTab} // Add this line
       />
       <div className="dashboard-container">
         <Sidebar

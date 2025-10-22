@@ -259,7 +259,7 @@
   gap: 1.5rem;
   flex-wrap: wrap;
 }
-.stat-card {
+.distribution-stat-card {
   display: flex;
   align-items: center;
   gap: 1.5rem;
@@ -271,6 +271,15 @@
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
+}
+
+.dark-mode .distribution-stat-card {
+  background: linear-gradient(
+    135deg,
+    var(--dark-bg-tertiary),
+    var(--dark-bg-secondary)
+  );
+  border-color: var(--dark-border);
 }
 
 .map-container {
@@ -1061,7 +1070,7 @@ chart-wrapper.full-width {
     justify-content: center;
   }
 
-  .stat-card {
+  .distribution-stat-card {
     min-width: 140px;
   }
 }
@@ -1142,7 +1151,7 @@ chart-wrapper.full-width {
     padding: 0.75rem;
   }
 
-  .stat-card {
+  .distribution-stat-card {
     min-width: 120px;
     padding: 1rem 1.25rem;
     gap: 1rem;

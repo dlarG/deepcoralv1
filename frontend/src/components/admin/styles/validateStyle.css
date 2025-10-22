@@ -37,6 +37,12 @@
   margin-bottom: 2rem;
 }
 
+.dark-mode .validation-filters {
+  background: #1e293b;
+  border: 1px solid #334155;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
 .filter-btn {
   flex: 1;
   display: flex;
@@ -195,6 +201,12 @@
   overflow: hidden;
 }
 
+.dark-mode .pending-user-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
 .pending-user-card::before {
   content: "";
   position: absolute;
@@ -304,6 +316,10 @@
   border-radius: 8px;
 }
 
+.dark-mode .detail-row {
+  background: #334155;
+}
+
 .detail-row:last-child {
   margin-bottom: 0;
 }
@@ -319,9 +335,17 @@
   min-width: 70px;
 }
 
+.dark-mode .detail-label {
+  color: var(--text-light);
+}
+
 .detail-value {
   color: #1e293b;
   font-weight: 500;
+}
+
+.dark-mode .detail-value {
+  color: var(--text-light);
 }
 
 .role-badge {
@@ -501,10 +525,6 @@
 /* ====== RESPONSIVE DESIGN ====== */
 
 @media (max-width: 768px) {
-  .content-section {
-    padding: 1rem;
-  }
-
   .report-title {
     font-size: 2rem;
   }

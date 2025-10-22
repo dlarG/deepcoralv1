@@ -11,6 +11,8 @@ import json
 from io import BytesIO
 import pandas as pd
 from flask import send_file
+import shutil
+from werkzeug.utils import secure_filename
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -938,3 +940,679 @@ def export_report(report_type):
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+
+@admin_bp.route('/admin/dashboard/stats', methods=['GET'])
+@admin_required
+@login_required
+def get_dashboard_stats():
+    
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({"error": "Database connection failed"}), 500
+    
+    try:
+        with conn.cursor() as cur:
+            # Initialize default values
+            stats = {
+                "approved_users": 0,
+                "total_images": 0,
+                "coral_species": 0,
+                "analysis_sessions": 0,
+                "recent_activities": 0
+            }
+            
+            # Get approved users count
+            try:
+                cur.execute("SELECT COUNT(*) FROM users WHERE status = 'approved'")
+                result = cur.fetchone()
+                stats["approved_users"] = result[0] if result else 0
+            except Exception as e:
+                print(f"Error getting approved users: {e}")
+            
+            # Get total images count
+            try:
+                cur.execute("SELECT COUNT(*) FROM images")
+                result = cur.fetchone()
+                stats["total_images"] = result[0] if result else 0
+            except Exception as e:
+                print(f"Error getting total images: {e}")
+                # If images table doesn't exist, keep default 0
+            
+            # Get distinct coral species count
+            try:
+                cur.execute("SELECT COUNT(DISTINCT class_name) FROM coral_lifeforms")
+                result = cur.fetchone()
+                stats["coral_species"] = result[0] if result else 0
+            except Exception as e:
+                print(f"Error getting coral species: {e}")
+                # If table doesn't exist, keep default 0
+            
+            # Get analysis sessions count (using segmentation_results as proxy)
+            try:
+                cur.execute("SELECT COUNT(DISTINCT image_id) FROM segmentation_results")
+                result = cur.fetchone()
+                stats["analysis_sessions"] = result[0] if result else 0
+            except Exception as e:
+                print(f"Error getting analysis sessions: {e}")
+                # If table doesn't exist, keep default 0
+            
+            # Get recent activity count (last 7 days)
+            try:
+                cur.execute("""
+                    SELECT COUNT(*) FROM activities 
+                    WHERE created_at >= NOW() - INTERVAL '7 days'
+                """)
+                result = cur.fetchone()
+                stats["recent_activities"] = result[0] if result else 0
+            except Exception as e:
+                print(f"Error getting recent activities: {e}")
+                # If table doesn't exist, keep default 0
+            
+            return jsonify({"stats": stats}), 200
+            
+    except Exception as e:
+        return jsonify({"error": f"Database error: {str(e)}"}), 500
+    finally:
+        if conn:
+            conn.close()
+
+@admin_bp.route('/admin/dashboard/recent-users', methods=['GET'])
+@admin_required
+@login_required
+def get_recent_users():
+    
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({"error": "Database connection failed"}), 500
+    
+    try:
+        with conn.cursor() as cur:
+            # Get 6 most recent approved users (excluding current user)
+            try:
+                cur.execute("""
+                    SELECT id, username, firstname, lastname, roletype, 
+                           profile_image, created_at, last_login, institution
+                    FROM users 
+                    WHERE status = 'approved' AND id != %s
+                    ORDER BY created_at DESC 
+                    LIMIT 6
+                """, (session.get('user_id'),))
+                
+                users = cur.fetchall()
+                
+                recent_users = []
+                for user in users:
+                    recent_users.append({
+                        'id': user[0],
+                        'username': user[1],
+                        'firstname': user[2],
+                        'lastname': user[3],
+                        'roletype': user[4],
+                        'profile_picture': user[5],  # Note: using profile_picture to match frontend
+                        'created_at': user[6].isoformat() if user[6] else None,
+                        'last_login': user[7].isoformat() if user[7] else None,
+                        'institution': user[8] or 'Not specified'
+                    })
+                
+                return jsonify({"recent_users": recent_users}), 200
+                
+            except Exception as e:
+                # Return empty list if there's an issue
+                return jsonify({"recent_users": []}), 200
+            
+    except Exception as e:
+        return jsonify({"error": f"Database error: {str(e)}"}), 500
+    finally:
+        if conn:
+            conn.close()
+
+@admin_bp.route('/admin/dashboard/recent-activities', methods=['GET'])
+@admin_required
+@login_required
+def get_recent_activities():
+    
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({"error": "Database connection failed"}), 500
+    
+    try:
+        with conn.cursor() as cur:
+            # Check if activities table exists and has data
+            try:
+                cur.execute("""
+                    SELECT a.id, a.activity_type, a.activity_description, 
+                           a.created_at, u.firstname, u.lastname, u.profile_image
+                    FROM activities a
+                    LEFT JOIN users u ON a.user_id = u.id
+                    ORDER BY a.created_at DESC 
+                    LIMIT 10
+                """)
+                activities = cur.fetchall()
+                
+                recent_activities = []
+                for activity in activities:
+                    recent_activities.append({
+                        'id': activity[0],
+                        'activity_type': activity[1],
+                        'activity_description': activity[2],
+                        'created_at': activity[3].isoformat() if activity[3] else None,
+                        'user_name': f"{activity[4]} {activity[5]}" if activity[4] else "System",
+                        'user_avatar': activity[6]
+                    })
+                
+                return jsonify({"recent_activities": recent_activities}), 200
+                
+            except Exception as e:
+                # Return empty activities if table doesn't exist or has issues
+                return jsonify({"recent_activities": []}), 200
+            
+    except Exception as e:
+        return jsonify({"error": f"Database error: {str(e)}"}), 500
+    finally:
+        if conn:
+            conn.close()
+
+@admin_bp.route('/admin/dashboard/chart-data', methods=['GET'])
+@admin_required
+@login_required
+def get_chart_data():
+    
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({"error": "Database connection failed"}), 500
+    
+    try:
+        with conn.cursor() as cur:
+            chart_data = {
+                "user_trend": [],
+                "image_trend": [],
+                "role_distribution": []
+            }
+            
+            # User registration trend (last 7 days)
+            try:
+                cur.execute("""
+                    SELECT DATE(created_at) as date, COUNT(*) as count
+                    FROM users 
+                    WHERE created_at >= NOW() - INTERVAL '7 days'
+                      AND status = 'approved'
+                    GROUP BY DATE(created_at)
+                    ORDER BY date
+                """)
+                user_trend_data = cur.fetchall()
+                chart_data["user_trend"] = [
+                    {'date': row[0].strftime('%Y-%m-%d'), 'count': row[1]} 
+                    for row in user_trend_data
+                ]
+            except Exception as e:
+                print(f"User trend error: {e}")
+            
+            # Image upload trend (last 7 days)
+            try:
+                cur.execute("""
+                    SELECT DATE(uploaded_at) as date, COUNT(*) as count
+                    FROM images 
+                    WHERE uploaded_at >= NOW() - INTERVAL '7 days'
+                    GROUP BY DATE(uploaded_at)
+                    ORDER BY date
+                """)
+                image_trend_data = cur.fetchall()
+                chart_data["image_trend"] = [
+                    {'date': row[0].strftime('%Y-%m-%d'), 'count': row[1]} 
+                    for row in image_trend_data
+                ]
+            except Exception as e:
+                print(f"Image trend error: {e}")
+            
+            # Role distribution
+            try:
+                cur.execute("""
+                    SELECT roletype, COUNT(*) as count
+                    FROM users 
+                    WHERE status = 'approved'
+                    GROUP BY roletype
+                """)
+                role_data = cur.fetchall()
+                chart_data["role_distribution"] = [
+                    {'role': row[0], 'count': row[1]} 
+                    for row in role_data
+                ]
+            except Exception as e:
+                print(f"Role distribution error: {e}")
+            
+            return jsonify({"chart_data": chart_data}), 200
+            
+    except Exception as e:
+        return jsonify({"error": f"Database error: {str(e)}"}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@admin_bp.route('/admin/models/current', methods=['GET'])
+@admin_required
+@login_required
+def get_current_models():
+    """Get information about currently installed models"""
+    try:
+        models_dir = os.path.join(current_app.root_path, '..', 'models')
+        
+        models_info = {
+            'autocrop': get_model_info(models_dir, 'autocrop'),
+            'unet': get_model_info(models_dir, 'unet_segmentation')
+        }
+        
+        return jsonify({"models": models_info}), 200
+        
+    except Exception as e:
+        print(f"Error getting current models: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+def get_model_info(models_dir, model_type):
+    """Helper function to get model file information"""
+    try:
+        model_extensions = ['.h5', '.pkl', '.pt', '.pth', '.onnx']
+        model_files = []
+        
+        if not os.path.exists(models_dir):
+            os.makedirs(models_dir, exist_ok=True)
+            
+        print(f"🔍 Searching for {model_type} models in: {models_dir}")
+        print(f"📁 Directory contents: {os.listdir(models_dir) if os.path.exists(models_dir) else 'Directory not found'}")
+        
+        # Define more flexible patterns for each model type
+        if model_type == 'autocrop':
+            # More flexible patterns for autocrop models
+            patterns = [
+                'autocrop', 'auto_crop', 'auto-crop',
+                'crop', 'object_detection', 'detection',
+                'yolo', 'ssd', 'rcnn', 'bbox', 'od'  # Common object detection model names
+            ]
+        else:  # unet_segmentation
+            patterns = [
+                'unet', 'u_net', 'u-net', 'segmentation',
+                'seg', 'coral_unet', 'coral-unet'
+            ]
+        
+        # Find model files with any of the patterns
+        for file in os.listdir(models_dir):
+            print(f"📄 Checking file: {file}")
+            
+            # Check if file has valid extension
+            if any(file.lower().endswith(ext) for ext in model_extensions):
+                print(f"✓ Valid extension found: {file}")
+                
+                # For autocrop, be more flexible with pattern matching
+                if model_type == 'autocrop':
+                    # Check if any pattern matches (case insensitive)
+                    if any(pattern.lower() in file.lower() for pattern in patterns):
+                        print(f"✓ Pattern match found for autocrop: {file}")
+                        model_files.append(file)
+                    # Also include any .pt files that might be object detection models
+                    elif file.lower().endswith(('.pt', '.pth')):
+                        print(f"✓ Adding .pt/.pth file as potential autocrop model: {file}")
+                        model_files.append(file)
+                else:  # unet
+                    # For unet, use existing logic but more flexible
+                    if any(pattern.lower() in file.lower() for pattern in patterns):
+                        print(f"✓ Pattern match found for unet: {file}")
+                        model_files.append(file)
+        
+        print(f"📋 Found {model_type} model files: {model_files}")
+        
+        if model_files:
+            # Get the most recent model file
+            latest_file = max(model_files, key=lambda f: os.path.getmtime(os.path.join(models_dir, f)))
+            file_path = os.path.join(models_dir, latest_file)
+            file_size = os.path.getsize(file_path)
+            last_modified = datetime.fromtimestamp(os.path.getmtime(file_path))
+            
+            print(f"✅ Latest {model_type} model: {latest_file}")
+            
+            return {
+                'name': latest_file,
+                'size': f"{file_size / (1024*1024):.2f} MB",
+                'lastModified': last_modified.strftime("%Y-%m-%d %H:%M:%S")
+            }
+        else:
+            print(f"❌ No {model_type} model found")
+            return {
+                'name': 'No model selected',
+                'size': '0 MB',
+                'lastModified': 'Never'
+            }
+            
+    except Exception as e:
+        print(f"❌ Error getting model info for {model_type}: {str(e)}")
+        return {
+            'name': 'Error loading model info',
+            'size': '0 MB',
+            'lastModified': 'Unknown'
+        }
+
+@admin_bp.route('/admin/models/debug', methods=['GET'])
+@admin_required
+@login_required
+def debug_models_directory():
+    """Debug endpoint to check what's in the models directory"""
+    try:
+        models_dir = os.path.join(current_app.root_path, '..', 'models')
+        
+        debug_info = {
+            'models_dir_path': models_dir,
+            'models_dir_exists': os.path.exists(models_dir),
+            'files_found': [],
+            'model_extensions': ['.h5', '.pkl', '.pt', '.pth', '.onnx']
+        }
+        
+        if os.path.exists(models_dir):
+            all_files = os.listdir(models_dir)
+            debug_info['all_files'] = all_files
+            
+            # Categorize files
+            for file in all_files:
+                file_path = os.path.join(models_dir, file)
+                if os.path.isfile(file_path):
+                    file_size = os.path.getsize(file_path)
+                    last_modified = datetime.fromtimestamp(os.path.getmtime(file_path))
+                    
+                    file_info = {
+                        'name': file,
+                        'size_mb': f"{file_size / (1024*1024):.2f}",
+                        'last_modified': last_modified.strftime("%Y-%m-%d %H:%M:%S"),
+                        'extension': file.lower()[file.rfind('.'):] if '.' in file else 'no_extension',
+                        'is_model_file': any(file.lower().endswith(ext) for ext in debug_info['model_extensions']),
+                        'could_be_autocrop': any(pattern in file.lower() for pattern in [
+                            'autocrop', 'auto_crop', 'auto-crop', 'crop', 'object_detection', 
+                            'detection', 'yolo', 'ssd', 'rcnn', 'bbox', 'od'
+                        ]) or file.lower().endswith(('.pt', '.pth')),
+                        'could_be_unet': any(pattern in file.lower() for pattern in [
+                            'unet', 'u_net', 'u-net', 'segmentation', 'seg', 'coral_unet', 'coral-unet'
+                        ])
+                    }
+                    
+                    debug_info['files_found'].append(file_info)
+        
+        return jsonify(debug_info), 200
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@admin_bp.route('/admin/models/upload', methods=['POST'])
+@admin_required
+@login_required
+def upload_single_model():
+    """Upload a single model file"""
+    try:
+        if 'model' not in request.files:
+            return jsonify({"error": "No model file provided"}), 400
+            
+        file = request.files['model']
+        model_type = request.form.get('model_type')
+        
+        if not file or file.filename == '':
+            return jsonify({"error": "No file selected"}), 400
+            
+        if model_type not in ['autocrop', 'unet']:
+            return jsonify({"error": "Invalid model type"}), 400
+        
+        # Validate file extension
+        allowed_extensions = ['.h5', '.pkl', '.pt', '.pth', '.onnx']
+        filename = secure_filename(file.filename)
+        file_ext = filename.lower()[filename.rfind('.'):]
+        
+        if file_ext not in allowed_extensions:
+            return jsonify({"error": "Invalid file type. Allowed: .h5, .pkl, .pt, .pth, .onnx"}), 400
+        
+        # Create models directory
+        models_dir = os.path.join(current_app.root_path, '..', 'models')
+        os.makedirs(models_dir, exist_ok=True)
+        
+        # Generate filename with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        if model_type == 'autocrop':
+            new_filename = f"autocrop_model_{timestamp}{file_ext}"
+        else:
+            new_filename = f"unet_segmentation_model_{timestamp}{file_ext}"
+        
+        # Save file
+        file_path = os.path.join(models_dir, new_filename)
+        file.save(file_path)
+        
+        # Remove old model files of the same type
+        cleanup_old_models(models_dir, model_type, new_filename)
+        
+        # Log activity
+        log_activity(
+            session.get('user_id'),
+            'model_upload',
+            f"Uploaded {model_type} model: {new_filename}"
+        )
+        
+        return jsonify({
+            "message": f"Model uploaded successfully",
+            "filename": new_filename
+        }), 200
+        
+    except Exception as e:
+        print(f"Error uploading model: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@admin_bp.route('/admin/models/upload-both', methods=['POST'])
+@admin_required
+@login_required
+def upload_both_models():
+    """Upload both autocrop and unet models simultaneously"""
+    try:
+        if 'autocrop_model' not in request.files or 'unet_model' not in request.files:
+            return jsonify({"error": "Both model files are required"}), 400
+            
+        autocrop_file = request.files['autocrop_model']
+        unet_file = request.files['unet_model']
+        
+        if not autocrop_file or autocrop_file.filename == '' or not unet_file or unet_file.filename == '':
+            return jsonify({"error": "Both files must be selected"}), 400
+        
+        # Validate file extensions
+        allowed_extensions = ['.h5', '.pkl', '.pt', '.pth', '.onnx']
+        
+        for file, file_type in [(autocrop_file, 'autocrop'), (unet_file, 'unet')]:
+            filename = secure_filename(file.filename)
+            file_ext = filename.lower()[filename.rfind('.'):]
+            
+            if file_ext not in allowed_extensions:
+                return jsonify({"error": f"Invalid {file_type} file type. Allowed: .h5, .pkl, .pt, .pth, .onnx"}), 400
+        
+        # Create models directory
+        models_dir = os.path.join(current_app.root_path, '..', 'models')
+        os.makedirs(models_dir, exist_ok=True)
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        uploaded_files = []
+        
+        # Upload autocrop model
+        autocrop_filename = secure_filename(autocrop_file.filename)
+        autocrop_ext = autocrop_filename.lower()[autocrop_filename.rfind('.'):]
+        autocrop_new_name = f"autocrop_model_{timestamp}{autocrop_ext}"
+        autocrop_path = os.path.join(models_dir, autocrop_new_name)
+        autocrop_file.save(autocrop_path)
+        uploaded_files.append(('autocrop', autocrop_new_name))
+        
+        # Upload unet model
+        unet_filename = secure_filename(unet_file.filename)
+        unet_ext = unet_filename.lower()[unet_filename.rfind('.'):]
+        unet_new_name = f"unet_segmentation_model_{timestamp}{unet_ext}"
+        unet_path = os.path.join(models_dir, unet_new_name)
+        unet_file.save(unet_path)
+        uploaded_files.append(('unet', unet_new_name))
+        
+        # Cleanup old models
+        cleanup_old_models(models_dir, 'autocrop', autocrop_new_name)
+        cleanup_old_models(models_dir, 'unet', unet_new_name)
+        
+        # Log activity
+        log_activity(
+            session.get('user_id'),
+            'model_upload',
+            f"Uploaded both models: {autocrop_new_name}, {unet_new_name}"
+        )
+        
+        return jsonify({
+            "message": "Both models uploaded successfully",
+            "files": uploaded_files
+        }), 200
+        
+    except Exception as e:
+        print(f"Error uploading both models: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@admin_bp.route('/admin/models/<model_type>', methods=['DELETE'])
+@admin_required
+@login_required
+def delete_model(model_type):
+    """Delete a model file"""
+    try:
+        if model_type not in ['autocrop', 'unet']:
+            return jsonify({"error": "Invalid model type"}), 400
+        
+        models_dir = os.path.join(current_app.root_path, '..', 'models')
+        
+        if not os.path.exists(models_dir):
+            return jsonify({"error": "Models directory not found"}), 404
+        
+        # Find and delete model files
+        deleted_files = []
+        pattern = 'autocrop' if model_type == 'autocrop' else 'unet'
+        
+        for file in os.listdir(models_dir):
+            if pattern.lower() in file.lower() and any(file.lower().endswith(ext) for ext in ['.h5', '.pkl', '.pt', '.pth', '.onnx']):
+                file_path = os.path.join(models_dir, file)
+                os.remove(file_path)
+                deleted_files.append(file)
+        
+        if not deleted_files:
+            return jsonify({"error": f"No {model_type} model found to delete"}), 404
+        
+        # Log activity
+        log_activity(
+            session.get('user_id'),
+            'model_delete',
+            f"Deleted {model_type} model files: {', '.join(deleted_files)}"
+        )
+        
+        return jsonify({
+            "message": f"{model_type} model deleted successfully",
+            "deleted_files": deleted_files
+        }), 200
+        
+    except Exception as e:
+        print(f"Error deleting model: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+def cleanup_old_models(models_dir, model_type, keep_filename):
+    """Remove old model files of the same type"""
+    try:
+        pattern = 'autocrop' if model_type == 'autocrop' else 'unet'
+        
+        for file in os.listdir(models_dir):
+            if (file != keep_filename and 
+                pattern.lower() in file.lower() and 
+                any(file.lower().endswith(ext) for ext in ['.h5', '.pkl', '.pt', '.pth', '.onnx'])):
+                old_file_path = os.path.join(models_dir, file)
+                if os.path.exists(old_file_path):
+                    os.remove(old_file_path)
+                    print(f"Removed old {model_type} model: {file}")
+                    
+    except Exception as e:
+        print(f"Error cleaning up old models: {str(e)}")
+
+@admin_bp.route('/admin/system/settings', methods=['GET'])
+@admin_required
+@login_required
+def get_system_settings():
+    """Get current system settings"""
+    try:
+        # For now, return default settings
+        # You can store these in database or config file
+        default_settings = {
+            'maxImageSize': '10',
+            'allowedFormats': ['jpg', 'jpeg', 'png'],
+            'autoBackup': True,
+            'analysisTimeout': '300',
+            'maxConcurrentAnalysis': '5'
+        }
+        
+        return jsonify({"settings": default_settings}), 200
+        
+    except Exception as e:
+        print(f"Error getting system settings: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@admin_bp.route('/admin/system/settings', methods=['PUT'])
+@admin_required
+@login_required
+def update_system_settings():
+    """Update system settings"""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+        
+        # Validate settings
+        if 'maxImageSize' in data:
+            try:
+                max_size = int(data['maxImageSize'])
+                if max_size < 1 or max_size > 100:
+                    return jsonify({"error": "Max image size must be between 1 and 100 MB"}), 400
+            except ValueError:
+                return jsonify({"error": "Invalid max image size"}), 400
+        
+        if 'analysisTimeout' in data:
+            try:
+                timeout = int(data['analysisTimeout'])
+                if timeout < 60 or timeout > 3600:
+                    return jsonify({"error": "Analysis timeout must be between 60 and 3600 seconds"}), 400
+            except ValueError:
+                return jsonify({"error": "Invalid analysis timeout"}), 400
+        
+        # Here we will save the settings to database or config file
+        # For now, we'll just return success
+        
+        # Log activity
+        log_activity(
+            session.get('user_id'),
+            'system_settings_update',
+            f"Updated system settings"
+        )
+        
+        return jsonify({"message": "System settings updated successfully"}), 200
+        
+    except Exception as e:
+        print(f"Error updating system settings: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+def log_activity(user_id, activity_type, description):
+    try:
+        conn = get_db_connection()
+        if conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO activities (user_id, activity_type, activity_description, created_at)
+                    VALUES (%s, %s, %s, NOW())
+                """, (user_id, activity_type, description))
+                conn.commit()
+            conn.close()
+    except Exception as e:
+        print(f"Error logging activity: {str(e)}")
+
+@admin_bp.route('/admin/test', methods=['GET'])
+def test_admin_route():
+    """Simple test to verify admin routes are working"""
+    return jsonify({
+        "message": "Admin routes are working!",
+        "timestamp": datetime.now().isoformat(),
+        "session_user_id": session.get('user_id'),
+        "is_authenticated": 'user_id' in session
+    }), 200
