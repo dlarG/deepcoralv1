@@ -12,6 +12,7 @@ import {
 } from "react-icons/fi";
 import useValidate from "../hooks/useValidate";
 import SuccessModal from "../../SuccessMessage";
+import "../styles/validateStyle.css";
 
 function Validate() {
   const {
@@ -28,6 +29,19 @@ function Validate() {
     handleConfirm,
     cancelAction,
   } = useValidate();
+
+  const getTimeSince = (dateString) => {
+    const now = new Date();
+    const past = new Date(dateString);
+    const diffInHours = Math.floor((now - past) / (1000 * 60 * 60));
+    const diffInDays = Math.floor(diffInHours / 24);
+
+    if (diffInHours < 1) return "Just now";
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    if (diffInDays < 7) return `${diffInDays}d ago`;
+    if (diffInDays < 30) return `${Math.floor(diffInDays / 7)}w ago`;
+    return `${Math.floor(diffInDays / 30)}mo ago`;
+  };
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -112,10 +126,6 @@ function Validate() {
                             {user.lastname?.charAt(0)?.toUpperCase()}
                           </div>
                         </div>
-                        <div className="status-indicator pending">
-                          <FiClock size={14} />
-                          Pending
-                        </div>
                       </div>
                       <div className="user-info">
                         <h3 className="user-name">
@@ -135,6 +145,16 @@ function Validate() {
                             user.roletype.slice(1)}
                         </span>
                       </div>
+
+                      {/* Updated: Use FiClock for time since registration */}
+                      <div className="detail-row">
+                        <FiClock size={16} />
+                        <span className="detail-label">Waiting:</span>
+                        <span className="detail-value time-since">
+                          {getTimeSince(user.created_at)}
+                        </span>
+                      </div>
+
                       <div className="detail-row">
                         <FiCalendar size={16} />
                         <span className="detail-label">Requested:</span>

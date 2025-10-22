@@ -1,9 +1,9 @@
 import React, { useState, useRef } from "react";
+import { useAuth } from "../../../context/AuthContext";
 import {
   FiUpload,
   FiSettings,
   FiDownload,
-  FiEye,
   FiLoader,
   FiX,
   FiFolder,
@@ -61,6 +61,7 @@ function AddImage() {
   const [activeTab, setActiveTab] = useState("crops");
   const [batchResults, setBatchResults] = useState(null);
   const [showBatchChart, setShowBatchChart] = useState(false);
+  const { user } = useAuth();
 
   // New GIS and validation states
   const [showLocationSelector, setShowLocationSelector] = useState(false);
@@ -149,175 +150,175 @@ function AddImage() {
     }
   };
 
-  const handleSubmit = async () => {
-    if (images.length === 0) {
-      alert("Please select images first!");
-      return;
-    }
+  // const handleSubmit = async () => {
+  //   if (images.length === 0) {
+  //     alert("Please select images first!");
+  //     return;
+  //   }
 
-    const currentImage = images[currentImageIndex];
+  //   const currentImage = images[currentImageIndex];
 
-    // Validate first if not already validated
-    if (currentImage.status === "pending") {
-      setLoading(true);
-      const validation = await validateImageForQuadrats(currentImage.file);
+  //   // Validate first if not already validated
+  //   if (currentImage.status === "pending") {
+  //     setLoading(true);
+  //     const validation = await validateImageForQuadrats(currentImage.file);
 
-      if (!validation.valid) {
-        setImages((prev) =>
-          prev.map((img, idx) =>
-            idx === currentImageIndex
-              ? {
-                  ...img,
-                  status: "invalid",
-                  rejectionReason: validation.reason,
-                }
-              : img
-          )
-        );
-        setLoading(false);
-        alert(`Image rejected: ${validation.reason}`);
-        return;
-      }
+  //     if (!validation.valid) {
+  //       setImages((prev) =>
+  //         prev.map((img, idx) =>
+  //           idx === currentImageIndex
+  //             ? {
+  //                 ...img,
+  //                 status: "invalid",
+  //                 rejectionReason: validation.reason,
+  //               }
+  //             : img
+  //         )
+  //       );
+  //       setLoading(false);
+  //       alert(`Image rejected: ${validation.reason}`);
+  //       return;
+  //     }
 
-      setImages((prev) =>
-        prev.map((img, idx) =>
-          idx === currentImageIndex
-            ? {
-                ...img,
-                status: "valid",
-                quadratsDetected: validation.quadratCount,
-              }
-            : img
-        )
-      );
-    }
+  //     setImages((prev) =>
+  //       prev.map((img, idx) =>
+  //         idx === currentImageIndex
+  //           ? {
+  //               ...img,
+  //               status: "valid",
+  //               quadratsDetected: validation.quadratCount,
+  //             }
+  //           : img
+  //       )
+  //     );
+  //   }
 
-    if (currentImage.status === "invalid") {
-      alert(`Cannot process invalid image: ${currentImage.rejectionReason}`);
-      return;
-    }
+  //   if (currentImage.status === "invalid") {
+  //     alert(`Cannot process invalid image: ${currentImage.rejectionReason}`);
+  //     return;
+  //   }
 
-    setLoading(true);
-    setActiveTab("crops");
+  //   setLoading(true);
+  //   setActiveTab("crops");
 
-    try {
-      const csrfResponse = await fetch("http://localhost:5000/csrf-token", {
-        method: "GET",
-        credentials: "include",
-      });
+  //   try {
+  //     const csrfResponse = await fetch("http://localhost:5000/csrf-token", {
+  //       method: "GET",
+  //       credentials: "include",
+  //     });
 
-      const csrfData = await csrfResponse.json();
+  //     const csrfData = await csrfResponse.json();
 
-      const formData = new FormData();
-      formData.append("image", currentImage.file);
-      formData.append("intensity", cropIntensity);
-      formData.append("csrf_token", csrfData.csrf_token);
+  //     const formData = new FormData();
+  //     formData.append("image", currentImage.file);
+  //     formData.append("intensity", cropIntensity);
+  //     formData.append("csrf_token", csrfData.csrf_token);
 
-      const res = await fetch("http://localhost:5000/detect_custom", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-        headers: {
-          "X-CSRF-Token": csrfData.csrf_token,
-        },
-      });
+  //     const res = await fetch("http://localhost:5000/detect_custom", {
+  //       method: "POST",
+  //       body: formData,
+  //       credentials: "include",
+  //       headers: {
+  //         "X-CSRF-Token": csrfData.csrf_token,
+  //       },
+  //     });
 
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
+  //     if (!res.ok) {
+  //       throw new Error(`HTTP error! status: ${res.status}`);
+  //     }
 
-      const data = await res.json();
-      setCrops(data.crops);
+  //     const data = await res.json();
+  //     setCrops(data.crops);
 
-      setImages((prev) =>
-        prev.map((img, idx) =>
-          idx === currentImageIndex
-            ? {
-                ...img,
-                crops: data.crops,
-                processed: true,
-                status: "processed",
-              }
-            : img
-        )
-      );
-    } catch (error) {
-      console.error("Error:", error);
-      alert("Failed to process image: " + error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  //     setImages((prev) =>
+  //       prev.map((img, idx) =>
+  //         idx === currentImageIndex
+  //           ? {
+  //               ...img,
+  //               crops: data.crops,
+  //               processed: true,
+  //               status: "processed",
+  //             }
+  //           : img
+  //       )
+  //     );
+  //   } catch (error) {
+  //     console.error("Error:", error);
+  //     alert("Failed to process image: " + error.message);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
-  const handleSegmentAndDetect = async () => {
-    if (images.length === 0) {
-      alert("Please select images first!");
-      return;
-    }
+  // const handleSegmentAndDetect = async () => {
+  //   if (images.length === 0) {
+  //     alert("Please select images first!");
+  //     return;
+  //   }
 
-    const currentImage = images[currentImageIndex];
+  //   const currentImage = images[currentImageIndex];
 
-    if (currentImage.status === "invalid") {
-      alert(`Cannot process invalid image: ${currentImage.rejectionReason}`);
-      return;
-    }
+  //   if (currentImage.status === "invalid") {
+  //     alert(`Cannot process invalid image: ${currentImage.rejectionReason}`);
+  //     return;
+  //   }
 
-    setLoading(true);
-    setActiveTab("analysis");
+  //   setLoading(true);
+  //   setActiveTab("analysis");
 
-    try {
-      const csrfResponse = await fetch("http://localhost:5000/csrf-token", {
-        method: "GET",
-        credentials: "include",
-      });
+  //   try {
+  //     const csrfResponse = await fetch("http://localhost:5000/csrf-token", {
+  //       method: "GET",
+  //       credentials: "include",
+  //     });
 
-      const csrfData = await csrfResponse.json();
+  //     const csrfData = await csrfResponse.json();
 
-      const formData = new FormData();
-      formData.append("image", currentImage.file);
-      formData.append("intensity", cropIntensity);
-      formData.append("csrf_token", csrfData.csrf_token);
+  //     const formData = new FormData();
+  //     formData.append("image", currentImage.file);
+  //     formData.append("intensity", cropIntensity);
+  //     formData.append("csrf_token", csrfData.csrf_token);
 
-      const res = await fetch("http://localhost:5000/detect_and_segment", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-        headers: {
-          "X-CSRF-Token": csrfData.csrf_token,
-        },
-      });
+  //     const res = await fetch("http://localhost:5000/detect_and_segment", {
+  //       method: "POST",
+  //       body: formData,
+  //       credentials: "include",
+  //       headers: {
+  //         "X-CSRF-Token": csrfData.csrf_token,
+  //       },
+  //     });
 
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
+  //     if (!res.ok) {
+  //       throw new Error(`HTTP error! status: ${res.status}`);
+  //     }
 
-      const data = await res.json();
+  //     const data = await res.json();
 
-      setCrops(data.crops);
-      setShowSaveButton(true);
+  //     setCrops(data.crops);
+  //     setShowSaveButton(true);
 
-      setImages((prev) =>
-        prev.map((img, idx) =>
-          idx === currentImageIndex
-            ? {
-                ...img,
-                crops: data.crops,
-                processed: true,
-                status: "processed",
-                segmentationData: data,
-              }
-            : img
-        )
-      );
+  //     setImages((prev) =>
+  //       prev.map((img, idx) =>
+  //         idx === currentImageIndex
+  //           ? {
+  //               ...img,
+  //               crops: data.crops,
+  //               processed: true,
+  //               status: "processed",
+  //               segmentationData: data,
+  //             }
+  //           : img
+  //       )
+  //     );
 
-      setProcessedImagesForSaving([images[currentImageIndex]]);
-    } catch (error) {
-      console.error("Error:", error);
-      alert("Failed to analyze image: " + error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  //     setProcessedImagesForSaving([images[currentImageIndex]]);
+  //   } catch (error) {
+  //     console.error("Error:", error);
+  //     alert("Failed to analyze image: " + error.message);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   const downloadSegmentationMask = (maskUrl, index) => {
     const link = document.createElement("a");
@@ -330,85 +331,85 @@ function AddImage() {
     document.body.removeChild(link);
   };
 
-  const handleBatchSubmit = async () => {
-    if (images.length === 0) {
-      alert("Please select images first!");
-      return;
-    }
+  // const handleBatchSubmit = async () => {
+  //   if (images.length === 0) {
+  //     alert("Please select images first!");
+  //     return;
+  //   }
 
-    setBatchLoading(true);
-    setBatchProgress({ current: 0, total: images.length });
+  //   setBatchLoading(true);
+  //   setBatchProgress({ current: 0, total: images.length });
 
-    try {
-      const csrfResponse = await fetch("http://localhost:5000/csrf-token", {
-        method: "GET",
-        credentials: "include",
-      });
+  //   try {
+  //     const csrfResponse = await fetch("http://localhost:5000/csrf-token", {
+  //       method: "GET",
+  //       credentials: "include",
+  //     });
 
-      if (!csrfResponse.ok) {
-        throw new Error("Failed to get CSRF token");
-      }
+  //     if (!csrfResponse.ok) {
+  //       throw new Error("Failed to get CSRF token");
+  //     }
 
-      const csrfData = await csrfResponse.json();
-      const updatedImages = [...images];
+  //     const csrfData = await csrfResponse.json();
+  //     const updatedImages = [...images];
 
-      for (let i = 0; i < images.length; i++) {
-        if (images[i].processed) continue;
+  //     for (let i = 0; i < images.length; i++) {
+  //       if (images[i].processed) continue;
 
-        setBatchProgress({ current: i + 1, total: images.length });
+  //       setBatchProgress({ current: i + 1, total: images.length });
 
-        const formData = new FormData();
-        formData.append("image", images[i].file);
-        formData.append("intensity", cropIntensity);
-        formData.append("csrf_token", csrfData.csrf_token);
+  //       const formData = new FormData();
+  //       formData.append("image", images[i].file);
+  //       formData.append("intensity", cropIntensity);
+  //       formData.append("csrf_token", csrfData.csrf_token);
 
-        try {
-          const res = await fetch("http://localhost:5000/detect_custom", {
-            method: "POST",
-            body: formData,
-            credentials: "include",
-            headers: {
-              "X-CSRF-Token": csrfData.csrf_token,
-            },
-          });
+  //       try {
+  //         const res = await fetch("http://localhost:5000/detect_custom", {
+  //           method: "POST",
+  //           body: formData,
+  //           credentials: "include",
+  //           headers: {
+  //             "X-CSRF-Token": csrfData.csrf_token,
+  //           },
+  //         });
 
-          if (!res.ok) {
-            const errorData = await res.json().catch(() => ({}));
-            throw new Error(
-              errorData.error || `HTTP error! status: ${res.status}`
-            );
-          }
+  //         if (!res.ok) {
+  //           const errorData = await res.json().catch(() => ({}));
+  //           throw new Error(
+  //             errorData.error || `HTTP error! status: ${res.status}`
+  //           );
+  //         }
 
-          const data = await res.json();
-          updatedImages[i] = {
-            ...updatedImages[i],
-            crops: data.crops,
-            processed: true,
-          };
-          setImages(updatedImages);
+  //         const data = await res.json();
+  //         updatedImages[i] = {
+  //           ...updatedImages[i],
+  //           crops: data.crops,
+  //           processed: true,
+  //         };
+  //         setImages(updatedImages);
 
-          if (i === currentImageIndex) {
-            setCrops(data.crops);
-          }
-        } catch (error) {
-          console.error(`Error processing image ${i}:`, error);
-          updatedImages[i] = {
-            ...updatedImages[i],
-            error: error.message,
-            processed: false,
-          };
-          setImages(updatedImages);
-          continue;
-        }
-      }
-    } catch (error) {
-      console.error("Batch processing error:", error);
-      alert("Batch processing failed: " + error.message);
-    } finally {
-      setBatchLoading(false);
-      setBatchProgress({ current: 0, total: 0 });
-    }
-  };
+  //         if (i === currentImageIndex) {
+  //           setCrops(data.crops);
+  //         }
+  //       } catch (error) {
+  //         console.error(`Error processing image ${i}:`, error);
+  //         updatedImages[i] = {
+  //           ...updatedImages[i],
+  //           error: error.message,
+  //           processed: false,
+  //         };
+  //         setImages(updatedImages);
+  //         continue;
+  //       }
+  //     }
+  //   } catch (error) {
+  //     console.error("Batch processing error:", error);
+  //     alert("Batch processing failed: " + error.message);
+  //   } finally {
+  //     setBatchLoading(false);
+  //     setBatchProgress({ current: 0, total: 0 });
+  //   }
+  // };
 
   const clearImages = () => {
     images.forEach((image) => URL.revokeObjectURL(image.preview));
@@ -579,7 +580,6 @@ function AddImage() {
       return;
     }
 
-    // Filter only valid images
     const validImages = images.filter(
       (img) => img.status === "valid" || img.status === "pending"
     );
@@ -602,13 +602,17 @@ function AddImage() {
       const csrfData = await csrfResponse.json();
       const formData = new FormData();
 
-      // Add only valid image files to FormData
       validImages.forEach((image) => {
         formData.append("images", image.file);
       });
 
       formData.append("intensity", cropIntensity);
-      formData.append("uploader_id", "1"); // Replace with actual user ID from context
+
+      // FIXED: Get actual user ID instead of hardcoded "1"
+      const currentUserId = user?.id || "9";
+      console.log("Using uploader_id:", currentUserId);
+      formData.append("uploader_id", currentUserId);
+
       formData.append("csrf_token", csrfData.csrf_token);
 
       const res = await fetch("http://localhost:5000/batch_analyze", {
@@ -625,24 +629,51 @@ function AddImage() {
       }
 
       const data = await res.json();
+
+      console.log("Batch analysis complete. Data structure:", data);
+
       setBatchResults(data);
       setShowBatchChart(true);
       setActiveTab("batch-analysis");
       setShowSaveButton(true);
 
-      // Store processed images for saving to database
-      setProcessedImagesForSaving(validImages);
-
-      // Update images with results
-      const updatedImages = images.map((image, index) => {
+      // Process the results properly
+      const processedImagesWithData = validImages.map((image, index) => {
         const result = data.results.find((r) => r.filename === image.file.name);
-        if (result) {
+        if (result && result.crops) {
+          console.log(`Processing result for ${image.file.name}:`, result);
+
           return {
             ...image,
             crops: result.crops.map((crop) => crop.crop_url),
             processed: true,
             status: "processed",
-            segmentationData: result,
+            segmentationData: {
+              crops: result.crops,
+              total_crops: result.crops.length,
+              filename: result.filename,
+            },
+          };
+        }
+        return image;
+      });
+
+      console.log("Processed images for saving:", processedImagesWithData);
+      setProcessedImagesForSaving(processedImagesWithData);
+
+      const updatedImages = images.map((image) => {
+        const result = data.results.find((r) => r.filename === image.file.name);
+        if (result && result.crops) {
+          return {
+            ...image,
+            crops: result.crops.map((crop) => crop.crop_url),
+            processed: true,
+            status: "processed",
+            segmentationData: {
+              crops: result.crops,
+              total_crops: result.crops.length,
+              filename: result.filename,
+            },
           };
         }
         return image;
@@ -683,17 +714,6 @@ function AddImage() {
           </div>
 
           <div className="gallery-header-actions">
-            <div className="validation-controls">
-              <button
-                onClick={validateAllImages}
-                disabled={loading || batchLoading}
-                className="validate-btn"
-              >
-                <FiCheckCircle size={16} />
-                <span>Validate All</span>
-              </button>
-            </div>
-
             <div className="view-toggle">
               <button
                 className={`view-toggle-btn ${
@@ -926,7 +946,7 @@ function AddImage() {
           <div className="batch-stats">
             <div className="stat-card">
               <span className="stat-number">
-                {batchResults.batch_statistics.total_images}
+                {batchResults.batch_statistics.total_crops}
               </span>
               <span className="stat-label">Images Analyzed</span>
             </div>
@@ -1179,7 +1199,7 @@ function AddImage() {
 
               <div className="upload-buttons">
                 <button
-                  className="upload-button primary"
+                  className="up-button pri"
                   onClick={() => fileInputRef.current?.click()}
                 >
                   <FiFile size={18} />
@@ -1263,39 +1283,12 @@ function AddImage() {
             <div className="controls-right">
               <div className="process-buttons-compact">
                 <button
-                  onClick={handleSubmit}
-                  disabled={images.length === 0 || loading || batchLoading}
-                  className="process-button primary compact"
+                  onClick={validateAllImages}
+                  disabled={loading || batchLoading}
+                  className="upload-button secondary"
                 >
-                  {loading && activeTab === "crops" ? (
-                    <>
-                      <FiLoader size={16} className="spinning" />
-                      <span className="btn-text">Processing...</span>
-                    </>
-                  ) : (
-                    <>
-                      <FiEye size={16} />
-                      <span className="btn-text">Detect Only</span>
-                    </>
-                  )}
-                </button>
-
-                <button
-                  onClick={handleSegmentAndDetect}
-                  disabled={images.length === 0 || loading || batchLoading}
-                  className="process-button secondary compact"
-                >
-                  {loading && activeTab === "analysis" ? (
-                    <>
-                      <FiLoader size={16} className="spinning" />
-                      <span className="btn-text">Analyzing...</span>
-                    </>
-                  ) : (
-                    <>
-                      <FiBarChart2 size={16} />
-                      <span className="btn-text">Analyze Single</span>
-                    </>
-                  )}
+                  <FiCheckCircle size={16} />
+                  <span>Validate All</span>
                 </button>
 
                 <button
@@ -1313,7 +1306,7 @@ function AddImage() {
                   ) : (
                     <>
                       <FiPieChart size={16} />
-                      <span className="btn-text">Batch Analyze All</span>
+                      <span className="btn-text">Start Analyzing</span>
                     </>
                   )}
                 </button>

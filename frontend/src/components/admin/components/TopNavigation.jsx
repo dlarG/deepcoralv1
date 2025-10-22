@@ -286,7 +286,7 @@ function TopNavigation({
             <div className="profile-dropdown">
               <div className="dropdown-header">
                 <div className="profile-summary">
-                  <div className="profile-avatar-large">
+                  <div className="profile-avatar-larges">
                     {user?.profile_image ? (
                       <img
                         src={`/profile_uploads/${user.profile_image}`}
@@ -301,12 +301,12 @@ function TopNavigation({
                     <div className="avatar-status-indicator-large"></div>
                   </div>
                   <div className="profile-details">
-                    <h3>
+                    <h3 className="user-cred-name">
                       {user?.firstname} {user?.lastname}
                     </h3>
-                    <p>@{user?.username}</p>
+                    <p className="user-cred-uname">@{user?.username}</p>
                     <div className="role-badges">
-                      <span className="role-tag primary">Marine Biologist</span>
+                      <span className="role-tag primary">Administrator</span>
                     </div>
                   </div>
                 </div>

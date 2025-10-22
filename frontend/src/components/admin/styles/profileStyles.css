@@ -675,7 +675,7 @@
   border: 1px solid rgba(51, 65, 85, 0.6);
 }
 
-.delete-modal-header {
+.delete-modal-headers {
   text-align: center;
   margin-bottom: 2rem;
 }
@@ -693,7 +693,7 @@
   box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
 }
 
-.delete-modal-header h3 {
+.delete-modal-headers h3 {
   font-size: 1.5rem;
   font-weight: 700;
   color: #1e293b;
@@ -701,18 +701,18 @@
   margin-bottom: 0.75rem;
 }
 
-.dark-mode .delete-modal-header h3 {
+.dark-mode .delete-modal-headers h3 {
   color: #e2e8f0;
 }
 
-.delete-modal-header p {
+.delete-modal-headers p {
   color: #64748b;
   font-size: 0.95rem;
   margin: 0;
   line-height: 1.5;
 }
 
-.dark-mode .delete-modal-header p {
+.dark-mode .delete-modal-headers p {
   color: #94a3b8;
 }
 
@@ -1778,7 +1778,7 @@
     margin-bottom: 1rem;
   }
 
-  .delete-modal-header h3 {
+  .delete-modal-headers h3 {
     font-size: 1.25rem;
   }
 

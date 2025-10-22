@@ -343,14 +343,14 @@ function HomePage() {
 
             <div className="contact-form">
               <form>
-                <div className="form-group">
+                <div className="form-groups">
                   <input type="text" placeholder="Your Name" required />
                   <input type="email" placeholder="Your Email" required />
                 </div>
-                <div className="form-group">
+                <div className="form-groups">
                   <input type="text" placeholder="Subject" required />
                 </div>
-                <div className="form-group">
+                <div className="form-groups">
                   <textarea
                     placeholder="Your Message"
                     rows="6"

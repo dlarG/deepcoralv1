@@ -65,7 +65,7 @@ CORAL_CLASSES = {
     5: {'name': 'foliose', 'color': '#073B4C', 'category': 'hard_coral'},
     6: {'name': 'massive', 'color': '#EF476F', 'category': 'hard_coral'},
     7: {'name': 'mushroom', 'color': '#7209B7', 'category': 'hard_coral'},
-    8: {'name': 'non-acropora-branching', 'color': '#F72585', 'category': 'soft_coral'},
+    8: {'name': 'non-acropora-branching', 'color': '#F72585', 'category': 'hard_coral'},
     9: {'name': 'submassive', 'color': '#4ECDC4', 'category': 'hard_coral'},
     10: {'name': 'soft-coral', 'color': '#FFA500', 'category': 'soft_coral'}
 }
@@ -758,6 +758,12 @@ def batch_analyze_images():
         uploader_id = request.form.get('uploader_id', 1)
         crop_intensity = request.form.get('intensity', 'aggressive')
         
+        # FIXED: Ensure user exists before proceeding
+        if not ensure_user_exists(uploader_id):
+            return jsonify({"error": f"Cannot create or find user with ID {uploader_id}"}), 400
+        
+        print(f"Processing batch with uploader_id: {uploader_id}")
+        
         all_results = []
         batch_coverage_data = {}
         batch_total_pixels = 0
@@ -777,7 +783,7 @@ def batch_analyze_images():
                 })
                 continue
                 
-            # Process each file similar to detect_and_segment
+            # Process each file
             unique_id = str(uuid.uuid4())[:8]
             safe_filename = f"batch_{file_index}_{unique_id}.{ext}"
             image_path = os.path.join(UPLOAD_FOLDER, safe_filename)
@@ -787,7 +793,7 @@ def batch_analyze_images():
             # Detection and processing
             detection_results = detection_model(image_path)
             
-            # UPDATED: Check for your specific quadrat classes
+            # Check for valid quadrat detections
             valid_detections = []
             if detection_results[0].boxes:
                 for box in detection_results[0].boxes:
@@ -832,9 +838,15 @@ def batch_analyze_images():
                     if visualization_mask is not None:
                         cv2.imwrite(viz_path, cv2.cvtColor(visualization_mask, cv2.COLOR_RGB2BGR))
 
-                    # Save to database
+                    # Save to database with proper error handling
                     analysis_confidence = float(box.conf) if hasattr(box, 'conf') else 0.85
                     image_id = save_image_to_database(crop_filename, uploader_id, total_pixels, total_pixels, analysis_confidence)
+                    
+                    if image_id is None:
+                        print(f"Failed to save image {crop_filename} to database")
+                        continue
+                    
+                    print(f"Successfully saved image with ID: {image_id}")
                     
                     if image_id and coverage_data:
                         save_segmentation_results(image_id, coverage_data, f"masks/{viz_filename}")
@@ -852,7 +864,10 @@ def batch_analyze_images():
                                 'images_found_in': 0
                             }
                         batch_coverage_data[class_name]['total_pixels'] += coral['pixel_count']
-                        
+                    
+                    print(f"DEBUG: About to append crop with image_id: {image_id}")
+                    print(f"DEBUG: Full crop data: {{'crop_url': f'crops/{crop_filename}', 'image_id': {image_id}}}")
+
                     image_crops.append({
                         'crop_url': f"crops/{crop_filename}",
                         'visualization_url': f"masks/{viz_filename}",
@@ -861,6 +876,8 @@ def batch_analyze_images():
                         'detection_label': label,
                         'image_id': image_id
                     })
+
+                    print(f"DEBUG: Crop appended. Total crops for this image: {len(image_crops)}")
 
                 except Exception as e:
                     print(f"Error processing crop {i} in image {file_index}: {e}")
@@ -900,6 +917,8 @@ def batch_analyze_images():
 
     except Exception as e:
         print(f"Batch analysis error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": f"Batch analysis failed: {str(e)}"}), 500
     
 def save_image_to_database(filename, uploader_id, total_pixels, analyzed_area_px, analysis_confidence):
@@ -967,6 +986,45 @@ def save_segmentation_results(image_id, coverage_data, mask_path):
             return True
     except Exception as e:
         print(f"Database error saving segmentation: {e}")
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+def ensure_user_exists(uploader_id):
+    """Ensure the user exists in the database"""
+    conn = get_db_connection()
+    if conn is None:
+        return False
+    
+    try:
+        with conn.cursor() as cur:
+            # Check if user exists
+            cur.execute("SELECT id FROM users WHERE id = %s", (uploader_id,))
+            if cur.fetchone():
+                return True
+            
+            # If user doesn't exist, create a default admin user
+            print(f"User {uploader_id} not found, creating default admin user...")
+            cur.execute("""
+                INSERT INTO users (id, username, password, firstname, lastname, roletype, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, NOW(), NOW())
+                ON CONFLICT (id) DO NOTHING
+            """, (
+                uploader_id,
+                f"admin{uploader_id}",
+                "scrypt:32768:8:1$placeholder",  # Placeholder password hash
+                "Default",
+                "Admin",
+                "admin"
+            ))
+            
+            conn.commit()
+            print(f"Created default user with ID {uploader_id}")
+            return True
+            
+    except Exception as e:
+        print(f"Error ensuring user exists: {e}")
         conn.rollback()
         return False
     finally:

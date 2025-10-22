@@ -209,6 +209,7 @@ const LocationSelector = ({
     }
   };
 
+  // Update the handleSaveLocation function
   const handleSaveLocation = async () => {
     if (!selectedLocation) {
       alert("Please select a location first.");
@@ -218,35 +219,145 @@ const LocationSelector = ({
     try {
       setLoading(true);
 
-      // Get image IDs from processed results
-      let imageIds = [];
+      // DEBUG FUNCTION - Enhanced version
+      const debugImageIds = () => {
+        console.log("=== ENHANCED DEBUG: Image ID Collection ===");
+        console.log("batchResults:", batchResults);
+        console.log("processedImages:", processedImages);
 
-      if (batchResults && batchResults.results) {
-        // Batch processing - collect all image IDs
-        batchResults.results.forEach((result) => {
-          result.crops.forEach((crop) => {
-            if (crop.image_id) {
-              imageIds.push(crop.image_id);
+        if (batchResults?.results) {
+          console.log("=== BATCH RESULTS ANALYSIS ===");
+          batchResults.results.forEach((result, idx) => {
+            console.log(`Batch Result ${idx}:`, result);
+            if (result.crops && Array.isArray(result.crops)) {
+              result.crops.forEach((crop, cropIdx) => {
+                console.log(`  Batch Crop ${cropIdx}:`, crop);
+                console.log(
+                  `  Has image_id: ${crop.hasOwnProperty("image_id")}`
+                );
+                if (crop.image_id) {
+                  console.log(`  Image ID: ${crop.image_id}`);
+                }
+              });
+            } else {
+              console.log(`  No crops array found in result ${idx}`);
             }
           });
-        });
-      } else if (processedImages && processedImages.length > 0) {
-        // Single/multiple images
-        processedImages.forEach((img) => {
-          if (img.segmentationData && img.segmentationData.crops) {
-            img.segmentationData.crops.forEach((crop) => {
-              if (crop.image_id) {
+        }
+
+        if (processedImages && Array.isArray(processedImages)) {
+          console.log("=== PROCESSED IMAGES ANALYSIS ===");
+          processedImages.forEach((img, idx) => {
+            console.log(`Processed Image ${idx}:`, img);
+            if (img.segmentationData?.crops) {
+              console.log(`  Segmentation crops:`, img.segmentationData.crops);
+              img.segmentationData.crops.forEach((crop, cropIdx) => {
+                console.log(`    Seg Crop ${cropIdx}:`, crop);
+                console.log(
+                  `    Has image_id: ${crop.hasOwnProperty("image_id")}`
+                );
+                if (crop.image_id) {
+                  console.log(`    Image ID: ${crop.image_id}`);
+                }
+              });
+            } else {
+              console.log(`  No segmentation crops found in image ${idx}`);
+            }
+          });
+        }
+      };
+
+      debugImageIds();
+
+      // ENHANCED IMAGE ID COLLECTION
+      let imageIds = [];
+
+      // Method 1: From batch results
+      if (
+        batchResults &&
+        batchResults.results &&
+        Array.isArray(batchResults.results)
+      ) {
+        console.log("Collecting from batch results...");
+
+        batchResults.results.forEach((result, resultIdx) => {
+          if (result.crops && Array.isArray(result.crops)) {
+            result.crops.forEach((crop, cropIdx) => {
+              console.log(
+                `Checking batch result ${resultIdx}, crop ${cropIdx}:`,
+                crop
+              );
+
+              if (crop && typeof crop === "object" && crop.image_id) {
                 imageIds.push(crop.image_id);
+                console.log(`✅ Found image_id from batch: ${crop.image_id}`);
+              } else {
+                console.log(`❌ No image_id in batch crop:`, crop);
               }
             });
           }
         });
       }
 
+      // Method 2: From processed images (if batch failed)
+      if (
+        imageIds.length === 0 &&
+        processedImages &&
+        Array.isArray(processedImages)
+      ) {
+        console.log("Batch method failed, trying processed images...");
+
+        processedImages.forEach((img, imgIdx) => {
+          if (
+            img.segmentationData &&
+            img.segmentationData.crops &&
+            Array.isArray(img.segmentationData.crops)
+          ) {
+            img.segmentationData.crops.forEach((crop, cropIdx) => {
+              console.log(
+                `Checking processed image ${imgIdx}, crop ${cropIdx}:`,
+                crop
+              );
+
+              if (crop && typeof crop === "object" && crop.image_id) {
+                imageIds.push(crop.image_id);
+                console.log(
+                  `✅ Found image_id from processed: ${crop.image_id}`
+                );
+              } else {
+                console.log(`❌ No image_id in processed crop:`, crop);
+              }
+            });
+          }
+        });
+      }
+
+      // Remove duplicates and filter out invalid IDs
+      imageIds = [...new Set(imageIds)].filter(
+        (id) => id != null && id !== undefined
+      );
+
+      console.log("=== FINAL RESULT ===");
+      console.log("Final imageIds to save:", imageIds);
+      console.log("Total valid image IDs found:", imageIds.length);
+
       if (imageIds.length === 0) {
-        alert("No processed images found to save with location.");
+        console.error("❌ NO IMAGE IDS FOUND!");
+        console.error(
+          "Batch results structure:",
+          JSON.stringify(batchResults, null, 2)
+        );
+        console.error(
+          "Processed images structure:",
+          JSON.stringify(processedImages, null, 2)
+        );
+        alert(
+          "No processed images found to save with location. Please check the console for debugging information."
+        );
         return;
       }
+
+      console.log(`✅ Proceeding with ${imageIds.length} image IDs:`, imageIds);
 
       const response = await fetch(
         "http://localhost:5000/gis/save_with_location",

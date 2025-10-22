@@ -36,7 +36,6 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
         flex-direction: column;
         gap: 1rem;
         align-items: stretch;
-        margin-bottom: 1.5rem;
         padding-bottom: 1rem;
       }
       
@@ -1962,6 +1961,15 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
   pointer-events: none;
 }
 
+.file-upload-area:hover {
+  border-color: #0ea5e9;
+  background: ${
+    darkMode ? "rgba(14, 165, 233, 0.1)" : "rgba(14, 165, 233, 0.05)"
+  };
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(14, 165, 233, 0.15);
+}
+
 .file-upload-area:hover::before,
 .file-upload-area.drag-active::before {
   opacity: 1;
@@ -2025,7 +2033,7 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
   margin-top: 1rem;
 }
 
-.upload-button {
+.up-button {
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -2040,15 +2048,15 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
-.upload-button.primary {
-  background: linear-gradient(135deg, #0ea5e9 0%, #3b82f6 100%);
-  color: white;
-}
-
-.upload-button.primary:hover {
-  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+.up-button.pri:hover {
+  background: ${darkMode ? "#ff4c4c" : "#013a63"};
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(14, 165, 233, 0.4);
+}
+
+.up-button.pri{
+  background: ${darkMode ? "#ff6b6b" : " #012a4a"};
+  color: white;
 }
 
 .upload-button.secondary {
@@ -4461,7 +4469,7 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
   margin-bottom: 1.5rem;
 }
 
-.stat-card {
+.stats-card {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 1.5rem;
   border-radius: 12px;
@@ -4591,12 +4599,12 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
 }
 
 .process-button.analysis {
-  background: linear-gradient(135deg, #9f7aea 0%, #667eea 100%);
+  background: ${darkMode ? "#ff6b6b" : "#012a4a"};
   color: white;
 }
 
 .process-button.analysis:hover {
-  background: linear-gradient(135deg, #805ad5 0%, #5a67d8 100%);
+  background: ${darkMode ? "#e85c5c" : "#014f86"};
   transform: translateY(-1px);
 }
 
@@ -4841,30 +4849,6 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
   align-items: center;
 }
 
-.validate-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.validate-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #2563eb, #1e40af);
-  transform: translateY(-1px);
-}
-
-.validate-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-}
 
 /* Enhanced Gallery Items */
 .gallery-item {
@@ -5053,14 +5037,6 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
   font-weight: 600;
 }
 
-/* Process Buttons Enhancement */
-.process-button.analysis {
-  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
-}
-
-.process-button.analysis:hover:not(:disabled) {
-  background: linear-gradient(135deg, #7c3aed, #6d28d9);
-}
 
 /* Loading States */
 .spinning {
@@ -5226,6 +5202,7 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
   cursor: pointer;
   transition: all 0.2s ease;
   font-weight: 500;
+  color: var(--color-dark);
 }
 
 .mode-btn:hover {
@@ -5247,7 +5224,7 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
   background: #dbeafe;
   border: 1px solid #93c5fd;
   border-radius: 8px;
-  color: #1e40af;
+  color: white;
 }
 
 .location-stats {

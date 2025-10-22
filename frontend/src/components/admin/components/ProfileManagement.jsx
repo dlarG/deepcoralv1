@@ -52,7 +52,6 @@ function ProfileManagement({ user }) {
     <div className="modern-profile-container">
       <div className="profile-hero-section">
         <div className="hero-background">
-          <div className="gradient-overlay"></div>
           <div className="floating-shapes">
             <div className="shape shape-1"></div>
             <div className="shape shape-2"></div>
@@ -238,7 +237,7 @@ function ProfileManagement({ user }) {
       {showDeleteModal && (
         <div className="modal-overlay">
           <div className="delete-modal">
-            <div className="delete-modal-header">
+            <div className="delete-modal-headers">
               <div className="delete-warning-icon">
                 <FiTrash2 size={32} />
               </div>

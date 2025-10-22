@@ -188,36 +188,174 @@ def delete_profile():
     try:
         with conn.cursor() as cur:
             # Verify password
-            cur.execute("SELECT password, roletype FROM users WHERE id = %s", (user_id,))
+            cur.execute("SELECT password, roletype, profile_image FROM users WHERE id = %s", (user_id,))
             result = cur.fetchone()
             if not result or not check_password_hash(result[0], data['password']):
                 return jsonify({"error": "Incorrect password"}), 401
             
+            user_password, user_role, profile_image = result
+            
             # Prevent admin from deleting themselves if they're the only admin
-            if result[1] == 'admin':
+            if user_role == 'admin':
                 cur.execute("SELECT COUNT(*) FROM users WHERE roletype = 'admin'")
                 admin_count = cur.fetchone()[0]
                 if admin_count <= 1:
                     return jsonify({"error": "Cannot delete the only admin account"}), 403
             
-            # Delete the user
+            # Get all images uploaded by this user for cleanup
+            cur.execute("""
+                SELECT filename, quadrat_crop_path, original_image_path 
+                FROM images WHERE uploader_id = %s
+            """, (user_id,))
+            user_images = cur.fetchall()
+            
+            # Get all segmentation mask paths for cleanup
+            cur.execute("""
+                SELECT DISTINCT sr.mask_path 
+                FROM segmentation_results sr
+                INNER JOIN images i ON sr.image_id = i.id
+                WHERE i.uploader_id = %s AND sr.mask_path IS NOT NULL
+            """, (user_id,))
+            mask_paths = cur.fetchall()
+            
+            # Start cascading deletion in correct order
+            print(f"Deleting account for user {user_id}...")
+            
+            # 1. Delete coral instances (child of segmentation_results)
+            cur.execute("""
+                DELETE FROM coral_instances 
+                WHERE segmentation_id IN (
+                    SELECT sr.id FROM segmentation_results sr
+                    INNER JOIN images i ON sr.image_id = i.id
+                    WHERE i.uploader_id = %s
+                )
+            """, (user_id,))
+            deleted_instances = cur.rowcount
+            print(f"Deleted {deleted_instances} coral instances")
+            
+            # 2. Delete segmentation results (child of images)
+            cur.execute("""
+                DELETE FROM segmentation_results 
+                WHERE image_id IN (
+                    SELECT id FROM images WHERE uploader_id = %s
+                )
+            """, (user_id,))
+            deleted_results = cur.rowcount
+            print(f"Deleted {deleted_results} segmentation results")
+            
+            # 3. Delete images (parent of segmentation_results)
+            cur.execute("DELETE FROM images WHERE uploader_id = %s", (user_id,))
+            deleted_images = cur.rowcount
+            print(f"Deleted {deleted_images} images")
+            
+            # 4. Delete the user account
             cur.execute("DELETE FROM users WHERE id = %s RETURNING id", (user_id,))
-            deleted_id = cur.fetchone()[0]
+            deleted_user_id = cur.fetchone()[0]
+            
+            # Commit database changes
             conn.commit()
+            print(f"Successfully deleted user {deleted_user_id}")
+            
+            # Clean up physical files after successful database deletion
+            files_deleted = cleanup_user_files(user_images, mask_paths, profile_image)
             
             # Clear session
             session.clear()
             
             return jsonify({
                 "message": "Account deleted successfully",
-                "deleted_id": deleted_id
+                "deleted_user_id": deleted_user_id,
+                "cleanup_stats": {
+                    "images_deleted": deleted_images,
+                    "segmentation_results_deleted": deleted_results,
+                    "coral_instances_deleted": deleted_instances,
+                    "files_cleaned": files_deleted
+                }
             }), 200
+            
+    except psycopg2.IntegrityError as e:
+        conn.rollback()
+        current_app.logger.error(f"Integrity constraint error during user deletion: {str(e)}")
+        return jsonify({"error": "Cannot delete account due to data dependencies. Please contact support."}), 409
+        
     except psycopg2.Error as e:
         conn.rollback()
-        return jsonify({"error": "Database error: " + str(e)}), 500
+        current_app.logger.error(f"Database error during user deletion: {str(e)}")
+        return jsonify({"error": f"Database error: {str(e)}"}), 500
+        
     except Exception as e:
         conn.rollback()
-        return jsonify({"error": str(e)}), 500
+        current_app.logger.error(f"Unexpected error during user deletion: {str(e)}")
+        return jsonify({"error": f"Account deletion failed: {str(e)}"}), 500
+        
     finally:
         if conn:
             conn.close()
+def cleanup_user_files(user_images, mask_paths, profile_image):
+    """Clean up physical files associated with the deleted user"""
+    files_deleted = 0
+    
+    try:
+        # Clean up image files
+        for image_data in user_images:
+            filename, crop_path, original_path = image_data
+            
+            # Delete crop file
+            if filename:
+                crop_file_path = os.path.join(
+                    current_app.root_path, '..', 'frontend', 'public', 'crops', filename
+                )
+                if os.path.exists(crop_file_path):
+                    os.remove(crop_file_path)
+                    files_deleted += 1
+                    print(f"Deleted crop file: {filename}")
+            
+            # Delete quadrat crop file if different
+            if crop_path and crop_path != filename:
+                quadrat_file_path = os.path.join(
+                    current_app.root_path, '..', 'frontend', 'public', crop_path
+                )
+                if os.path.exists(quadrat_file_path):
+                    os.remove(quadrat_file_path)
+                    files_deleted += 1
+                    print(f"Deleted quadrat file: {crop_path}")
+            
+            # Delete original image file
+            if original_path:
+                original_file_path = os.path.join(
+                    current_app.root_path, '..', 'frontend', 'public', original_path
+                )
+                if os.path.exists(original_file_path):
+                    os.remove(original_file_path)
+                    files_deleted += 1
+                    print(f"Deleted original file: {original_path}")
+        
+        # Clean up segmentation mask files
+        for mask_data in mask_paths:
+            mask_path = mask_data[0]
+            if mask_path:
+                mask_file_path = os.path.join(
+                    current_app.root_path, '..', 'frontend', 'public', mask_path
+                )
+                if os.path.exists(mask_file_path):
+                    os.remove(mask_file_path)
+                    files_deleted += 1
+                    print(f"Deleted mask file: {mask_path}")
+        
+        # Clean up profile image
+        if profile_image:
+            profile_file_path = os.path.join(
+                current_app.root_path, '..', 'frontend', 'public', 'profile_uploads', profile_image
+            )
+            if os.path.exists(profile_file_path):
+                os.remove(profile_file_path)
+                files_deleted += 1
+                print(f"Deleted profile image: {profile_image}")
+        
+        print(f"Total files cleaned up: {files_deleted}")
+        return files_deleted
+        
+    except Exception as e:
+        current_app.logger.error(f"Error during file cleanup: {str(e)}")
+        # Don't fail the whole operation if file cleanup fails
+        return files_deleted

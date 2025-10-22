@@ -1,5 +1,5 @@
 // src/components/admin/components/CoralManagement.js
-import React from "react";
+import { React, useEffect } from "react";
 import {
   FiPlus,
   FiEdit,
@@ -8,6 +8,8 @@ import {
   FiDatabase,
   FiX,
   FiUpload,
+  FiFileText,
+  FiChevronDown,
 } from "react-icons/fi";
 import useCoralManagement from "../hooks/useCoralManagement";
 import SuccessModal from "../../SuccessMessage";
@@ -32,6 +34,29 @@ function CoralManagement() {
     setShowModal,
   } = useCoralManagement();
 
+  useEffect(() => {
+    if (coralModalMode === "view") {
+      const descriptionContent = document.querySelector(".description-content");
+      const progressBar = document.getElementById("reading-progress");
+
+      if (descriptionContent && progressBar) {
+        const handleScroll = () => {
+          const scrollTop = descriptionContent.scrollTop;
+          const scrollHeight =
+            descriptionContent.scrollHeight - descriptionContent.clientHeight;
+          const scrollProgress = (scrollTop / scrollHeight) * 100;
+          progressBar.style.width = `${Math.min(scrollProgress, 100)}%`;
+        };
+
+        descriptionContent.addEventListener("scroll", handleScroll);
+
+        return () => {
+          descriptionContent.removeEventListener("scroll", handleScroll);
+        };
+      }
+    }
+  }, [coralModalMode]);
+
   return (
     <div className="content-section">
       {/* Header Section */}
@@ -55,38 +80,6 @@ function CoralManagement() {
               <FiPlus size={18} />
               <span className="btn-text">Add New Coral</span>
             </button>
-          </div>
-        </div>
-
-        {/* Statistics Bar */}
-        <div className="coral-stats">
-          <div className="stat-item">
-            <div className="stat-number">{coralData.length}</div>
-            <div className="stat-label">Total Species</div>
-          </div>
-          <div className="stat-item">
-            <div className="stat-number">
-              {
-                coralData.filter((c) => c.classification === "hard coral")
-                  .length
-              }
-            </div>
-            <div className="stat-label">Hard Corals</div>
-          </div>
-          <div className="stat-item">
-            <div className="stat-number">
-              {
-                coralData.filter((c) => c.classification === "soft coral")
-                  .length
-              }
-            </div>
-            <div className="stat-label">Soft Corals</div>
-          </div>
-          <div className="stat-item">
-            <div className="stat-number">
-              {new Set(coralData.map((c) => c.coral_type)).size}
-            </div>
-            <div className="stat-label">Types</div>
           </div>
         </div>
       </div>
@@ -176,7 +169,7 @@ function CoralManagement() {
                       {coral.coral_type} - {coral.coral_subtype}
                     </p>
                     <p
-                      className={`classification-badge ${coral.classification.replace(
+                      className={`class-badge ${coral.classification.replace(
                         " ",
                         "-"
                       )}`}
@@ -258,8 +251,8 @@ function CoralManagement() {
 
             <div className="coral-modal-body">
               {coralModalMode === "view" ? (
-                <div className="coral-view">
-                  <div className="coral-view-image">
+                <div className="coral-view-immersive">
+                  <div className="coral-fullscreen-image">
                     <img
                       src={
                         currentCoral?.image
@@ -267,52 +260,68 @@ function CoralManagement() {
                           : "/default-coral.jpg"
                       }
                       alt={currentCoral?.common_name}
+                      onError={(e) => {
+                        e.target.src = "/default-coral.jpg";
+                      }}
                     />
-                  </div>
-                  <div className="coral-view-info">
-                    <div className="view-header">
-                      <h2 className="view-title">
-                        {currentCoral?.common_name}
-                      </h2>
-                      <span
-                        className={`classification-badge large ${currentCoral?.classification.replace(
-                          " ",
-                          "-"
-                        )}`}
-                      >
-                        {currentCoral?.classification}
-                      </span>
-                    </div>
 
-                    <p className="scientific-name">
-                      {currentCoral?.scientific_name}
-                    </p>
-
-                    <div className="coral-details">
-                      <div className="detail-grid">
-                        <div className="detail-item">
-                          <span className="detail-label">Coral Type:</span>
-                          <span className="detail-value">
-                            {currentCoral?.coral_type}
+                    {/* Coral Title Overlay - Top */}
+                    <div className="coral-title-overlay">
+                      <div className="coral-title-content">
+                        <h1 className="coral-display-name">
+                          {currentCoral?.common_name}
+                        </h1>
+                        <p className="coral-scientific-name">
+                          ({currentCoral?.scientific_name})
+                        </p>
+                        <div className="coral-classification-display">
+                          <span
+                            className={`classification-badge immersive ${currentCoral?.classification.replace(
+                              " ",
+                              "-"
+                            )}`}
+                          >
+                            {currentCoral?.classification}
                           </span>
-                        </div>
-                        <div className="detail-item">
-                          <span className="detail-label">Coral Subtype:</span>
-                          <span className="detail-value">
+                          <span className="coral-type-display">
+                            {currentCoral?.coral_type} •{" "}
                             {currentCoral?.coral_subtype}
                           </span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="identification-section">
-                      <h4 className="section-title">
-                        Identification & Description
-                      </h4>
-                      <div className="identification-content">
-                        <p>{currentCoral?.identification}</p>
+                    {/* Description Overlay - Bottom */}
+                    <div className="coral-description-overlay">
+                      <div className="description-header">
+                        <h3 className="description-title">
+                          <FiFileText size={20} />
+                          Identification & Description
+                        </h3>
+                        <div className="scroll-indicator">
+                          <FiChevronDown size={16} />
+                          <span>Scroll to read more</span>
+                        </div>
+                      </div>
+
+                      <div className="description-content">
+                        <div className="description-text">
+                          <p>{currentCoral?.identification}</p>
+                        </div>
+                      </div>
+
+                      {/* Reading Progress Bar */}
+                      <div className="reading-progress-container">
+                        <div
+                          className="reading-progress-bar"
+                          id="reading-progress"
+                        ></div>
                       </div>
                     </div>
+
+                    {/* Gradient Overlays for Better Text Readability */}
+                    <div className="image-gradient-top"></div>
+                    <div className="image-gradient-bottom"></div>
                   </div>
                 </div>
               ) : (

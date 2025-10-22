@@ -92,10 +92,10 @@ function UserManagement() {
               />
             </div>
           </div>
+          <br />
 
           <div className="filter-section">
             <div className="filter-group">
-              <label>Role:</label>
               <select
                 value={userFilterRole}
                 onChange={(e) => {
@@ -112,7 +112,6 @@ function UserManagement() {
             </div>
 
             <div className="filter-group">
-              <label>Sort:</label>
               <select
                 value={userSortBy}
                 onChange={(e) => setUserSortBy(e.target.value)}

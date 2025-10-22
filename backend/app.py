@@ -25,7 +25,7 @@ def create_app():
     @app.before_request
     def csrf_protect():
         if request.method in ['POST', 'PUT', 'DELETE', 'PATCH']:
-            # Skip CSRF for file upload endpoints and GIS endpoints
+            # Skip CSRF for file upload endpoints and distribution endpoints
             if request.endpoint in [
                 'image.detect_custom', 
                 'image.detect', 
@@ -34,7 +34,8 @@ def create_app():
                 'gis.get_existing_locations',
                 'gis.save_images_with_location',
                 'gis.get_location_details',
-                'gis.find_nearby_locations'
+                'gis.find_nearby_locations',
+                'distribution.delete_image' 
             ]:
                 return
             
