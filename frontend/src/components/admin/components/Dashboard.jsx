@@ -26,6 +26,12 @@ const Dashboard = ({ user, setActiveTab }) => {
     getCategoryColor,
   } = useDashboardData();
 
+  const formatLastLogin = (lastLogin) => {
+    if (!lastLogin) return "Never";
+    const date = new Date(lastLogin);
+    return date.toLocaleString();
+  };
+
   const handleViewAllUsers = () => {
     setActiveTab("Manage Users");
   };
@@ -189,9 +195,9 @@ const Dashboard = ({ user, setActiveTab }) => {
                         </div>
                       )}
                       <div
-                        className={`status-indicators ${
-                          user.last_login ? "online" : "offline"
-                        }`}
+                        className={`status-indicators ${formatLastLogin(
+                          user?.last_login
+                        )}`}
                       ></div>
                     </div>
                     <div className="user-info">

@@ -3,22 +3,24 @@ import { Link } from "react-router-dom";
 import {
   FiLogIn,
   FiUserPlus,
-  // FiCamera,
-  // FiDatabase,
-  // FiBarChart2,
+  FiCamera,
+  FiDatabase,
+  FiBarChart2,
   FiChevronDown,
   FiPlay,
   FiArrowRight,
   FiStar,
-  // FiGlobe,
+  FiGlobe,
   FiMail,
   FiPhone,
   FiMapPin,
-  // FiCheckCircle,
-  // FiHeart,
-  // FiLinkedin,
+  FiCheckCircle,
+  FiHeart,
+  FiMap,
+  FiLocation,
+  //FiLinkedin,
   FiGithub,
-  // FiTwitter,
+  //FiTwitter,
   FiMenu,
   FiX,
 } from "react-icons/fi";
@@ -67,32 +69,32 @@ function HomePage() {
     setMobileMenuOpen(false);
   };
 
-  // const services = [
-  //   {
-  //     icon: <FiCamera />,
-  //     title: "AI Image Analysis",
-  //     description:
-  //       "Advanced deep learning algorithms analyze coral reef images with 99.5% accuracy, providing instant coral coverage estimates.",
-  //     features: ["Real-time Processing", "Auto Cropping", "Batch Analysis"],
-  //     gradient: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
-  //   },
-  //   {
-  //     icon: <FiDatabase />,
-  //     title: "Smart Data Management",
-  //     description:
-  //       "Intelligent database system that tracks reef health changes over time and identifies critical trends automatically.",
-  //     features: ["Trend Analysis", "Data Visualization", "Export Options"],
-  //     gradient: "linear-gradient(135deg, #10b981, #059669)",
-  //   },
-  //   {
-  //     icon: <FiBarChart2 />,
-  //     title: "Dynamic Reporting",
-  //     description:
-  //       "Generate beautiful, interactive reports and visualizations to share insights with your research team and stakeholders.",
-  //     features: ["Custom Reports", "Interactive Charts", "Multi-format Export"],
-  //     gradient: "linear-gradient(135deg, #f59e0b, #d97706)",
-  //   },
-  // ];
+  const services = [
+    {
+      icon: <FiCamera />,
+      title: "AI Image Analysis",
+      description:
+        "Advanced deep learning algorithms analyze coral reef images with 99.5% accuracy, providing instant coral coverage estimates.",
+      features: ["Real-time Processing", "Auto Cropping", "Batch Analysis"],
+      gradient: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
+    },
+    {
+      icon: <FiMap />,
+      title: "GIS Integration",
+      description:
+        "Seamlessly integrate analyzed data with GIS platforms to visualize coral health trends and support marine conservation efforts.",
+      features: ["Trend Analysis", "Data Visualization", "Export Options"],
+      gradient: "linear-gradient(135deg, #10b981, #059669)",
+    },
+    {
+      icon: <FiBarChart2 />,
+      title: "Dynamic Reporting",
+      description:
+        "Generate beautiful, interactive reports and visualizations to share insights with your research team and stakeholders.",
+      features: ["Custom Reports", "Interactive Charts", "Multi-format Export"],
+      gradient: "linear-gradient(135deg, #f59e0b, #d97706)",
+    },
+  ];
 
   return (
     <div className="landing-container">
@@ -125,15 +127,6 @@ function HomePage() {
               onClick={() => scrollToSection("services")}
             >
               Services
-            </a>
-            <a
-              href="#about"
-              className={`nav-link ${
-                activeSection === "about" ? "active" : ""
-              }`}
-              onClick={() => scrollToSection("about")}
-            >
-              About
             </a>
             <a
               href="#contact"
@@ -222,7 +215,7 @@ function HomePage() {
 
           <div
             className="scroll-indicator"
-            onClick={() => scrollToSection("contact")}
+            onClick={() => scrollToSection("services")}
           >
             <span>Discover Our Services</span>
             <FiChevronDown className="scroll-icon" />
@@ -230,7 +223,7 @@ function HomePage() {
         </div>
       </section>
       {/* Services Section */}
-      {/* <section id="services" className="services-section">
+      <section id="services" className="services-section">
         <div className="section-container">
           <div className="section-header">
             <div className="section-badge">
@@ -271,9 +264,9 @@ function HomePage() {
             ))}
           </div>
         </div>
-      </section> */}
-      {/* About Section */}
-      {/* <section id="about" className="about-section">
+      </section>
+      {/* About Section
+      <section id="about" className="about-section">
         <div className="section-container">
           <div className="about-content">
             <div className="about-text">
@@ -326,7 +319,7 @@ function HomePage() {
                 </div>
                 <div className="contact-details">
                   <h4>Phone</h4>
-                  <p>+63 (XX) XXXX-XXXX</p>
+                  <p>+63 9700 684 932</p>
                 </div>
               </div>
             </div>
@@ -370,9 +363,9 @@ function HomePage() {
                   {/* <a href="#" className="social-link">
                     <FiLinkedin />
                   </a> */}
-                  <a href="https://github.com/dlarG/" className="social-link">
+                  {/* <a href="https://github.com/dlarG/" className="social-link">
                     <FiGithub />
-                  </a>
+                  </a> */}
                   {/* <a href="#" className="social-link">
                     <FiTwitter />
                   </a> */}
@@ -392,16 +385,14 @@ function HomePage() {
               <div className="footer-column">
                 <h4>Institution</h4>
                 <p>Southern Leyte State University</p>
-                <p>GIS Technology Center</p>
+                <p>SLSU GIS Technology Center</p>
                 <p>Marine Research Division</p>
-                <p>Environmental Studies</p>
               </div>
 
               <div className="footer-column">
                 <h4>Technology</h4>
                 <p>Deep Learning Models</p>
                 <p>Computer Vision</p>
-                <p>Cloud Computing</p>
                 <p>Data Analytics</p>
               </div>
 

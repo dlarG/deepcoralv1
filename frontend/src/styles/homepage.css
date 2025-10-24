@@ -513,7 +513,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--color-primary);
   border: 1px solid rgba(255, 255, 255, 0.3);
   color: white;
   padding: 12px 24px;
@@ -523,7 +523,7 @@
 }
 
 .service-cta:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--btn-primary-hover);
   transform: translateX(5px);
 }
 
