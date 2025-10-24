@@ -13,6 +13,11 @@ from albumentations.pytorch import ToTensorV2
 from pathlib import Path
 from db import get_db_connection
 from datetime import datetime
+from flask import session
+from routes.activity_log import (
+    log_image_upload, log_system_action, ActivityLogger
+)
+
 
 image_bp = Blueprint('image', __name__)
 
@@ -100,6 +105,107 @@ def preprocess_for_segmentation(image_path, target_size=(256, 256)):
     
     return tensor, original_size
 
+def log_image_detection_activity(user_id, filename, detection_results, crop_count, method):
+    """Log image detection and cropping activity"""
+    try:
+        metadata = {
+            'filename': filename,
+            'crop_method': method,
+            'crops_generated': crop_count,
+            'detection_confidence': detection_results.get('highest_confidence', 0) if detection_results else 0,
+            'total_detections': detection_results.get('total_detections', 0) if detection_results else 0
+        }
+        
+        return ActivityLogger.log_activity(
+            user_id=user_id,
+            activity_type='image_detection',
+            description=f"Detected and cropped {crop_count} quadrat(s) from {filename}",
+            category='image_analysis',
+            metadata=metadata
+        )
+    except Exception as e:
+        print(f"Error logging image detection: {e}")
+        return False
+    
+def log_image_segmentation_activity(user_id, filename, coverage_data, total_pixels):
+    """Log coral segmentation analysis activity"""
+    try:
+        coral_types_found = len(coverage_data) if coverage_data else 0
+        coral_names = [coral['class_name'] for coral in coverage_data] if coverage_data else []
+        
+        metadata = {
+            'filename': filename,
+            'total_pixels_analyzed': total_pixels,
+            'coral_types_found': coral_types_found,
+            'coral_classes_detected': coral_names,
+            'segmentation_successful': coral_types_found > 0
+        }
+        
+        return ActivityLogger.log_activity(
+            user_id=user_id,
+            activity_type='coral_segmentation',
+            description=f"Analyzed coral coverage in {filename} - found {coral_types_found} coral types",
+            category='image_analysis',
+            metadata=metadata
+        )
+    except Exception as e:
+        print(f"Error logging segmentation: {e}")
+        return False
+    
+def log_batch_analysis_activity(user_id, total_images, successful_images, rejected_images, total_crops):
+    """Log batch analysis activity"""
+    try:
+        rejected_filenames = [img['filename'] for img in rejected_images] if rejected_images else []
+        
+        metadata = {
+            'total_images_submitted': total_images,
+            'successful_images': successful_images,
+            'rejected_images': len(rejected_images),
+            'total_crops_generated': total_crops,
+            'rejection_reasons': [img['reason'] for img in rejected_images] if rejected_images else [],
+            'rejected_filenames': rejected_filenames
+        }
+        
+        return ActivityLogger.log_activity(
+            user_id=user_id,
+            activity_type='batch_image_analysis',
+            description=f"Batch analyzed {total_images} images - {successful_images} successful, {len(rejected_images)} rejected, {total_crops} crops generated",
+            category='image_analysis',
+            metadata=metadata
+        )
+    except Exception as e:
+        print(f"Error logging batch analysis: {e}")
+        return False
+
+def log_image_validation_activity(user_id, total_images, valid_images, invalid_images):
+    """Log image validation activity"""
+    try:
+        metadata = {
+            'total_images': total_images,
+            'valid_images': valid_images,
+            'invalid_images': invalid_images,
+            'validation_success_rate': (valid_images / total_images * 100) if total_images > 0 else 0
+        }
+        
+        return ActivityLogger.log_activity(
+            user_id=user_id,
+            activity_type='image_validation',
+            description=f"Validated {total_images} images - {valid_images} valid, {invalid_images} invalid",
+            category='image_analysis',
+            metadata=metadata
+        )
+    except Exception as e:
+        print(f"Error logging validation: {e}")
+        return False
+
+def get_user_id_from_session():
+    """Get user ID from session, with fallback"""
+    try:
+        return session.get('user_id', 1)  # Default to user ID 1 if not in session
+    except RuntimeError:
+        # Handle case when called outside request context
+        return 1
+
 def segment_coral_lifeforms(image_path):
     """Segment coral lifeforms and calculate coverage"""
     if segmentation_model is None:
@@ -180,7 +286,7 @@ def enhanced_crop_inside_quadrat(image_path, bbox, crop_method='conservative'):
     height = y2 - y1
     
     if crop_method == 'conservative':
-        margin = 0.04  # 4% margin reduction 
+        margin = 0.01  # 4% margin reduction 
     elif crop_method == 'moderate':
         margin = 0.12  # 12% margin reduction
     elif crop_method == 'aggressive':
@@ -262,152 +368,6 @@ def enhance_cropped_image(cropped_img):
     
     return cropped_img
 
-# altrernative for detect_custom so that no error will pop up on console
-# @image_bp.route("/validate_image_silent", methods=["POST", "OPTIONS"])
-# def validate_single_image_silent():
-#     """Dedicated endpoint for image validation that always returns 200"""
-#     if request.method == "OPTIONS":
-#         return jsonify({}), 200
-    
-#     try:
-#         if 'image' not in request.files:
-#             return jsonify({
-#                 "valid": False,
-#                 "reason": "No image file provided",
-#                 "quadrat_count": 0,
-#                 "confidence": 0
-#             }), 200  # Return 200, not 400
-            
-#         file = request.files['image']
-        
-#         if file.filename == '':
-#             return jsonify({
-#                 "valid": False,
-#                 "reason": "Empty filename",
-#                 "quadrat_count": 0,
-#                 "confidence": 0
-#             }), 200
-
-#         # File validation
-#         allowed_extensions = {'jpg', 'jpeg', 'png', 'webp'}
-#         if '.' not in file.filename or file.filename.split('.')[-1].lower() not in allowed_extensions:
-#             return jsonify({
-#                 "valid": False,
-#                 "reason": "Invalid file type",
-#                 "quadrat_count": 0,
-#                 "confidence": 0
-#             }), 200
-
-#         # Save temporary file
-#         unique_id = str(uuid.uuid4())[:8]
-#         ext = file.filename.split('.')[-1].lower()
-#         safe_filename = f"validate_{unique_id}.{ext}"
-#         image_path = os.path.join(UPLOAD_FOLDER, safe_filename)
-        
-#         try:
-#             file.save(image_path)
-#         except Exception as e:
-#             return jsonify({
-#                 "valid": False,
-#                 "reason": f"Failed to save file: {str(e)}",
-#                 "quadrat_count": 0,
-#                 "confidence": 0
-#             }), 200
-
-#         # Run detection
-#         try:
-#             results = detection_model(image_path)
-#         except Exception as e:
-#             return jsonify({
-#                 "valid": False,
-#                 "reason": f"Model processing failed: {str(e)}",
-#                 "quadrat_count": 0,
-#                 "confidence": 0
-#             }), 200
-#         finally:
-#             # Always clean up
-#             try:
-#                 os.remove(image_path)
-#             except:
-#                 pass
-
-#         # Analyze detections
-#         CONFIDENCE_THRESHOLD = 0.87
-        
-#         if not results[0].boxes or len(results[0].boxes) == 0:
-#             return jsonify({
-#                 "valid": False,
-#                 "reason": "No objects detected in this image",
-#                 "quadrat_count": 0,
-#                 "confidence": 0,
-#                 "confidence_threshold": CONFIDENCE_THRESHOLD
-#             }), 200
-
-#         # Check for valid quadrats
-#         valid_quadrats = []
-#         all_detections = []
-        
-#         for i, box in enumerate(results[0].boxes):
-#             cls = int(box.cls)
-#             confidence = float(box.conf)
-#             label = detection_model.names[cls]
-            
-#             detection_info = {
-#                 "label": label,
-#                 "confidence": confidence,
-#                 "is_valid": False
-#             }
-            
-#             if label.lower() in ['full_quadrat', 'half_quadrat']:
-#                 if confidence >= CONFIDENCE_THRESHOLD:
-#                     detection_info["is_valid"] = True
-#                     valid_quadrats.append(detection_info)
-            
-#             all_detections.append(detection_info)
-
-#         # Return validation result (always 200 status)
-#         if len(valid_quadrats) == 0:
-#             quadrat_detections = [d for d in all_detections if d['label'].lower() in ['full_quadrat', 'half_quadrat']]
-#             other_detections = [d for d in all_detections if d['label'].lower() not in ['full_quadrat', 'half_quadrat']]
-            
-#             error_message = "No valid coral quadrats detected"
-            
-#             if quadrat_detections:
-#                 highest_confidence = max([d['confidence'] for d in quadrat_detections])
-#                 error_message += f". Highest quadrat confidence: {highest_confidence:.3f} (threshold: {CONFIDENCE_THRESHOLD})"
-#             elif other_detections:
-#                 detected_labels = list(set([d['label'] for d in other_detections]))
-#                 error_message += f". Detected: {', '.join(detected_labels)}"
-            
-#             return jsonify({
-#                 "valid": False,
-#                 "reason": error_message,
-#                 "quadrat_count": 0,
-#                 "confidence": 0,
-#                 "confidence_threshold": CONFIDENCE_THRESHOLD,
-#                 "total_detections": len(all_detections),
-#                 "quadrat_detections_low_confidence": len(quadrat_detections),
-#                 "other_detections": len(other_detections)
-#             }), 200
-#         else:
-#             return jsonify({
-#                 "valid": True,
-#                 "reason": f"Found {len(valid_quadrats)} valid quadrat(s)",
-#                 "quadrat_count": len(valid_quadrats),
-#                 "confidence": max([d['confidence'] for d in valid_quadrats]),
-#                 "confidence_threshold": CONFIDENCE_THRESHOLD,
-#                 "total_detections": len(all_detections),
-#                 "valid_detections": len(valid_quadrats)
-#             }), 200
-        
-#     except Exception as e:
-#         return jsonify({
-#             "valid": False,
-#             "reason": f"Validation error: {str(e)}",
-#             "quadrat_count": 0,
-#             "confidence": 0
-#         }), 200  # Still return 200, not 500
-
 
 @image_bp.route("/detect_custom", methods=["POST", "OPTIONS"])
 def detect_and_crop_custom():
@@ -428,7 +388,14 @@ def detect_and_crop_custom():
             return jsonify({"error": "Invalid file type"}), 400
 
         crop_intensity = request.form.get('intensity', 'conservative')
+        user_id = get_user_id_from_session()
         
+        log_image_upload(
+            user_id=user_id,
+            filename=file.filename,
+            image_count=1
+        )
+
         unique_id = str(uuid.uuid4())[:8]
         ext = file.filename.split('.')[-1].lower()
         safe_filename = f"{unique_id}.{ext}"
@@ -437,6 +404,12 @@ def detect_and_crop_custom():
         try:
             file.save(image_path)
         except Exception as e:
+            log_system_action(
+                user_id=user_id,
+                action='image_save_failed',
+                description=f"Failed to save uploaded image {file.filename}",
+                details={'error': str(e)}
+            )
             return jsonify({"error": f"Failed to save file: {str(e)}"}), 500
 
         # Optional: Comment out underwater validation if too strict
@@ -448,6 +421,12 @@ def detect_and_crop_custom():
         try:
             results = detection_model(image_path)
         except Exception as e:
+            log_system_action(
+                user_id=user_id,
+                action='detection_failed',
+                description=f"YOLO detection failed for {file.filename}",
+                details={'error': str(e)}
+            )
             try:
                 os.remove(image_path)
             except:
@@ -498,6 +477,15 @@ def detect_and_crop_custom():
 
         # IMPROVED: Detailed error reporting
         if len(valid_quadrats) == 0:
+            log_system_action(
+                user_id=user_id,
+                action='no_quadrats_detected',
+                description=f"No valid coral quadrats detected in {file.filename}",
+                details={
+                    'total_detections': len(all_detections),
+                    'confidence_threshold': CONFIDENCE_THRESHOLD
+                }
+            )
             try:
                 os.remove(image_path)
             except:
@@ -562,6 +550,21 @@ def detect_and_crop_custom():
                 "confidence_threshold": CONFIDENCE_THRESHOLD,
                 "valid_quadrats_detected": len(valid_quadrats)
             }), 400
+        
+        detection_results_data = {
+            'highest_confidence': max([d['confidence'] for d in valid_quadrats]),
+            'total_detections': len(all_detections),
+            'valid_detections': len(valid_quadrats)
+        }
+        
+        log_image_detection_activity(
+            user_id=user_id,
+            filename=file.filename,
+            detection_results=detection_results_data,
+            crop_count=len(crops),
+            method=crop_intensity
+        )
+        
 
         return jsonify({
             "crops": crops,
@@ -575,6 +578,12 @@ def detect_and_crop_custom():
         })
         
     except Exception as e:
+        log_system_action(
+            user_id=user_id,
+            action='image_processing_error',
+            description=f"Unexpected error processing {file.filename if 'file' in locals() else 'unknown file'}",
+            details={'error': str(e)}
+        )
         print(f"Unexpected error: {str(e)}")
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
 
@@ -633,7 +642,10 @@ def validate_quadrats():
             return jsonify({"error": "No image files provided"}), 400
 
         validation_results = []
-        
+        user_id = get_user_id_from_session()
+        valid_count = sum(1 for result in validation_results if result['valid'])
+        invalid_count = len(validation_results) - valid_count
+
         for file in files:
             if not file or file.filename == '':
                 continue
@@ -762,6 +774,13 @@ def validate_quadrats():
                     os.remove(temp_path)
                 except:
                     pass
+
+        log_image_validation_activity(
+            user_id=user_id,
+            total_images=len(validation_results),
+            valid_images=valid_count,
+            invalid_images=invalid_count
+        )
         
         return jsonify({
             "validation_results": validation_results,
@@ -771,6 +790,12 @@ def validate_quadrats():
         })
         
     except Exception as e:
+        log_system_action(
+            user_id=user_id,
+            action='validation_error',
+            description=f"Error during image validation",
+            details={'error': str(e)}
+        )
         print(f"Validation error: {str(e)}")
         return jsonify({"error": f"Validation failed: {str(e)}"}), 500
 
@@ -781,6 +806,8 @@ def detect_crop_and_segment():
     if request.method == "OPTIONS":
         return jsonify({}), 200
     
+    user_id = get_user_id_from_session()
+    
     try:
         if 'image' not in request.files:
             return jsonify({"error": "No image file provided"}), 400
@@ -788,7 +815,19 @@ def detect_crop_and_segment():
         file = request.files['image']
         uploader_id = request.form.get('uploader_id', 1)  # Default to user ID 1
         
-        # ... existing file validation code ...
+        log_image_upload(
+            user_id=user_id,
+            filename=file.filename,
+            image_count=1
+        )
+
+        if file.filename == '':
+            return jsonify({"error": "Empty filename"}), 400
+        
+        allowed_extensions = {'jpg', 'jpeg', 'png', 'webp'}
+        if '.' not in file.filename or file.filename.split('.')[-1].lower() not in allowed_extensions:
+            return jsonify({"error": "Invalid file type"}), 400
+        
 
         crop_intensity = request.form.get('intensity', 'aggressive')
         unique_id = str(uuid.uuid4())[:8]
@@ -843,7 +882,8 @@ def detect_crop_and_segment():
 
                 # Accumulate coverage data for total statistics
                 total_coverage_data.extend(coverage_data)
-
+                
+                
                 crops_data.append({
                     'crop_url': f"crops/{crop_filename}",
                     'visualization_url': f"masks/{viz_filename}",
@@ -852,7 +892,7 @@ def detect_crop_and_segment():
                     'detection_label': label,
                     'image_id': image_id
                 })
-
+                
             except Exception as e:
                 print(f"Error processing box {i}: {str(e)}")
                 continue
@@ -885,7 +925,24 @@ def detect_crop_and_segment():
             os.remove(image_path)
         except:
             pass
-
+        if crops_data:
+            for crop in crops_data:
+                log_image_segmentation_activity(
+                    user_id=user_id,
+                    filename=crop['crop_url'],
+                    coverage_data=crop['coverage_data'],
+                    total_pixels=crop['total_pixels']
+                )
+        log_system_action(
+            user_id=user_id,
+            action='image_database_save',
+            description=f"Saved {len(crops_data)} processed images to database from {file.filename}",
+            details={
+                'original_filename': file.filename,
+                'crops_saved': len(crops_data),
+                'segmentation_enabled': segmentation_model is not None
+            }
+        )
         return jsonify({
             "crops": crops_data,
             "method": crop_intensity,
@@ -897,6 +954,12 @@ def detect_crop_and_segment():
         })
         
     except Exception as e:
+        log_system_action(
+            user_id=user_id,
+            action='segmentation_error',
+            description=f"Error during detection and segmentation of {file.filename if 'file' in locals() else 'unknown file'}",
+            details={'error': str(e)}
+        )
         print(f"Unexpected error: {str(e)}")
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
 
@@ -955,6 +1018,8 @@ def batch_analyze_images():
     if request.method == "OPTIONS":
         return jsonify({}), 200
     
+    user_id = get_user_id_from_session()
+    
     try:
         files = request.files.getlist('images')
         if not files:
@@ -963,6 +1028,16 @@ def batch_analyze_images():
         uploader_id = request.form.get('uploader_id', 1)
         crop_intensity = request.form.get('intensity', 'aggressive')
         
+        log_system_action(
+            user_id=user_id,
+            action='batch_upload_started',
+            description=f"Started batch analysis of {len(files)} images",
+            details={
+                'file_count': len(files),
+                'crop_intensity': crop_intensity,
+                'uploader_id': uploader_id
+            }
+        )
         # FIXED: Ensure user exists before proceeding
         if not ensure_user_exists(uploader_id):
             return jsonify({"error": f"Cannot create or find user with ID {uploader_id}"}), 400
@@ -1107,6 +1182,28 @@ def batch_analyze_images():
                 (batch_coverage_data[class_name]['total_pixels'] / batch_total_pixels) * 100, 2
             ) if batch_total_pixels > 0 else 0
 
+        successful_images = len(all_results)
+        total_crops = sum(len(result['crops']) for result in all_results)
+
+        log_batch_analysis_activity(
+            user_id=user_id,
+            total_images=len(files),
+            successful_images=successful_images,
+            rejected_images=rejected_images,
+            total_crops=total_crops
+        )
+        
+        # Log individual segmentation activities for successful images
+        for result in all_results:
+            for crop in result['crops']:
+                if crop.get('coverage_data'):
+                    log_image_segmentation_activity(
+                        user_id=user_id,
+                        filename=crop['crop_url'],
+                        coverage_data=crop['coverage_data'],
+                        total_pixels=crop['total_pixels']
+                    )
+
         return jsonify({
             "results": all_results,
             "rejected_images": rejected_images,
@@ -1121,6 +1218,12 @@ def batch_analyze_images():
         })
 
     except Exception as e:
+        log_system_action(
+            user_id=user_id,
+            action='batch_analysis_error',
+            description=f"Error during batch analysis",
+            details={'error': str(e), 'file_count': len(files) if 'files' in locals() else 0}
+        )
         print(f"Batch analysis error: {str(e)}")
         import traceback
         traceback.print_exc()
@@ -1130,6 +1233,12 @@ def save_image_to_database(filename, uploader_id, total_pixels, analyzed_area_px
     """Save image metadata to database"""
     conn = get_db_connection()
     if conn is None:
+        log_system_action(
+            user_id=uploader_id,
+            action='database_connection_failed',
+            description=f"Failed to connect to database while saving {filename}",
+            details={'filename': filename}
+        )
         return None
     
     try:
@@ -1144,8 +1253,27 @@ def save_image_to_database(filename, uploader_id, total_pixels, analyzed_area_px
             
             image_id = cur.fetchone()[0]
             conn.commit()
+            log_system_action(
+                user_id=uploader_id,
+                action='image_saved_to_database',
+                description=f"Successfully saved image {filename} to database with ID {image_id}",
+                details={
+                    'image_id': image_id,
+                    'filename': filename,
+                    'total_pixels': total_pixels,
+                    'analysis_confidence': analysis_confidence
+                }
+            )
+
             return image_id
     except Exception as e:
+        # Log database save error
+        log_system_action(
+            user_id=uploader_id,
+            action='database_save_error',
+            description=f"Failed to save image {filename} to database",
+            details={'error': str(e), 'filename': filename}
+        )
         print(f"Database error saving image: {e}")
         conn.rollback()
         return None
@@ -1234,3 +1362,58 @@ def ensure_user_exists(uploader_id):
         return False
     finally:
         conn.close()
+
+@image_bp.route("/analysis_stats", methods=["GET"])
+@cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
+def get_analysis_stats():
+    """Get image analysis statistics for dashboard"""
+    user_id = get_user_id_from_session()
+    
+    try:
+        conn = get_db_connection()
+        if conn is None:
+            return jsonify({"error": "Database connection failed"}), 500
+            
+        with conn.cursor() as cur:
+            # Get recent image analysis activities
+            cur.execute("""
+                SELECT activity_type, COUNT(*) as count, MAX(created_at) as last_activity
+                FROM activities 
+                WHERE category = 'image_analysis' 
+                AND created_at >= NOW() - INTERVAL '30 days'
+                GROUP BY activity_type
+                ORDER BY count DESC
+            """)
+            
+            activity_stats = []
+            for row in cur.fetchall():
+                activity_stats.append({
+                    'activity_type': row[0],
+                    'count': row[1],
+                    'last_activity': row[2].isoformat() if row[2] else None
+                })
+            
+            # Log the stats request
+            log_system_action(
+                user_id=user_id,
+                action='analysis_stats_viewed',
+                description="Viewed image analysis statistics",
+                details={'stats_count': len(activity_stats)}
+            )
+            
+            return jsonify({
+                "analysis_stats": activity_stats,
+                "period": "Last 30 days"
+            })
+            
+    except Exception as e:
+        log_system_action(
+            user_id=user_id,
+            action='stats_error',
+            description="Error retrieving analysis statistics",
+            details={'error': str(e)}
+        )
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()

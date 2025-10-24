@@ -12,6 +12,11 @@ from io import BytesIO
 import pandas as pd
 from flask import send_file
 import shutil
+from routes.activity_log import (
+    log_user_management, log_coral_info_action, log_report_generation, 
+    log_system_action, ActivityLogger
+)
+
 from werkzeug.utils import secure_filename
 
 admin_bp = Blueprint('admin', __name__)
@@ -96,6 +101,14 @@ def create_user():
             
             new_user = cur.fetchone()
             conn.commit()
+
+            log_user_management(
+                admin_id=session.get('user_id'),
+                action='created',
+                target_user=f"{data['firstname']} {data['lastname']} (@{data['username']})",
+                details={'role': data['roletype'], 'status': status}
+            )
+            
             
             return jsonify({
                 "message": "User created successfully",
@@ -185,6 +198,13 @@ def update_user(user_id):
             cur.execute(update_query, update_values)
             updated_user = cur.fetchone()
             conn.commit()
+
+            log_user_management(
+                admin_id=session.get('user_id'),
+                action='updated',
+                target_user=f"{updated_user[1]} ({updated_user[2]} {updated_user[3]})",
+                details={'updated_fields': list(data.keys())}
+            )
             
             return jsonify({
                 "message": "User updated successfully",
@@ -219,9 +239,10 @@ def delete_user(user_id):
     
     try:
         with conn.cursor() as cur:
-            # Check if user exists
-            cur.execute("SELECT id FROM users WHERE id = %s", (user_id,))
-            if not cur.fetchone():
+            # Check if user exists and get user info for logging
+            cur.execute("SELECT username, firstname, lastname FROM users WHERE id = %s", (user_id,))
+            user_info = cur.fetchone()
+            if not user_info:
                 return jsonify({"error": "User not found"}), 404
             
             
@@ -229,6 +250,12 @@ def delete_user(user_id):
             cur.execute("DELETE FROM users WHERE id = %s RETURNING id", (user_id,))
             deleted_id = cur.fetchone()[0]
             conn.commit()
+
+            log_user_management(
+                admin_id=session.get('user_id'),
+                action='deleted',
+                target_user=f"{user_info[1]} {user_info[2]} (@{user_info[0]})"
+            )
             
             return jsonify({
                 "message": "User deleted successfully",
@@ -308,6 +335,12 @@ def add_coral():
             
             new_coral = cur.fetchone()
             conn.commit()
+
+            log_coral_info_action(
+                user_id=session.get('user_id'),
+                action='created',
+                coral_name=f"{coral_data['common_name']} ({coral_data['scientific_name']})"
+            )
             
             coral_response = {
                 'id': new_coral[0],
@@ -400,6 +433,12 @@ def update_coral(coral_id):
             
             updated_coral = cur.fetchone()
             conn.commit()
+
+            log_coral_info_action(
+                user_id=session.get('user_id'),
+                action='updated',
+                coral_name=f"{updated_coral[5]} ({updated_coral[4]})"
+            )
             
             coral_response = {
                 'id': updated_coral[0],
@@ -455,6 +494,13 @@ def delete_coral(coral_id):
             # Delete coral record
             cur.execute("DELETE FROM coral_information WHERE id = %s", (coral_id,))
             conn.commit()
+
+            log_coral_info_action(
+                user_id=session.get('user_id'),
+                action='deleted',
+                coral_name=f"{coral_data[0]} ({coral_data[1]})"
+            )
+            
             
             return jsonify({'message': 'Coral deleted successfully'}), 200
 
@@ -569,6 +615,12 @@ def approve_user(user_id):
             
             updated_user = cur.fetchone()
             conn.commit()
+
+            log_user_management(
+                admin_id=session.get('user_id'),
+                action='approved',
+                target_user=f"{updated_user[1]} ({updated_user[2]} {updated_user[3]})"
+            )
             
             return jsonify({
                 "message": "User approved successfully",
@@ -624,6 +676,12 @@ def reject_user(user_id):
             cur.execute("DELETE FROM users WHERE id = %s RETURNING id", (user_id,))
             deleted_id = cur.fetchone()[0]
             conn.commit()
+
+            log_user_management(
+                admin_id=session.get('user_id'),
+                action='rejected',
+                target_user=f"{user[1]} {user[2]} (@{user[0]})"
+            )
             
             return jsonify({
                 "message": "User rejected and removed successfully",
@@ -1071,18 +1129,17 @@ def get_recent_users():
 @admin_required
 @login_required
 def get_recent_activities():
-    
     conn = get_db_connection()
     if conn is None:
         return jsonify({"error": "Database connection failed"}), 500
     
     try:
         with conn.cursor() as cur:
-            # Check if activities table exists and has data
             try:
                 cur.execute("""
                     SELECT a.id, a.activity_type, a.activity_description, 
-                           a.created_at, u.firstname, u.lastname, u.profile_image
+                           a.created_at, a.category, u.firstname, u.lastname, 
+                           u.profile_image
                     FROM activities a
                     LEFT JOIN users u ON a.user_id = u.id
                     ORDER BY a.created_at DESC 
@@ -1097,14 +1154,14 @@ def get_recent_activities():
                         'activity_type': activity[1],
                         'activity_description': activity[2],
                         'created_at': activity[3].isoformat() if activity[3] else None,
-                        'user_name': f"{activity[4]} {activity[5]}" if activity[4] else "System",
-                        'user_avatar': activity[6]
+                        'category': activity[4],  # Add category
+                        'user_name': f"{activity[5]} {activity[6]}" if activity[5] else "System",
+                        'user_avatar': activity[7]
                     })
                 
                 return jsonify({"recent_activities": recent_activities}), 200
                 
             except Exception as e:
-                # Return empty activities if table doesn't exist or has issues
                 return jsonify({"recent_activities": []}), 200
             
     except Exception as e:
@@ -1595,15 +1652,13 @@ def update_system_settings():
 
 def log_activity(user_id, activity_type, description):
     try:
-        conn = get_db_connection()
-        if conn:
-            with conn.cursor() as cur:
-                cur.execute("""
-                    INSERT INTO activities (user_id, activity_type, activity_description, created_at)
-                    VALUES (%s, %s, %s, NOW())
-                """, (user_id, activity_type, description))
-                conn.commit()
-            conn.close()
+        # Use the new ActivityLogger
+        ActivityLogger.log_activity(
+            user_id=user_id,
+            activity_type=activity_type,
+            description=description,
+            category='system_admin'  # Default category
+        )
     except Exception as e:
         print(f"Error logging activity: {str(e)}")
 

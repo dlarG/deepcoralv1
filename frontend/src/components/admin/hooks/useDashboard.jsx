@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { useAuth } from "../../../context/AuthContext";
+// import { useAuth } from "../../../context/AuthContext";
 
 export default function useDashboardData() {
-  const { logout } = useAuth();
+  // const { logout } = useAuth();
 
   const [stats, setStats] = useState({
     approved_users: 0,
@@ -148,7 +148,31 @@ export default function useDashboardData() {
 
   const getActivityIcon = (type) => {
     const iconMap = {
-      login: "👤",
+      login: "🔑",
+      logout: "🚪",
+      registration: "👤",
+
+      user_created: "➕",
+      user_updated: "✏️",
+      user_deleted: "🗑️",
+      user_approved: "✅",
+      user_rejected: "❌",
+
+      coral_info_created: "🪸",
+      coral_info_updated: "✏️",
+      coral_info_deleted: "🗑️",
+
+      image_upload: "📸",
+      analysis_completed: "✅",
+
+      model_upload: "🤖",
+      model_deleted: "🗑️",
+      system_settings_updated: "⚙️",
+
+      report_generated: "📄",
+
+      default: "📋",
+
       upload: "📁",
       analysis: "🔬",
       create: "➕",
@@ -162,6 +186,19 @@ export default function useDashboardData() {
 
   const refreshDashboard = () => {
     fetchDashboardData();
+  };
+
+  const getCategoryColor = (category) => {
+    const colors = {
+      authentication: "#3b82f6",
+      user_management: "#10b981",
+      coral_data: "#f59e0b",
+      image_analysis: "#8b5cf6",
+      system_admin: "#ef4444",
+      reports: "#06b6d4",
+    };
+
+    return colors[category] || "#6b7280";
   };
 
   return {
@@ -183,5 +220,7 @@ export default function useDashboardData() {
     fetchRecentUsers,
     fetchRecentActivities,
     fetchChartData,
+
+    getCategoryColor,
   };
 }

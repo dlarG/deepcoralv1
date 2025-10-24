@@ -626,7 +626,7 @@ function AddImage() {
       setImages([...updatedImages]);
 
       const validation = await validateImageForQuadrats(images[i].file);
-      validatedCount++;
+      // validatedCount++;
 
       if (validation.valid) {
         updatedImages[i].status = "valid";

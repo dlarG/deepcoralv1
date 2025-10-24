@@ -17,9 +17,27 @@ CREATE TABLE IF NOT EXISTS users (
     roletype user_role NOT NULL DEFAULT 'guest',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP,
-	deleted_at TIMESTAMP
+	deleted_at TIMESTAMP,
+    bio TEXT,
+    status(ENUM, pending, approved, rejected) DEFAULT pending,
+    last_login TIMESTAMP,
+    phone VARCHAR(20),
+    institution VARCHAR(255)
 );
 
+
+CREATE TABLE IF NOT EXIST coral_information(
+    id Serial PRIMARY KEY,
+    coral_type VARCHAR(200),
+    coral_Subtype,
+    classifcation,
+    scientific_name, 
+    common_name,
+    identification,
+    created_at,
+    updated_at,
+    image
+)
 
 
 
@@ -116,3 +134,43 @@ CREATE INDEX idx_users_status ON users(status);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS institution VARCHAR(255);
+
+
+
+-- Add more specific activity types for better categorization
+-- You can add these as you implement different features
+CREATE TYPE activity_category AS ENUM (
+    'authentication',    -- login, logout, registration
+    'user_management',   -- user creation, updates, approvals
+    'coral_data',       -- coral info CRUD operations
+    'image_analysis',   -- image uploads, analysis
+    'system_admin',     -- system configuration changes
+    'reports'           -- report generation and exports
+);
+
+-- Add category to activities table
+ALTER TABLE activities ADD COLUMN IF NOT EXISTS category activity_category;
+
+-- Add indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_activities_category ON activities(category);
+CREATE INDEX IF NOT EXISTS idx_activities_user_created ON activities(user_id, created_at);
+
+-- Add the missing columns to your activities table
+ALTER TABLE activities ADD COLUMN IF NOT EXISTS category VARCHAR(50);
+
+-- Create the enum for better categorization
+CREATE TYPE activity_category AS ENUM (
+    'authentication',    -- login, logout, registration
+    'user_management',   -- user creation, updates, approvals
+    'coral_data',       -- coral info CRUD operations
+    'image_analysis',   -- image uploads, analysis
+    'system_admin',     -- system configuration changes
+    'reports'           -- report generation and exports
+);
+
+-- Update the category column to use the enum
+ALTER TABLE activities ALTER COLUMN category TYPE activity_category USING category::activity_category;
+
+-- Add indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_activities_category ON activities(category);
+CREATE INDEX IF NOT EXISTS idx_activities_user_created ON activities(user_id, created_at);

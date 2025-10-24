@@ -1159,6 +1159,9 @@
   animation: spin 1s linear infinite;
   margin-bottom: 1rem;
 }
+.dark-mode .loading-container {
+  background: transparent;
+}
 .dark-mode .loading-spinner {
   border: 4px solid rgba(51, 65, 85, 0.3);
 }

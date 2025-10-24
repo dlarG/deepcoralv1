@@ -23,6 +23,7 @@ const Dashboard = ({ user, setActiveTab }) => {
     refreshDashboard,
     formatTimeAgo,
     getActivityIcon,
+    getCategoryColor,
   } = useDashboardData();
 
   const handleViewAllUsers = () => {
@@ -245,7 +246,13 @@ const Dashboard = ({ user, setActiveTab }) => {
               <div className="activities-list">
                 {recentActivities.map((activity) => (
                   <div key={activity.id} className="activity-item">
-                    <div className={`activity-icon ${activity.activity_type}`}>
+                    <div
+                      className={`activity-icon ${activity.activity_type}`}
+                      style={{
+                        backgroundColor: getCategoryColor(activity.category),
+                        color: "white",
+                      }}
+                    >
                       <span>{getActivityIcon(activity.activity_type)}</span>
                     </div>
                     <div className="activity-content">
@@ -255,6 +262,9 @@ const Dashboard = ({ user, setActiveTab }) => {
                       <div className="activity-meta">
                         <span className="activity-user">
                           {activity.user_name}
+                        </span>
+                        <span className="activity-category">
+                          {activity.category?.replace("_", " ")}
                         </span>
                         <span className="activity-time">
                           {formatTimeAgo(activity.created_at)}
