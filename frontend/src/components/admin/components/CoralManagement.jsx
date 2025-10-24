@@ -490,7 +490,7 @@ function CoralManagement() {
 
                   <div className="coral-modal-actions">
                     <button
-                      type="button"
+                      type="button" // Change from default to explicit button type
                       onClick={closeCoralModal}
                       className="modal-action-btn cancel"
                     >
@@ -501,6 +501,11 @@ function CoralManagement() {
                       type="submit"
                       className="modal-action-btn submit"
                       disabled={coralLoading}
+                      onClick={(e) => {
+                        // Add explicit prevention and call handler
+                        e.preventDefault();
+                        handleCoralSubmit(e);
+                      }}
                     >
                       {coralLoading ? (
                         <div className="btn-loading">

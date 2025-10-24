@@ -173,6 +173,7 @@ def create_visualization_mask(predictions):
     # Background (class 0) remains black
     return colored_mask
 
+
 def enhanced_crop_inside_quadrat(image_path, bbox, crop_method='conservative'):
     x1, y1, x2, y2 = bbox
     width = x2 - x1
@@ -261,6 +262,153 @@ def enhance_cropped_image(cropped_img):
     
     return cropped_img
 
+# altrernative for detect_custom so that no error will pop up on console
+# @image_bp.route("/validate_image_silent", methods=["POST", "OPTIONS"])
+# def validate_single_image_silent():
+#     """Dedicated endpoint for image validation that always returns 200"""
+#     if request.method == "OPTIONS":
+#         return jsonify({}), 200
+    
+#     try:
+#         if 'image' not in request.files:
+#             return jsonify({
+#                 "valid": False,
+#                 "reason": "No image file provided",
+#                 "quadrat_count": 0,
+#                 "confidence": 0
+#             }), 200  # Return 200, not 400
+            
+#         file = request.files['image']
+        
+#         if file.filename == '':
+#             return jsonify({
+#                 "valid": False,
+#                 "reason": "Empty filename",
+#                 "quadrat_count": 0,
+#                 "confidence": 0
+#             }), 200
+
+#         # File validation
+#         allowed_extensions = {'jpg', 'jpeg', 'png', 'webp'}
+#         if '.' not in file.filename or file.filename.split('.')[-1].lower() not in allowed_extensions:
+#             return jsonify({
+#                 "valid": False,
+#                 "reason": "Invalid file type",
+#                 "quadrat_count": 0,
+#                 "confidence": 0
+#             }), 200
+
+#         # Save temporary file
+#         unique_id = str(uuid.uuid4())[:8]
+#         ext = file.filename.split('.')[-1].lower()
+#         safe_filename = f"validate_{unique_id}.{ext}"
+#         image_path = os.path.join(UPLOAD_FOLDER, safe_filename)
+        
+#         try:
+#             file.save(image_path)
+#         except Exception as e:
+#             return jsonify({
+#                 "valid": False,
+#                 "reason": f"Failed to save file: {str(e)}",
+#                 "quadrat_count": 0,
+#                 "confidence": 0
+#             }), 200
+
+#         # Run detection
+#         try:
+#             results = detection_model(image_path)
+#         except Exception as e:
+#             return jsonify({
+#                 "valid": False,
+#                 "reason": f"Model processing failed: {str(e)}",
+#                 "quadrat_count": 0,
+#                 "confidence": 0
+#             }), 200
+#         finally:
+#             # Always clean up
+#             try:
+#                 os.remove(image_path)
+#             except:
+#                 pass
+
+#         # Analyze detections
+#         CONFIDENCE_THRESHOLD = 0.87
+        
+#         if not results[0].boxes or len(results[0].boxes) == 0:
+#             return jsonify({
+#                 "valid": False,
+#                 "reason": "No objects detected in this image",
+#                 "quadrat_count": 0,
+#                 "confidence": 0,
+#                 "confidence_threshold": CONFIDENCE_THRESHOLD
+#             }), 200
+
+#         # Check for valid quadrats
+#         valid_quadrats = []
+#         all_detections = []
+        
+#         for i, box in enumerate(results[0].boxes):
+#             cls = int(box.cls)
+#             confidence = float(box.conf)
+#             label = detection_model.names[cls]
+            
+#             detection_info = {
+#                 "label": label,
+#                 "confidence": confidence,
+#                 "is_valid": False
+#             }
+            
+#             if label.lower() in ['full_quadrat', 'half_quadrat']:
+#                 if confidence >= CONFIDENCE_THRESHOLD:
+#                     detection_info["is_valid"] = True
+#                     valid_quadrats.append(detection_info)
+            
+#             all_detections.append(detection_info)
+
+#         # Return validation result (always 200 status)
+#         if len(valid_quadrats) == 0:
+#             quadrat_detections = [d for d in all_detections if d['label'].lower() in ['full_quadrat', 'half_quadrat']]
+#             other_detections = [d for d in all_detections if d['label'].lower() not in ['full_quadrat', 'half_quadrat']]
+            
+#             error_message = "No valid coral quadrats detected"
+            
+#             if quadrat_detections:
+#                 highest_confidence = max([d['confidence'] for d in quadrat_detections])
+#                 error_message += f". Highest quadrat confidence: {highest_confidence:.3f} (threshold: {CONFIDENCE_THRESHOLD})"
+#             elif other_detections:
+#                 detected_labels = list(set([d['label'] for d in other_detections]))
+#                 error_message += f". Detected: {', '.join(detected_labels)}"
+            
+#             return jsonify({
+#                 "valid": False,
+#                 "reason": error_message,
+#                 "quadrat_count": 0,
+#                 "confidence": 0,
+#                 "confidence_threshold": CONFIDENCE_THRESHOLD,
+#                 "total_detections": len(all_detections),
+#                 "quadrat_detections_low_confidence": len(quadrat_detections),
+#                 "other_detections": len(other_detections)
+#             }), 200
+#         else:
+#             return jsonify({
+#                 "valid": True,
+#                 "reason": f"Found {len(valid_quadrats)} valid quadrat(s)",
+#                 "quadrat_count": len(valid_quadrats),
+#                 "confidence": max([d['confidence'] for d in valid_quadrats]),
+#                 "confidence_threshold": CONFIDENCE_THRESHOLD,
+#                 "total_detections": len(all_detections),
+#                 "valid_detections": len(valid_quadrats)
+#             }), 200
+        
+#     except Exception as e:
+#         return jsonify({
+#             "valid": False,
+#             "reason": f"Validation error: {str(e)}",
+#             "quadrat_count": 0,
+#             "confidence": 0
+#         }), 200  # Still return 200, not 500
+
+
 @image_bp.route("/detect_custom", methods=["POST", "OPTIONS"])
 def detect_and_crop_custom():
     if request.method == "OPTIONS":
@@ -279,7 +427,7 @@ def detect_and_crop_custom():
         if '.' not in file.filename or file.filename.split('.')[-1].lower() not in allowed_extensions:
             return jsonify({"error": "Invalid file type"}), 400
 
-        crop_intensity = request.form.get('intensity', 'aggressive')
+        crop_intensity = request.form.get('intensity', 'conservative')
         
         unique_id = str(uuid.uuid4())[:8]
         ext = file.filename.split('.')[-1].lower()
@@ -306,52 +454,101 @@ def detect_and_crop_custom():
                 pass
             return jsonify({"error": f"Model processing failed: {str(e)}"}), 500
 
-        # UPDATED: Check for your specific quadrat classes
+        # IMPROVED: Robust detection validation with confidence threshold
+        CONFIDENCE_THRESHOLD = 0.87  # 87% confidence threshold
+        
         if not results[0].boxes or len(results[0].boxes) == 0:
             try:
                 os.remove(image_path)
             except:
                 pass
-            return jsonify({"error": "No objects detected in this image"}), 400
+            return jsonify({
+                "error": "No objects detected in this image",
+                "confidence_threshold": CONFIDENCE_THRESHOLD
+            }), 400
 
-        valid_quadrats = 0
-        for box in results[0].boxes:
+        # IMPROVED: Detailed detection analysis
+        valid_quadrats = []
+        all_detections = []
+        
+        for i, box in enumerate(results[0].boxes):
             cls = int(box.cls)
             confidence = float(box.conf)
             label = detection_model.names[cls]
             
-            # UPDATED: Check for your specific quadrat classes
-            if label.lower() in ['full_quadrat', 'half_quadrat'] and confidence > 0.4:
-                valid_quadrats += 1
+            detection_info = {
+                "index": i,
+                "label": label,
+                "confidence": confidence,
+                "class_id": cls,
+                "is_valid": False,
+                "bbox": box.xyxy[0].tolist() if hasattr(box.xyxy[0], 'tolist') else box.xyxy[0].cpu().tolist()
+            }
+            
+            # IMPROVED: Check for valid quadrat classes with confidence threshold
+            if label.lower() in ['full_quadrat', 'half_quadrat']:
+                if confidence >= CONFIDENCE_THRESHOLD:
+                    detection_info["is_valid"] = True
+                    valid_quadrats.append(detection_info)
+                else:
+                    detection_info["is_valid"] = False
+                    print(f"Detection {i}: {label} with confidence {confidence:.3f} below threshold {CONFIDENCE_THRESHOLD}")
+            
+            all_detections.append(detection_info)
 
-        if valid_quadrats == 0:
+        # IMPROVED: Detailed error reporting
+        if len(valid_quadrats) == 0:
             try:
                 os.remove(image_path)
             except:
                 pass
-            return jsonify({"error": "No valid coral quadrats (full_quadrat or half_quadrat) detected with sufficient confidence"}), 400
+            
+            # Provide helpful error message based on what was detected
+            quadrat_detections = [d for d in all_detections if d['label'].lower() in ['full_quadrat', 'half_quadrat']]
+            other_detections = [d for d in all_detections if d['label'].lower() not in ['full_quadrat', 'half_quadrat']]
+            
+            error_message = "No valid coral quadrats detected"
+            
+            if quadrat_detections:
+                highest_confidence = max([d['confidence'] for d in quadrat_detections])
+                error_message += f". Highest quadrat confidence: {highest_confidence:.3f} (threshold: {CONFIDENCE_THRESHOLD})"
+            elif other_detections:
+                detected_labels = list(set([d['label'] for d in other_detections]))
+                error_message += f". Detected: {', '.join(detected_labels)}"
+            else:
+                error_message += " with sufficient confidence"
+            
+            return jsonify({
+                "error": error_message,
+                "confidence_threshold": CONFIDENCE_THRESHOLD,
+                "total_detections": len(all_detections),
+                "quadrat_detections_low_confidence": len(quadrat_detections),
+                "other_detections": len(other_detections)
+            }), 400
 
+        # IMPROVED: Process only valid quadrats
         crops = []
-        for i, box in enumerate(results[0].boxes):
+        processed_count = 0
+        
+        for i, detection in enumerate(valid_quadrats):
             try:
-                cls = int(box.cls)
-                confidence = float(box.conf)
-                label = detection_model.names[cls]
+                if not detection["is_valid"]:
+                    continue
+                    
+                x1, y1, x2, y2 = detection["bbox"]
+
+                cropped = enhanced_crop_inside_quadrat(image_path, [x1, y1, x2, y2], crop_intensity)
+                cropped = enhance_cropped_image(cropped)
+
+                crop_filename = f"{detection['label']}_{i}_{crop_intensity}_{safe_filename}"
+                crop_path = os.path.join(OUTPUT_FOLDER, crop_filename)
+                cropped.save(crop_path, quality=95)
+
+                crops.append(f"crops/{crop_filename}")
+                processed_count += 1
                 
-                # UPDATED: Only process boxes that are your quadrat classes
-                if label.lower() in ['full_quadrat', 'half_quadrat'] and confidence > 0.4:
-                    x1, y1, x2, y2 = box.xyxy[0].tolist()
-
-                    cropped = enhanced_crop_inside_quadrat(image_path, [x1, y1, x2, y2], crop_intensity)
-                    cropped = enhance_cropped_image(cropped)
-
-                    crop_filename = f"{label}_{i}_{crop_intensity}_{safe_filename}"
-                    crop_path = os.path.join(OUTPUT_FOLDER, crop_filename)
-                    cropped.save(crop_path, quality=95)
-
-                    crops.append(f"crops/{crop_filename}")
             except Exception as e:
-                print(f"Error processing box {i}: {str(e)}")
+                print(f"Error processing valid quadrat {i}: {str(e)}")
                 continue
                 
         try:
@@ -360,13 +557,21 @@ def detect_and_crop_custom():
             pass
 
         if len(crops) == 0:
-            return jsonify({"error": "No valid coral quadrats could be processed"}), 400
+            return jsonify({
+                "error": "Valid quadrats detected but could not be processed",
+                "confidence_threshold": CONFIDENCE_THRESHOLD,
+                "valid_quadrats_detected": len(valid_quadrats)
+            }), 400
 
         return jsonify({
             "crops": crops,
             "method": crop_intensity,
             "original_filename": file.filename,
-            "valid_quadrats": len(crops)
+            "valid_quadrats": len(crops),
+            "confidence_threshold": CONFIDENCE_THRESHOLD,
+            "total_detections": len(all_detections),
+            "valid_detections": len(valid_quadrats),
+            "highest_confidence": max([d['confidence'] for d in valid_quadrats])
         })
         
     except Exception as e:

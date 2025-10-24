@@ -95,7 +95,7 @@ export default function useCoralManagement() {
         return;
       }
 
-      const maxSize = 5 * 1024 * 1024; // 5MB LIMIT
+      const maxSize = 10 * 1024 * 1024; // 10MB LIMIT
       if (file.size > maxSize) {
         showErrorModal(
           "File Too Large",
@@ -186,7 +186,10 @@ export default function useCoralManagement() {
   };
 
   const handleCoralSubmit = async (e) => {
-    e.preventDefault();
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
 
     if (!validateCoralForm()) {
       return;
@@ -217,12 +220,18 @@ export default function useCoralManagement() {
             withCredentials: true,
           }
         );
+
+        // Update state immediately
         setCoralData((prev) => [...prev, response.data.coral]);
 
+        // Close modal BEFORE showing success message
+        closeCoralModal();
+
+        // Show success modal with no auto-close to prevent page refresh
         showSuccessModal(
           "Coral Added Successfully!",
           `${coralFormData.common_name} (${coralFormData.scientific_name}) has been added to the coral database.`,
-          true
+          false // Disable auto-close
         );
       } else if (coralModalMode === "edit") {
         response = await axios.put(
@@ -236,18 +245,22 @@ export default function useCoralManagement() {
             withCredentials: true,
           }
         );
+
+        // Update state immediately
         setCoralData((prev) =>
           prev.map((c) => (c.id === currentCoral.id ? response.data.coral : c))
         );
 
+        // Close modal BEFORE showing success message
+        closeCoralModal();
+
+        // Show success modal with no auto-close
         showSuccessModal(
           "Coral Updated Successfully!",
           `${coralFormData.common_name} information has been updated in the database.`,
-          true
+          false // Disable auto-close
         );
       }
-
-      closeCoralModal();
     } catch (error) {
       console.error("Coral operation failed:", error);
 

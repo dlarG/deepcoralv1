@@ -303,13 +303,9 @@ function HomePage() {
                 </div>
                 <div className="contact-details">
                   <h4>Location</h4>
-                  <p>
-                    Southern Leyte State University
-                    <br />
-                    GIS Technology Center
-                    <br />
-                    Sogod, Southern Leyte, Philippines
-                  </p>
+                  <p>Southern Leyte State University</p>
+                  <p>GIS Technology Center</p>
+                  <p>Sogod, Southern Leyte, Philippines</p>
                 </div>
               </div>
 
@@ -319,11 +315,8 @@ function HomePage() {
                 </div>
                 <div className="contact-details">
                   <h4>Email</h4>
-                  <p>
-                    dasdasdwr@deepcoral.ai
-                    <br />
-                    asdsdf@deepcoral.ai
-                  </p>
+                  <p>gerald@deepcoral.site</p>
+                  <p>jeff@deepcoral.site</p>
                 </div>
               </div>
 
@@ -333,14 +326,10 @@ function HomePage() {
                 </div>
                 <div className="contact-details">
                   <h4>Phone</h4>
-                  <p>
-                    +63 (XX) XXXX-XXXX
-                    <br />
-                  </p>
+                  <p>+63 (XX) XXXX-XXXX</p>
                 </div>
               </div>
             </div>
-
             <div className="contact-form">
               <form>
                 <div className="form-groups">

@@ -52,7 +52,7 @@ function ProfileManagement({ user }) {
     <div className="modern-profile-container">
       <div className="profile-hero-section">
         <div className="hero-background">
-          <div className="gradient-overlay"></div>
+          <div className="gradient-overlays"></div>
           <div className="floating-shapes">
             <div className="shape shape-1"></div>
             <div className="shape shape-2"></div>

@@ -112,7 +112,7 @@ export default function useCoralManagement() {
         return;
       }
 
-      const maxSize = 5 * 1024 * 1024; // 5MB LIMIT
+      const maxSize = 10 * 1024 * 1024; // 10MB LIMIT
       if (file.size > maxSize) {
         showErrorModal(
           "File Too Large",

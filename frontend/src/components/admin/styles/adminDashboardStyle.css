@@ -59,6 +59,19 @@
   color: white;
 }
 
+.quick-action-btn.primary:hover {
+  background: var(--btn-primary-hover);
+}
+
+.dark-mode .quick-action-btn.primary {
+  background: var(--color-secondary);
+  color: white;
+}
+
+.dark-mode .quick-action-btn.primary:hover {
+  background: var(--btn-secondary-hover);
+}
+
 .quick-action-btn.secondary {
   background: var(--bg-secondary);
   color: var(--text-secondary);
@@ -327,9 +340,9 @@
   font-size: 0.875rem;
 }
 
-.status-indicator {
+.status-indicators {
   position: absolute;
-  bottom: 2px;
+  bottom: 1px;
   right: 2px;
   width: 12px;
   height: 12px;
@@ -337,10 +350,10 @@
   border: 2px solid white;
 }
 
-.status-indicator.online {
+.status-indicators.online {
   background: #10b981;
 }
-.status-indicator.offline {
+.status-indicators.offline {
   background: #6b7280;
 }
 

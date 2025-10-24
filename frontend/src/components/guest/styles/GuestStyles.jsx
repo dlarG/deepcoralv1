@@ -1622,7 +1622,7 @@ export const getGuestStyles = (sidebarOpen) => `
   background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 50%, #10b981 100%);
 }
 
-.gradient-overlay {
+.gradient-overlays {
   position: absolute;
   top: 0;
   left: 0;

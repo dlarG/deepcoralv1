@@ -150,7 +150,14 @@ const SuccessModal = ({
       // Only auto-close for success messages and when customActions is false
       if (autoClose && type === "success" && !customActions) {
         const timer = setTimeout(() => {
-          handleClose();
+          // Don't call handleClose directly, just close the modal
+          setIsAnimating(false);
+          setTimeout(() => {
+            setIsVisible(false);
+            if (onClose) {
+              onClose();
+            }
+          }, 300);
         }, autoCloseDelay);
 
         return () => clearTimeout(timer);
@@ -162,7 +169,7 @@ const SuccessModal = ({
         setIsVisible(false);
       }, 300);
     }
-  }, [isOpen, autoClose, autoCloseDelay, handleClose, type, customActions]);
+  }, [isOpen, autoClose, autoCloseDelay, type, customActions, onClose]);
 
   if (!isVisible) return null;
 

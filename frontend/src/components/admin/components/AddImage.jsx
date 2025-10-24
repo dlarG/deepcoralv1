@@ -17,6 +17,8 @@ import {
   FiMap,
   FiAlertTriangle,
   FiCheckCircle,
+  FiEye,
+  FiEyeOff,
 } from "react-icons/fi";
 import {
   Chart as ChartJS,
@@ -61,6 +63,8 @@ function AddImage() {
   const [activeTab, setActiveTab] = useState("crops");
   const [batchResults, setBatchResults] = useState(null);
   const [showBatchChart, setShowBatchChart] = useState(false);
+  const [showInvalidImages, setShowInvalidImages] = useState(true);
+  const [confirmRemove, setConfirmRemove] = useState(null);
   const { user } = useAuth();
 
   // New GIS and validation states
@@ -423,13 +427,29 @@ function AddImage() {
     setShowBatchChart(false);
   };
 
-  const removeImage = (index) => {
+  const removeImage = (index, skipConfirmation = false) => {
+    const imageToRemove = images[index];
+
+    // Show confirmation for processed images unless skipped
+    if (!skipConfirmation && imageToRemove.processed) {
+      setConfirmRemove(index);
+      return;
+    }
+
     const newImages = [...images];
     URL.revokeObjectURL(newImages[index].preview);
     newImages.splice(index, 1);
 
     setImages(newImages);
 
+    // Update rejected images list if removing from there
+    if (imageToRemove.status === "invalid") {
+      setRejectedImages((prev) =>
+        prev.filter((rejImg) => rejImg.file.name !== imageToRemove.file.name)
+      );
+    }
+
+    // Adjust current image index
     if (currentImageIndex >= newImages.length) {
       setCurrentImageIndex(Math.max(0, newImages.length - 1));
     }
@@ -440,6 +460,52 @@ function AddImage() {
       setSavedToDatabase(false);
     } else if (index === currentImageIndex) {
       setCrops(newImages[currentImageIndex]?.crops || []);
+    }
+
+    // Clear confirmation
+    setConfirmRemove(null);
+
+    // Update processed images for saving if needed
+    if (imageToRemove.processed) {
+      setProcessedImagesForSaving((prev) =>
+        prev.filter((img) => img.file.name !== imageToRemove.file.name)
+      );
+    }
+  };
+
+  // Batch remove invalid images
+  const removeAllInvalidImages = () => {
+    const invalidCount = images.filter(
+      (img) => img.status === "invalid"
+    ).length;
+
+    if (invalidCount === 0) return;
+
+    if (
+      window.confirm(
+        `Are you sure you want to remove all ${invalidCount} invalid images?`
+      )
+    ) {
+      const validImages = images.filter((img) => img.status !== "invalid");
+
+      // Clean up URLs for removed images
+      images
+        .filter((img) => img.status === "invalid")
+        .forEach((img) => {
+          URL.revokeObjectURL(img.preview);
+        });
+
+      setImages(validImages);
+      setRejectedImages([]);
+      setCurrentImageIndex(0);
+
+      if (validImages.length === 0) {
+        setCrops([]);
+        setShowSaveButton(false);
+        setSavedToDatabase(false);
+      } else {
+        setCrops(validImages[0]?.crops || []);
+      }
     }
   };
 
@@ -474,22 +540,71 @@ function AddImage() {
         },
       });
 
-      const data = await response.json();
+      // Don't throw error on 400 - handle it gracefully
+      if (response.ok) {
+        const data = await response.json();
 
-      if (response.ok && data.crops && data.crops.length > 0) {
-        return { valid: true, quadratCount: data.crops.length };
-      } else {
+        if (data.crops && data.crops.length > 0) {
+          return {
+            valid: true,
+            quadratCount: data.crops.length,
+            confidence: data.highest_confidence,
+            totalDetections: data.total_detections,
+            validDetections: data.valid_detections,
+          };
+        } else {
+          return {
+            valid: false,
+            quadratCount: 0,
+            reason: "No coral quadrats detected in this image",
+            confidenceThreshold: data.confidence_threshold,
+            totalDetections: data.total_detections || 0,
+          };
+        }
+      } else if (response.status === 400) {
+        // Handle 400 errors gracefully - this is expected for invalid images
+        const errorData = await response.json().catch(() => ({}));
+
+        let reason =
+          errorData.error || "No coral quadrats detected in this image";
+
+        // Add confidence information if available
+        if (
+          errorData.confidence_threshold &&
+          errorData.quadrat_detections_low_confidence > 0
+        ) {
+          reason += ` (confidence threshold: ${(
+            errorData.confidence_threshold * 100
+          ).toFixed(0)}%)`;
+        }
+
+        if (errorData.other_detections > 0) {
+          reason += `. Found ${errorData.other_detections} other object(s).`;
+        }
+
         return {
           valid: false,
           quadratCount: 0,
-          reason: "No coral quadrats detected in this image",
+          reason: reason,
+          confidenceThreshold: errorData.confidence_threshold,
+          totalDetections: errorData.total_detections || 0,
+        };
+      } else {
+        // Handle other HTTP errors (500, etc.)
+        const errorText = await response.text().catch(() => "Unknown error");
+        return {
+          valid: false,
+          quadratCount: 0,
+          reason: `Server error: ${response.status} - ${errorText}`,
         };
       }
     } catch (error) {
+      // Handle network errors, parsing errors, etc.
+      console.error("Validation network error:", error);
       return {
         valid: false,
         quadratCount: 0,
-        reason: "Failed to validate image: " + error.message,
+        reason: "Network error during validation: " + error.message,
       };
     }
   };
@@ -499,6 +614,11 @@ function AddImage() {
     const updatedImages = [...images];
     const rejected = [];
 
+    // IMPROVED: Show validation progress and details
+    let validatedCount = 0;
+    let validCount = 0;
+    let invalidCount = 0;
+
     for (let i = 0; i < images.length; i++) {
       if (images[i].processed) continue;
 
@@ -506,17 +626,29 @@ function AddImage() {
       setImages([...updatedImages]);
 
       const validation = await validateImageForQuadrats(images[i].file);
+      validatedCount++;
 
       if (validation.valid) {
         updatedImages[i].status = "valid";
         updatedImages[i].quadratsDetected = validation.quadratCount;
+        updatedImages[i].confidence = validation.confidence;
+        updatedImages[i].detectionDetails = {
+          totalDetections: validation.totalDetections,
+          validDetections: validation.validDetections,
+        };
+        validCount++;
       } else {
         updatedImages[i].status = "invalid";
         updatedImages[i].rejectionReason = validation.reason;
+        updatedImages[i].confidenceThreshold = validation.confidenceThreshold;
+        updatedImages[i].detectionDetails = {
+          totalDetections: validation.totalDetections,
+        };
         rejected.push({
           ...images[i],
           rejectionReason: validation.reason,
         });
+        invalidCount++;
       }
 
       setImages([...updatedImages]);
@@ -525,19 +657,13 @@ function AddImage() {
     setRejectedImages(rejected);
     setLoading(false);
 
-    // Show validation results
-    const validCount = updatedImages.filter(
-      (img) => img.status === "valid"
-    ).length;
-    const invalidCount = rejected.length;
-
-    if (invalidCount > 0) {
-      alert(
-        `Validation complete: ${validCount} images are valid, ${invalidCount} images were rejected for not containing coral quadrats.`
-      );
-    } else {
-      alert(`All ${validCount} images are valid and contain coral quadrats!`);
-    }
+    // IMPROVED: More informative validation results
+    const validationSummary =
+      `Validation complete:\n` +
+      `${validCount} images valid with quadrats\n` +
+      `${invalidCount} images rejected\n\n` +
+      `Confidence threshold: 87% minimum`;
+    alert(validationSummary);
   };
 
   // const downloadAllCrops = () => {
@@ -580,13 +706,33 @@ function AddImage() {
       return;
     }
 
+    // Get only valid and processed images for analysis
     const validImages = images.filter(
-      (img) => img.status === "valid" || img.status === "pending"
+      (img) =>
+        img.status === "valid" ||
+        img.status === "processed" ||
+        (img.status === "pending" && img.processed !== false)
     );
 
+    const invalidCount = images.filter(
+      (img) => img.status === "invalid"
+    ).length;
+
     if (validImages.length === 0) {
-      alert("No valid images to process. Please validate your images first.");
+      alert(
+        "No valid images to process. Please validate your images first or remove invalid images."
+      );
       return;
+    }
+
+    // Show confirmation if there are invalid images
+    if (invalidCount > 0) {
+      const proceed = window.confirm(
+        `Found ${invalidCount} invalid image(s) that will be skipped. ` +
+          `Proceed with analyzing ${validImages.length} valid image(s)?`
+      );
+
+      if (!proceed) return;
     }
 
     setBatchLoading(true);
@@ -594,25 +740,18 @@ function AddImage() {
     setBatchProgress({ current: 0, total: validImages.length });
 
     try {
+      // generate form data same as before
       const csrfResponse = await fetch("http://localhost:5000/csrf-token", {
         method: "GET",
         credentials: "include",
       });
-
       const csrfData = await csrfResponse.json();
+
       const formData = new FormData();
-
       validImages.forEach((image) => {
-        formData.append("images", image.file);
+        // many backends expect either "images" (array) or multiple "image" fields
+        formData.append("images", image.file); // keep this for batch endpoint
       });
-
-      formData.append("intensity", cropIntensity);
-
-      // FIXED: Get actual user ID instead of hardcoded "1"
-      const currentUserId = user?.id || "9";
-      console.log("Using uploader_id:", currentUserId);
-      formData.append("uploader_id", currentUserId);
-
       formData.append("csrf_token", csrfData.csrf_token);
 
       const res = await fetch("http://localhost:5000/batch_analyze", {
@@ -624,25 +763,32 @@ function AddImage() {
         },
       });
 
+      // improved error handling: read response body for 400/500
+      const contentType = res.headers.get("content-type") || "";
+      const resBody = contentType.includes("application/json")
+        ? await res.json()
+        : await res.text();
+
       if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
+        console.error("batch_analyze failed:", res.status, resBody);
+        alert(
+          "Batch analyze failed: " +
+            (resBody?.error || JSON.stringify(resBody) || res.status)
+        );
+        return;
       }
 
-      const data = await res.json();
-
-      console.log("Batch analysis complete. Data structure:", data);
+      const data = resBody; // success path
 
       setBatchResults(data);
       setShowBatchChart(true);
       setActiveTab("batch-analysis");
       setShowSaveButton(true);
 
-      // Process the results properly
-      const processedImagesWithData = validImages.map((image, index) => {
+      // Process results
+      const processedImagesWithData = validImages.map((image) => {
         const result = data.results.find((r) => r.filename === image.file.name);
         if (result && result.crops) {
-          console.log(`Processing result for ${image.file.name}:`, result);
-
           return {
             ...image,
             crops: result.crops.map((crop) => crop.crop_url),
@@ -658,9 +804,9 @@ function AddImage() {
         return image;
       });
 
-      console.log("Processed images for saving:", processedImagesWithData);
       setProcessedImagesForSaving(processedImagesWithData);
 
+      // Update images with results
       const updatedImages = images.map((image) => {
         const result = data.results.find((r) => r.filename === image.file.name);
         if (result && result.crops) {
@@ -705,12 +851,27 @@ function AddImage() {
   };
 
   const renderImageGallery = () => {
+    const validImagesCount = images.filter(
+      (img) => img.status === "valid" || img.status === "processed"
+    ).length;
+    const invalidImagesCount = images.filter(
+      (img) => img.status === "invalid"
+    ).length;
+    const pendingImagesCount = images.filter(
+      (img) => img.status === "pending"
+    ).length;
+
+    // Filter images based on showInvalidImages setting
+    const displayImages = showInvalidImages
+      ? images
+      : images.filter((img) => img.status !== "invalid");
+
     return (
       <div className="gallery-section">
         <div className="gallery-header">
           <div className="gallery-title">
             <FiGrid size={20} />
-            <span>Image Gallery ({images.length})</span>
+            <span>Image Gallery ({displayImages.length})</span>
           </div>
 
           <div className="gallery-header-actions">
@@ -735,6 +896,38 @@ function AddImage() {
               </button>
             </div>
 
+            <div className="gallery-filter-actions">
+              {invalidImagesCount > 0 && (
+                <button
+                  className={`filter-btn ${showInvalidImages ? "active" : ""}`}
+                  onClick={() => setShowInvalidImages(!showInvalidImages)}
+                  title={
+                    showInvalidImages
+                      ? "Hide invalid images"
+                      : "Show invalid images"
+                  }
+                >
+                  {showInvalidImages ? (
+                    <FiEye size={14} />
+                  ) : (
+                    <FiEyeOff size={14} />
+                  )}
+                  <span>{showInvalidImages ? "Hide" : "Show"} Invalid</span>
+                </button>
+              )}
+
+              {invalidImagesCount > 0 && (
+                <button
+                  onClick={removeAllInvalidImages}
+                  className="action-button danger-outline"
+                  title={`Remove all ${invalidImagesCount} invalid images`}
+                >
+                  <FiTrash2 size={14} />
+                  <span>Remove Invalid ({invalidImagesCount})</span>
+                </button>
+              )}
+            </div>
+
             <div className="gallery-actions">
               <button onClick={clearImages} className="action-button clear">
                 <FiTrash2 size={14} />
@@ -744,124 +937,191 @@ function AddImage() {
           </div>
         </div>
 
-        {/* Image Status Summary */}
+        {/* Enhanced Image Status Summary */}
         <div className="image-status-summary">
-          <div className="status-item">
-            <span className="status-count valid">
-              {
-                images.filter(
-                  (img) => img.status === "valid" || img.status === "processed"
-                ).length
-              }
-            </span>
+          <div className="status-item valid">
+            <span className="status-count">{validImagesCount}</span>
             <span className="status-label">Valid</span>
           </div>
-          <div className="status-item">
-            <span className="status-count invalid">
-              {images.filter((img) => img.status === "invalid").length}
-            </span>
+          <div className="status-item invalid">
+            <span className="status-count">{invalidImagesCount}</span>
             <span className="status-label">Invalid</span>
           </div>
-          <div className="status-item">
-            <span className="status-count pending">
-              {images.filter((img) => img.status === "pending").length}
-            </span>
+          <div className="status-item pending">
+            <span className="status-count">{pendingImagesCount}</span>
             <span className="status-label">Pending</span>
           </div>
+
+          {validImagesCount > 0 && invalidImagesCount > 0 && (
+            <div className="analysis-info">
+              <FiAlertTriangle size={14} />
+              <span>Only valid images will be analyzed</span>
+            </div>
+          )}
         </div>
 
         <div className={`image-gallery ${viewMode}`}>
-          {images.map((image, index) => (
-            <div
-              key={index}
-              className={`gallery-item ${
-                index === currentImageIndex ? "active" : ""
-              } ${image.status} ${image.processed ? "processed" : ""}`}
-              onClick={() => {
-                setCurrentImageIndex(index);
-                const currentCrops = image.crops || [];
-                setCrops(currentCrops);
-              }}
-            >
-              <div className="item-thumbnail">
-                <img src={image.preview} alt={`Thumbnail ${index}`} />
+          {displayImages.map((image, index) => {
+            const originalIndex = images.findIndex((img) => img === image);
 
-                <div className="thumbnail-overlay">
-                  {/* Status indicator */}
-                  <div className={`status-indicator ${image.status}`}>
-                    {image.status === "valid" && <FiCheckCircle size={12} />}
-                    {image.status === "invalid" && <FiX size={12} />}
-                    {image.status === "validating" && (
-                      <FiLoader size={12} className="spinning" />
+            return (
+              <div
+                key={originalIndex}
+                className={`gallery-item ${
+                  originalIndex === currentImageIndex ? "active" : ""
+                } ${image.status} ${image.processed ? "processed" : ""}`}
+                onClick={() => {
+                  setCurrentImageIndex(originalIndex);
+                  const currentCrops = image.crops || [];
+                  setCrops(currentCrops);
+                }}
+              >
+                <div className="item-thumbnail">
+                  <img src={image.preview} alt={`Thumbnail ${originalIndex}`} />
+
+                  <div className="thumbnail-overlay">
+                    {/* Enhanced Status indicator */}
+                    <div className={`status-indicator ${image.status}`}>
+                      {image.status === "valid" && <FiCheckCircle size={12} />}
+                      {image.status === "invalid" && <FiX size={12} />}
+                      {image.status === "validating" && (
+                        <FiLoader size={12} className="spinning" />
+                      )}
+                      {image.status === "processed" && (
+                        <FiCheckCircle size={12} />
+                      )}
+                    </div>
+
+                    {/* Enhanced Remove button with better styling */}
+                    <button
+                      className={`remove-btn ${image.status}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeImage(originalIndex);
+                      }}
+                      title={`Remove ${image.status} image`}
+                    >
+                      <FiX size={14} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="item-info">
+                  <span className="filename" title={image.file.name}>
+                    {image.file.name}
+                  </span>
+                  <div className="item-status">
+                    {image.status === "valid" && (
+                      <span className="quadrat-count valid">
+                        ✓ {image.quadratsDetected} quadrat
+                        {image.quadratsDetected !== 1 ? "s" : ""} detected
+                      </span>
                     )}
-                    {image.status === "processed" && (
-                      <FiCheckCircle size={12} />
+                    {image.status === "invalid" && (
+                      <span
+                        className="error-text"
+                        title={image.rejectionReason}
+                      >
+                        ✗ No quadrats detected
+                      </span>
+                    )}
+                    {image.status === "processed" &&
+                      image.crops?.length > 0 && (
+                        <span className="crop-count processed">
+                          ✓ {image.crops.length} crop
+                          {image.crops.length > 1 ? "s" : ""} processed
+                        </span>
+                      )}
+                    {image.status === "validating" && (
+                      <span className="validating-text">
+                        <FiLoader size={12} className="spinning" />
+                        Validating...
+                      </span>
                     )}
                   </div>
-
-                  <button
-                    className="remove-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeImage(index);
-                    }}
-                    title="Remove image"
-                  >
-                    <FiX size={12} />
-                  </button>
                 </div>
               </div>
-
-              <div className="item-info">
-                <span className="filename" title={image.file.name}>
-                  {image.file.name}
-                </span>
-                <div className="item-status">
-                  {image.status === "valid" && (
-                    <span className="quadrat-count">
-                      {image.quadratsDetected} quadrat
-                      {image.quadratsDetected !== 1 ? "s" : ""} detected
-                    </span>
-                  )}
-                  {image.status === "invalid" && (
-                    <span className="error-text" title={image.rejectionReason}>
-                      No quadrats detected
-                    </span>
-                  )}
-                  {image.status === "processed" && image.crops?.length > 0 && (
-                    <span className="crop-count">
-                      {image.crops.length} crop
-                      {image.crops.length > 1 ? "s" : ""} processed
-                    </span>
-                  )}
-                  {image.status === "validating" && (
-                    <span className="validating-text">Validating...</span>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
-        {/* Rejected Images Panel */}
-        {rejectedImages.length > 0 && (
-          <div className="rejected-images-panel">
-            <h4>
-              <FiAlertTriangle size={16} />
-              Rejected Images ({rejectedImages.length})
-            </h4>
-            <div className="rejected-list">
-              {rejectedImages.map((image, index) => (
-                <div key={index} className="rejected-item">
-                  <span className="filename">{image.file.name}</span>
-                  <span className="rejection-reason">
-                    {image.rejectionReason}
-                  </span>
-                </div>
-              ))}
+        {/* Enhanced Analysis Readiness Indicator */}
+        {validImagesCount > 0 && (
+          <div className="analysis-readiness">
+            <div className="readiness-content">
+              <FiCheckCircle size={16} className="ready-icon" />
+              <span className="ready-text">
+                {validImagesCount} image{validImagesCount > 1 ? "s" : ""} ready
+                for batch analysis
+              </span>
+              {invalidImagesCount > 0 && (
+                <span className="skip-text">
+                  ({invalidImagesCount} invalid image
+                  {invalidImagesCount > 1 ? "s" : ""} will be skipped)
+                </span>
+              )}
             </div>
           </div>
         )}
+      </div>
+    );
+  };
+
+  const renderConfirmationModal = () => {
+    if (confirmRemove === null) return null;
+
+    const imageToRemove = images[confirmRemove];
+
+    return (
+      <div className="confirmation-overlay">
+        <div className="confirmation-modal">
+          <div className="confirmation-header">
+            <h3>Confirm Removal</h3>
+            <button
+              className="close-btn"
+              onClick={() => setConfirmRemove(null)}
+            >
+              <FiX size={16} />
+            </button>
+          </div>
+
+          <div className="confirmation-content">
+            <div className="confirmation-image">
+              <img src={imageToRemove.preview} alt="File to remove" />
+            </div>
+
+            <div className="confirmation-details">
+              <p>
+                <strong>File:</strong> {imageToRemove.file.name}
+              </p>
+              <p>
+                <strong>Status:</strong> {imageToRemove.status}
+              </p>
+              {imageToRemove.processed && (
+                <p className="warning-text">
+                  <FiAlertTriangle size={14} />
+                  This image has been processed. Removing it will also remove
+                  its analysis results.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="confirmation-actions">
+            <button
+              className="btn-cancel"
+              onClick={() => setConfirmRemove(null)}
+            >
+              Cancel
+            </button>
+            <button
+              className="btn-confirm"
+              onClick={() => removeImage(confirmRemove, true)}
+            >
+              Remove Image
+            </button>
+          </div>
+        </div>
       </div>
     );
   };

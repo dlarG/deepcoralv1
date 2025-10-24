@@ -85,8 +85,8 @@ export default function useProfileManagement(user) {
         return;
       }
 
-      // Validate file size (5MB max)
-      if (file.size > 5 * 1024 * 1024) {
+      // Validate file size (10MB max)
+      if (file.size > 10 * 1024 * 1024) {
         showErrorModal(
           "File Too Large",
           "Profile image must be less than 5MB. Please choose a smaller image or compress your file."

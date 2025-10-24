@@ -39,16 +39,12 @@ export default function useSystemSettings() {
   // Fetch current models
   const fetchCurrentModels = async () => {
     try {
-      console.log("🔍 Fetching current models...");
       const response = await axios.get(`${API_BASE_URL}/admin/models/current`, {
         withCredentials: true,
       });
-      console.log("✅ Models fetched:", response.data);
       setCurrentModels(response.data.models);
       return response.data.models;
     } catch (error) {
-      console.error("❌ Error fetching current models:", error);
-
       if (error.response?.status === 401) {
         logout();
         return;
@@ -81,7 +77,6 @@ export default function useSystemSettings() {
   // Fetch system settings
   const fetchSystemSettings = async () => {
     try {
-      console.log("⚙️ Fetching system settings...");
       const response = await axios.get(
         `${API_BASE_URL}/admin/system/settings`,
         {
@@ -92,7 +87,7 @@ export default function useSystemSettings() {
       setSystemSettings(response.data.settings);
       return response.data.settings;
     } catch (error) {
-      console.error("❌ Error fetching system settings:", error);
+      console.error("Error fetching system settings:", error);
 
       if (error.response?.status === 401) {
         logout();
@@ -115,7 +110,7 @@ export default function useSystemSettings() {
     try {
       await Promise.all([fetchCurrentModels(), fetchSystemSettings()]);
     } catch (error) {
-      console.error("❌ Error initializing data:", error);
+      console.error(" Error initializing data:", error);
     } finally {
       setLoading(false);
     }
@@ -168,18 +163,12 @@ export default function useSystemSettings() {
       formData.append("model", file);
       formData.append("model_type", modelType);
 
-      const response = await axios.post(
-        `${API_BASE_URL}/admin/models/upload`,
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-          withCredentials: true,
-        }
-      );
-
-      console.log("✅ Model uploaded successfully:", response.data);
+      await axios.post(`${API_BASE_URL}/admin/models/upload`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+        withCredentials: true,
+      });
 
       setMessage({
         type: "success",
@@ -198,8 +187,6 @@ export default function useSystemSettings() {
       await fetchCurrentModels();
       return true;
     } catch (error) {
-      console.error("❌ Error uploading model:", error);
-
       if (error.response?.status === 401) {
         logout();
         return false;
@@ -227,23 +214,16 @@ export default function useSystemSettings() {
 
     setLoading(true);
     try {
-      console.log("📤 Uploading both models...");
       const formData = new FormData();
       formData.append("autocrop_model", modelFiles.autocrop);
       formData.append("unet_model", modelFiles.unet);
 
-      const response = await axios.post(
-        `${API_BASE_URL}/admin/models/upload-both`,
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-          withCredentials: true,
-        }
-      );
-
-      console.log("✅ Both models uploaded successfully:", response.data);
+      await axios.post(`${API_BASE_URL}/admin/models/upload-both`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+        withCredentials: true,
+      });
 
       setMessage({
         type: "success",
@@ -260,8 +240,6 @@ export default function useSystemSettings() {
       await fetchCurrentModels();
       return true;
     } catch (error) {
-      console.error("❌ Error uploading both models:", error);
-
       if (error.response?.status === 401) {
         logout();
         return false;
@@ -281,7 +259,6 @@ export default function useSystemSettings() {
   const handleSystemSettingsUpdate = async () => {
     setLoading(true);
     try {
-      console.log("⚙️ Updating system settings...");
       const response = await axios.put(
         `${API_BASE_URL}/admin/system/settings`,
         systemSettings,
@@ -290,16 +267,12 @@ export default function useSystemSettings() {
         }
       );
 
-      console.log("✅ Settings updated successfully:", response.data);
-
       setMessage({
         type: "success",
         text: "System settings updated successfully!",
       });
       return true;
     } catch (error) {
-      console.error("❌ Error updating system settings:", error);
-
       if (error.response?.status === 401) {
         logout();
         return false;
@@ -328,12 +301,9 @@ export default function useSystemSettings() {
 
     setLoading(true);
     try {
-      console.log(`🗑️ Deleting ${modelType} model...`);
       await axios.delete(`${API_BASE_URL}/admin/models/${modelType}`, {
         withCredentials: true,
       });
-
-      console.log("✅ Model deleted successfully");
 
       setMessage({
         type: "success",

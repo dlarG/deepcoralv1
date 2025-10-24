@@ -5,11 +5,8 @@ import {
   FiActivity,
   FiDatabase,
   FiTrendingUp,
-  FiClock,
   FiMapPin,
   FiEye,
-  FiTrending,
-  FiMoreHorizontal,
   FiRefreshCw,
 } from "react-icons/fi";
 import useDashboardData from "../hooks/useDashboard";
@@ -21,7 +18,6 @@ const Dashboard = ({ user, setActiveTab }) => {
     stats,
     recentUsers,
     recentActivities,
-    chartData,
     loading,
     error,
     refreshDashboard,
@@ -192,7 +188,7 @@ const Dashboard = ({ user, setActiveTab }) => {
                         </div>
                       )}
                       <div
-                        className={`status-indicator ${
+                        className={`status-indicators ${
                           user.last_login ? "online" : "offline"
                         }`}
                       ></div>

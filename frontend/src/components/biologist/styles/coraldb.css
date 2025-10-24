@@ -359,6 +359,18 @@
   background-clip: text;
 }
 
+.dark-mode .coral-management-title {
+  color: var(--btn-secondary-bg);
+  background: linear-gradient(
+    135deg,
+    var(--btn-secondary-bg),
+    var(--color-accent)
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 .coral-management-subtitle {
   font-size: 1.1rem;
   color: var(--text-secondary);
@@ -394,6 +406,14 @@
     var(--btn-primary-hover)
   );
   color: var(--btn-primary-text);
+}
+
+.dark-mode .add-coral-btn.primary {
+  background: var(--btn-secondary-bg);
+}
+
+.dark-mode .add-coral-btn.primary:hover {
+  background: var(--btn-secondary-hover);
 }
 
 .add-coral-btn.large {
