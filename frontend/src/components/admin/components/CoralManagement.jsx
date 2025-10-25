@@ -1,5 +1,5 @@
 // src/components/admin/components/CoralManagement.js
-import { React, useEffect } from "react";
+import { React, useEffect, useState } from "react";
 import {
   FiPlus,
   FiEdit,
@@ -13,6 +13,7 @@ import {
 } from "react-icons/fi";
 import useCoralManagement from "../hooks/useCoralManagement";
 import SuccessModal from "../../SuccessMessage";
+import ImageViewer from "./CoralImageViewer";
 
 function CoralManagement() {
   const {
@@ -57,6 +58,24 @@ function CoralManagement() {
     }
   }, [coralModalMode]);
 
+  const [imageViewerOpen, setImageViewerOpen] = useState(false);
+  const [currentViewerImage, setCurrentViewerImage] = useState(null);
+  const openImageViewer = (coral) => {
+    setCurrentViewerImage({
+      src: coral.image
+        ? `/uploaded_coral_information/${coral.image}`
+        : "/default-coral.jpg",
+      alt: coral.common_name,
+      title: `${coral.common_name} (${coral.scientific_name})`,
+      filename: coral.common_name.replace(/\s+/g, "-").toLowerCase(),
+    });
+    setImageViewerOpen(true);
+  };
+
+  const closeImageViewer = () => {
+    setImageViewerOpen(false);
+    setCurrentViewerImage(null);
+  };
   return (
     <div className="content-section">
       {/* Header Section */}
@@ -124,18 +143,12 @@ function CoralManagement() {
                     <div className="overlay-actions">
                       <button
                         className="overlay-btn view"
-                        onClick={() => openCoralModal("view", coral)}
-                        title="View Details"
+                        onClick={() => openImageViewer(coral)}
+                        title="View Full Size Image"
                       >
                         <FiEye size={16} />
                       </button>
-                      <button
-                        className="overlay-btn edit"
-                        onClick={() => openCoralModal("edit", coral)}
-                        title="Edit Coral"
-                      >
-                        <FiEdit size={16} />
-                      </button>
+
                       <button
                         className="overlay-btn delete"
                         onClick={() => handleDeleteCoral(coral.id)}
@@ -191,8 +204,8 @@ function CoralManagement() {
                       className="card-action-btn secondary"
                       onClick={() => openCoralModal("view", coral)}
                     >
-                      <FiEye size={14} />
-                      <span>View</span>
+                      <FiFileText size={14} />
+                      <span>Read More</span>
                     </button>
                     <button
                       className="card-action-btn primary"
@@ -535,6 +548,15 @@ function CoralManagement() {
           </div>
         </div>
       )}
+
+      <ImageViewer
+        isOpen={imageViewerOpen}
+        onClose={closeImageViewer}
+        imageSrc={currentViewerImage?.src}
+        imageAlt={currentViewerImage?.alt}
+        imageTitle={currentViewerImage?.title}
+        downloadFilename={currentViewerImage?.filename}
+      />
 
       <SuccessModal
         isOpen={showModal}

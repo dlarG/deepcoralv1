@@ -492,12 +492,18 @@ function Register() {
                 </span>
               </div>
               <div className="captcha-widget">
-                <ReCAPTCHA
-                  sitekey="6LdXDYkrAAAAAO83PKhXnlg3zb3tCBN0qgCTYg0M"
-                  onChange={(value) => setCaptchaValue(value)}
-                  theme="light"
-                  size="normal"
-                />
+                {process.env.REACT_APP_RECAPTCHA_SITE_KEY ? (
+                  <ReCAPTCHA
+                    sitekey={process.env.REACT_APP_RECAPTCHA_SITE_KEY}
+                    onChange={(value) => setCaptchaValue(value)}
+                    theme="light"
+                    size="normal"
+                  />
+                ) : (
+                  <div className="captcha-error">
+                    ReCAPTCHA configuration error. Please contact support.
+                  </div>
+                )}
               </div>
             </div>
 
