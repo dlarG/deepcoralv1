@@ -112,7 +112,7 @@
 }
 
 /* Stat Card */
-.stat-cards {
+.stat-card {
   background: linear-gradient(
     145deg,
     rgba(255, 255, 255, 0.95) 0%,
@@ -135,7 +135,7 @@
   cursor: pointer;
 }
 
-.dark-mode .stat-cards {
+.dark-mode .stat-card {
   background: linear-gradient(
     145deg,
     rgba(30, 41, 59, 0.9) 0%,

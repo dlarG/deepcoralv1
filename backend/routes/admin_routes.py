@@ -2,21 +2,25 @@ from flask import Blueprint, jsonify, session, request
 from werkzeug.security import generate_password_hash, check_password_hash
 from db import get_db_connection
 import psycopg2
-from utils.auth_utils import admin_required, login_required
+from utils.auth_utils import admin_required, login_required, biologist_required, roles_required
 import os
 from werkzeug.utils import secure_filename
 from flask import current_app
 from datetime import datetime
 import json
 from io import BytesIO
+from datetime import datetime
+import os
+import psycopg2
 import pandas as pd
 from flask import send_file
 import shutil
+from flask_cors import cross_origin
 from routes.activity_log import (
     log_user_management, log_coral_info_action, log_report_generation, 
     log_system_action, ActivityLogger
 )
-
+import uuid
 from werkzeug.utils import secure_filename
 
 admin_bp = Blueprint('admin', __name__)
@@ -271,59 +275,88 @@ def delete_user(user_id):
         if conn:
             conn.close()
 
-@admin_bp.route('/admin/corals', methods=['POST'])
+@admin_bp.route('/admin/corals', methods=['POST', 'OPTIONS'])
+@cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
 @admin_required
 @login_required
 def add_coral():
+    """Add new coral information - Admin endpoint"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
     try:
+        print("Admin adding coral - Starting process...")  # Debug log
+        print(f"Session user ID: {session.get('user_id')}")  # Debug log
+        print(f"Form data: {request.form}")  # Debug log
+        print(f"Files: {request.files}")  # Debug log
+        
         # Handle file upload
         image_filename = None
         if 'image' in request.files:
             file = request.files['image']
             if file and file.filename != '':
                 filename = secure_filename(file.filename)
-                # Create unique filename
-                import uuid
-                unique_filename = f"{uuid.uuid4().hex}_{filename}"
+                # Create unique filename with timestamp
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                file_ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else 'jpg'
+                unique_filename = f"coral_{timestamp}_{uuid.uuid4().hex[:8]}.{file_ext}"
                 
-                # Save to public/uploaded_coral_information
+                # Save to frontend/public/uploaded_coral_information
                 upload_path = os.path.join(
                     current_app.root_path, 
                     '..', 'frontend', 'public', 'uploaded_coral_information'
                 )
+                
+                # Create directory if it doesn't exist
                 os.makedirs(upload_path, exist_ok=True)
-                file.save(os.path.join(upload_path, unique_filename))
+                
+                # Save the file
+                file_path = os.path.join(upload_path, unique_filename)
+                file.save(file_path)
                 image_filename = unique_filename
+                print(f"Image saved as: {image_filename}")  # Debug log
 
         # Get form data
         coral_data = {
-            'coral_type': request.form.get('coral_type'),
-            'coral_subtype': request.form.get('coral_subtype'),
-            'classification': request.form.get('classification'),
-            'scientific_name': request.form.get('scientific_name'),
-            'common_name': request.form.get('common_name'),
-            'identification': request.form.get('identification'),
+            'coral_type': request.form.get('coral_type', '').strip(),
+            'coral_subtype': request.form.get('coral_subtype', '').strip(),
+            'classification': request.form.get('classification', '').strip(),
+            'scientific_name': request.form.get('scientific_name', '').strip(),
+            'common_name': request.form.get('common_name', '').strip(),
+            'identification': request.form.get('identification', '').strip(),
             'image': image_filename
         }
+        
+        print(f"Processed coral data: {coral_data}")  # Debug log
 
         # Validate required fields
         required_fields = ['coral_type', 'coral_subtype', 'classification', 
                           'scientific_name', 'common_name', 'identification']
-        if not all(coral_data.get(field) for field in required_fields):
-            return jsonify({'error': 'All fields except image are required'}), 400
+        missing_fields = [field for field in required_fields if not coral_data.get(field)]
+        
+        if missing_fields:
+            print(f"Missing fields: {missing_fields}")  # Debug log
+            return jsonify({
+                'error': f'Missing required fields: {", ".join(missing_fields)}'
+            }), 400
 
+        # Database connection
         conn = get_db_connection()
         if conn is None:
+            print("Database connection failed")  # Debug log
             return jsonify({'error': 'Database connection failed'}), 500
 
         with conn.cursor() as cur:
-            cur.execute("""
+            # Insert new coral
+            insert_query = """
                 INSERT INTO coral_information 
                 (coral_type, coral_subtype, classification, scientific_name, 
                  common_name, identification, image) 
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
                 RETURNING *
-            """, (
+            """
+            
+            cur.execute(insert_query, (
                 coral_data['coral_type'],
                 coral_data['coral_subtype'], 
                 coral_data['classification'],
@@ -335,13 +368,20 @@ def add_coral():
             
             new_coral = cur.fetchone()
             conn.commit()
-
-            log_coral_info_action(
-                user_id=session.get('user_id'),
-                action='created',
-                coral_name=f"{coral_data['common_name']} ({coral_data['scientific_name']})"
-            )
             
+            print(f"Coral inserted with ID: {new_coral[0]}")  # Debug log
+
+            # Log the activity
+            try:
+                log_coral_info_action(
+                    user_id=session.get('user_id'),
+                    action='created',
+                    coral_name=f"{coral_data['common_name']} ({coral_data['scientific_name']})"
+                )
+            except Exception as log_error:
+                print(f"Logging error (non-critical): {log_error}")
+            
+            # Prepare response
             coral_response = {
                 'id': new_coral[0],
                 'coral_type': new_coral[1],
@@ -350,27 +390,46 @@ def add_coral():
                 'scientific_name': new_coral[4],
                 'common_name': new_coral[5],
                 'identification': new_coral[6],
-                'created_at': new_coral[7],
-                'updated_at': new_coral[8],
+                'created_at': new_coral[7].isoformat() if new_coral[7] else None,
+                'updated_at': new_coral[8].isoformat() if new_coral[8] else None,
                 'image': new_coral[9]
             }
             
+            print(f"Returning coral response: {coral_response}")  # Debug log
+            
             return jsonify({
-                'message': 'Coral added successfully',
+                'success': True,
+                'message': 'Coral information added successfully',
                 'coral': coral_response
             }), 201
 
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-    finally:
+    except psycopg2.Error as db_error:
+        print(f"Database error: {db_error}")
         if 'conn' in locals():
+            conn.rollback()
+        return jsonify({'error': f'Database error: {str(db_error)}'}), 500
+    except Exception as e:
+        print(f"General error adding coral: {e}")
+        import traceback
+        traceback.print_exc()  # Print full stack trace
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+    finally:
+        if 'conn' in locals() and conn:
             conn.close()
 
-@admin_bp.route('/admin/corals/<int:coral_id>', methods=['PUT'])
+@admin_bp.route('/admin/corals/<int:coral_id>', methods=['PUT', 'OPTIONS'])
+@cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
 @admin_required
 @login_required
 def update_coral(coral_id):
+    """Update coral information - Admin endpoint"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
     try:
+        print(f"Admin updating coral ID: {coral_id}")  # Debug log
+        print(f"Session user ID: {session.get('user_id')}")  # Debug log
+        
         conn = get_db_connection()
         if conn is None:
             return jsonify({'error': 'Database connection failed'}), 500
@@ -396,12 +455,16 @@ def update_coral(coral_id):
                         current_coral[9]
                     )
                     if os.path.exists(old_image_path):
-                        os.remove(old_image_path)
+                        try:
+                            os.remove(old_image_path)
+                        except:
+                            pass
 
                 # Save new image
                 filename = secure_filename(file.filename)
-                import uuid
-                unique_filename = f"{uuid.uuid4().hex}_{filename}"
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                file_ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else 'jpg'
+                unique_filename = f"coral_{timestamp}_{uuid.uuid4().hex[:8]}.{file_ext}"
                 
                 upload_path = os.path.join(
                     current_app.root_path, 
@@ -434,11 +497,15 @@ def update_coral(coral_id):
             updated_coral = cur.fetchone()
             conn.commit()
 
-            log_coral_info_action(
-                user_id=session.get('user_id'),
-                action='updated',
-                coral_name=f"{updated_coral[5]} ({updated_coral[4]})"
-            )
+            # Log the activity
+            try:
+                log_coral_info_action(
+                    user_id=session.get('user_id'),
+                    action='updated',
+                    coral_name=f"{updated_coral[5]} ({updated_coral[4]})"
+                )
+            except Exception as log_error:
+                print(f"Logging error (non-critical): {log_error}")
             
             coral_response = {
                 'id': updated_coral[0],
@@ -448,66 +515,100 @@ def update_coral(coral_id):
                 'scientific_name': updated_coral[4],
                 'common_name': updated_coral[5],
                 'identification': updated_coral[6],
-                'created_at': updated_coral[7],
-                'updated_at': updated_coral[8],
+                'created_at': updated_coral[7].isoformat() if updated_coral[7] else None,
+                'updated_at': updated_coral[8].isoformat() if updated_coral[8] else None,
                 'image': updated_coral[9]
             }
             
             return jsonify({
-                'message': 'Coral updated successfully',
+                'success': True,
+                'message': 'Coral information updated successfully',
                 'coral': coral_response
             }), 200
 
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-    finally:
+    except psycopg2.Error as db_error:
+        print(f"Database error: {db_error}")
         if 'conn' in locals():
+            conn.rollback()
+        return jsonify({'error': f'Database error: {str(db_error)}'}), 500
+    except Exception as e:
+        print(f"Error updating coral: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+    finally:
+        if 'conn' in locals() and conn:
             conn.close()
 
-@admin_bp.route('/admin/corals/<int:coral_id>', methods=['DELETE'])
+@admin_bp.route('/admin/corals/<int:coral_id>', methods=['DELETE', 'OPTIONS'])
+@cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
 @admin_required
 @login_required
 def delete_coral(coral_id):
+    """Delete coral information - Admin endpoint"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
     try:
+        print(f"Admin deleting coral ID: {coral_id}")  # Debug log
+        print(f"Session user ID: {session.get('user_id')}")  # Debug log
+        
         conn = get_db_connection()
         if conn is None:
             return jsonify({'error': 'Database connection failed'}), 500
 
         with conn.cursor() as cur:
-            # Get coral data to delete image file
-            cur.execute("SELECT image FROM coral_information WHERE id = %s", (coral_id,))
+            # Get coral data to delete image file and for logging
+            cur.execute("SELECT common_name, scientific_name, image FROM coral_information WHERE id = %s", (coral_id,))
             coral_data = cur.fetchone()
             
             if not coral_data:
                 return jsonify({'error': 'Coral not found'}), 404
 
             # Delete image file if exists
-            if coral_data[0]:
+            if coral_data[2]:
                 image_path = os.path.join(
                     current_app.root_path, 
                     '..', 'frontend', 'public', 'uploaded_coral_information',
-                    coral_data[0]
+                    coral_data[2]
                 )
                 if os.path.exists(image_path):
-                    os.remove(image_path)
+                    try:
+                        os.remove(image_path)
+                    except:
+                        pass
 
             # Delete coral record
             cur.execute("DELETE FROM coral_information WHERE id = %s", (coral_id,))
             conn.commit()
 
-            log_coral_info_action(
-                user_id=session.get('user_id'),
-                action='deleted',
-                coral_name=f"{coral_data[0]} ({coral_data[1]})"
-            )
+            # Log the activity
+            try:
+                log_coral_info_action(
+                    user_id=session.get('user_id'),
+                    action='deleted',
+                    coral_name=f"{coral_data[0]} ({coral_data[1]})"
+                )
+            except Exception as log_error:
+                print(f"Logging error (non-critical): {log_error}")
             
-            
-            return jsonify({'message': 'Coral deleted successfully'}), 200
+            return jsonify({
+                'success': True,
+                'message': 'Coral information deleted successfully'
+            }), 200
 
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-    finally:
+    except psycopg2.Error as db_error:
+        print(f"Database error: {db_error}")
         if 'conn' in locals():
+            conn.rollback()
+        return jsonify({'error': f'Database error: {str(db_error)}'}), 500
+    except Exception as e:
+        print(f"Error deleting coral: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+    finally:
+        if 'conn' in locals() and conn:
             conn.close()
 
 @admin_bp.route('/admin/users/<int:user_id>', methods=['GET'])
@@ -542,44 +643,6 @@ def get_user_profile(user_id):
             }), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-    finally:
-        if conn:
-            conn.close()
-
-@admin_bp.route('/admin/pending-users', methods=['GET'])
-@admin_required
-@login_required
-def get_pending_users():
-    conn = get_db_connection()
-    if conn is None:
-        return jsonify({"error": "Database connection failed"}), 500
-    
-    try:
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT id, username, firstname, lastname, roletype, profile_image, created_at, status 
-                FROM users 
-                WHERE status = 'pending' 
-                ORDER BY created_at ASC
-            """)
-            users = cur.fetchall()
-            
-            pending_users = []
-            for user in users:
-                pending_users.append({
-                    'id': user[0],
-                    'username': user[1],
-                    'firstname': user[2],
-                    'lastname': user[3],
-                    'roletype': user[4],
-                    'profile_image': user[5],
-                    'created_at': user[6],
-                    'status': user[7]
-                })
-            
-            return jsonify({"pending_users": pending_users}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
     finally:
         if conn:
             conn.close()
@@ -1671,3 +1734,219 @@ def test_admin_route():
         "session_user_id": session.get('user_id'),
         "is_authenticated": 'user_id' in session
     }), 200
+
+@admin_bp.route('/admin/pending-image-uploads', methods=['GET', 'OPTIONS'])
+@cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
+@login_required
+def get_pending_image_uploads():
+    """Get pending image uploads grouped by user"""
+    if request.method == 'OPTIONS':
+        response = jsonify()
+        response.headers.add('Access-Control-Allow-Origin', 'http://localhost:3000')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-CSRF-Token')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,OPTIONS')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response
+    
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({"error": "Database connection failed"}), 500
+            
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT 
+                    i.uploader_id,
+                    u.username,
+                    u.firstname, 
+                    u.lastname,
+                    u.roletype,
+                    COUNT(i.id) as pending_count,
+                    MAX(i.uploaded_at) as last_upload,
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'id', i.id,
+                            'filename', i.filename,
+                            'uploaded_at', i.uploaded_at,
+                            'processing_status', i.processing_status,
+                            'analysis_confidence', i.analysis_confidence
+                        ) ORDER BY i.uploaded_at DESC
+                    ) as images
+                FROM images i
+                JOIN users u ON i.uploader_id = u.id
+                WHERE i.upload_status = 'pending'
+                GROUP BY i.uploader_id, u.username, u.firstname, u.lastname, u.roletype
+                ORDER BY last_upload DESC
+            """)
+            
+            results = cur.fetchall()
+            
+            pending_uploads = []
+            for row in results:
+                pending_uploads.append({
+                    'uploader_id': row[0],
+                    'username': row[1],
+                    'firstname': row[2],
+                    'lastname': row[3],
+                    'roletype': row[4],
+                    'pending_count': row[5],
+                    'last_upload': row[6].isoformat() if row[6] else None,
+                    'images': row[7] if row[7] else []
+                })
+            
+            return jsonify({
+                "success": True,
+                "pending_uploads": pending_uploads
+            })
+            
+    except Exception as e:
+        print(f"Error fetching pending uploads: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+@admin_bp.route('/admin/manage-user-validation', methods=['POST', 'OPTIONS'])
+@cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
+@admin_required
+@login_required
+def manage_user_validation():
+    """Approve or reject pending users"""
+    if request.method == 'OPTIONS':
+        # Handle preflight request
+        response = jsonify()
+        response.headers.add('Access-Control-Allow-Origin', 'http://localhost:3000')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-CSRF-Token')
+        response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response
+    
+    try:
+        data = request.get_json()
+        user_ids = data.get('user_ids', [])
+        action = data.get('action')  # 'approve' or 'reject'
+        
+        if not user_ids or action not in ['approve', 'reject']:
+            return jsonify({"error": "Invalid request data"}), 400
+            
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({"error": "Database connection failed"}), 500
+            
+        admin_id = session.get('user_id')
+        
+        with conn.cursor() as cur:
+            # Check admin privileges
+            cur.execute("SELECT roletype FROM users WHERE id = %s", (admin_id,))
+            user_result = cur.fetchone()
+            
+            if not user_result or user_result[0].lower() != 'admin':
+                return jsonify({"error": "Admin access required"}), 403
+            
+            if action == 'approve':
+                # Update user status to approved
+                placeholders = ','.join(['%s'] * len(user_ids))
+                cur.execute(f"""
+                    UPDATE users 
+                    SET status = 'approved', updated_at = NOW()
+                    WHERE id IN ({placeholders}) AND status = 'pending'
+                """, user_ids)
+                
+                affected_rows = cur.rowcount
+                conn.commit()
+                
+                message = f"Successfully approved {affected_rows} user(s)"
+                
+            else:  # reject
+                # Get user details before deletion for logging
+                placeholders = ','.join(['%s'] * len(user_ids))
+                cur.execute(f"""
+                    SELECT id, username, firstname, lastname
+                    FROM users 
+                    WHERE id IN ({placeholders}) AND status = 'pending'
+                """, user_ids)
+                
+                user_details = cur.fetchall()
+                
+                # Delete rejected users
+                cur.execute(f"""
+                    DELETE FROM users 
+                    WHERE id IN ({placeholders}) AND status = 'pending'
+                """, user_ids)
+                
+                affected_rows = cur.rowcount
+                conn.commit()
+                
+                message = f"Successfully rejected {affected_rows} user(s)"
+                
+                # Log rejections
+                for user in user_details:
+                    log_user_management(
+                        admin_id=admin_id,
+                        action='rejected',
+                        target_user=f"{user[2]} {user[3]} (@{user[1]})"
+                    )
+            
+            return jsonify({
+                "success": True,
+                "message": message,
+                "affected_count": affected_rows
+            })
+            
+    except Exception as e:
+        print(f"Error managing user validation: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+@admin_bp.route('/admin/pending-users', methods=['GET', 'OPTIONS'])
+@cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
+@admin_required
+@login_required
+def get_pending_users():
+    """Get all pending user registrations"""
+    if request.method == 'OPTIONS':
+        response = jsonify()
+        response.headers.add('Access-Control-Allow-Origin', 'http://localhost:3000')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-CSRF-Token')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,OPTIONS')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response
+    
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({"error": "Database connection failed"}), 500
+    
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, username, firstname, lastname, roletype, profile_image, created_at, status 
+                FROM users 
+                WHERE status = 'pending'
+                ORDER BY created_at DESC
+            """)
+            users = cur.fetchall()
+            
+            users_list = []
+            for user in users:
+                users_list.append({
+                    'id': user[0],
+                    'username': user[1],
+                    'firstname': user[2],
+                    'lastname': user[3],
+                    'roletype': user[4],
+                    'profile_image': user[5],
+                    'created_at': user[6].isoformat() if user[6] else None,
+                    'status': user[7]
+                })
+            
+            return jsonify({
+                "success": True,
+                "pending_users": users_list
+            })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()

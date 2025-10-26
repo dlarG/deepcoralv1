@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react";
+import { useAuth } from "../../../context/AuthContext";
 import {
   FiUpload,
   FiSettings,
@@ -7,32 +8,35 @@ import {
   FiLoader,
   FiX,
   FiCheck,
+  FiClock,
   FiFolder,
   FiGrid,
   FiList,
+  FiImage,
+  FiCheckCircle,
+  FiAlertTriangle,
   FiFile,
   FiTrash2,
 } from "react-icons/fi";
 import "../styles/uploadImage.css";
 
 function UploadImage() {
+  const { user } = useAuth();
   const [images, setImages] = useState([]);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [crops, setCrops] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [batchLoading, setBatchLoading] = useState(false);
   const [cropIntensity, setCropIntensity] = useState("conservative");
   const [dragActive, setDragActive] = useState(false);
-  const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
-  const [viewMode, setViewMode] = useState("grid");
   const fileInputRef = useRef(null);
   const folderInputRef = useRef(null);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState(null);
+
+  const isGuest = user?.roletype?.toLowerCase() === "guest";
 
   const handleUpload = (e) => {
     const files = Array.from(e.target.files);
     processFiles(files);
   };
-
   const handleFolderUpload = (e) => {
     const files = Array.from(e.target.files);
     const validFiles = files
@@ -68,15 +72,13 @@ function UploadImage() {
     const newImages = validFiles.map((file) => ({
       file,
       preview: URL.createObjectURL(file),
-      crops: [],
-      processed: false,
+      status: "ready", // ready, uploading, uploaded, failed
+      quadrats: 0,
+      confidence: 0,
+      previewCrops: [],
     }));
 
     setImages((prev) => [...prev, ...newImages]);
-    if (images.length === 0) {
-      setCurrentImageIndex(0);
-    }
-    setCrops([]);
   };
 
   const handleDrag = (e) => {
@@ -100,7 +102,7 @@ function UploadImage() {
     }
   };
 
-  const handleSubmit = async () => {
+  const handleGuestUpload = async () => {
     if (images.length === 0) {
       alert("Please select images first!");
       return;
@@ -114,14 +116,23 @@ function UploadImage() {
         credentials: "include",
       });
 
+      if (!csrfResponse.ok) {
+        throw new Error("Failed to get CSRF token");
+      }
+
       const csrfData = await csrfResponse.json();
 
       const formData = new FormData();
-      formData.append("image", images[currentImageIndex].file);
+
+      // Add all images to FormData
+      images.forEach((image, index) => {
+        formData.append("images", image.file);
+      });
+
       formData.append("intensity", cropIntensity);
       formData.append("csrf_token", csrfData.csrf_token);
 
-      const res = await fetch("http://localhost:5000/detect_custom", {
+      const res = await fetch("http://localhost:5000/guest_upload_only", {
         method: "POST",
         body: formData,
         credentials: "include",
@@ -131,169 +142,197 @@ function UploadImage() {
       });
 
       if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
       }
 
       const data = await res.json();
-      setCrops(data.crops);
 
-      setImages((prev) =>
-        prev.map((img, idx) =>
-          idx === currentImageIndex
-            ? { ...img, crops: data.crops, processed: true }
-            : img
-        )
-      );
+      // Show upload status modal
+      setUploadStatus({
+        totalImages: data.upload_statistics.total_images_submitted,
+        successfulImages: data.upload_statistics.successfully_uploaded,
+        rejectedImages: data.upload_statistics.rejected_images,
+        uploadedImages: data.uploaded_images,
+        rejectedDetails: data.rejected_images,
+      });
+      setShowStatusModal(true);
     } catch (error) {
-      console.error("Error:", error);
-      alert("Failed to process image: " + error.message);
+      console.error("Upload error:", error);
+      alert("Upload failed: " + error.message);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleBatchSubmit = async () => {
-    if (images.length === 0) {
-      alert("Please select images first!");
-      return;
-    }
-
-    setBatchLoading(true);
-    setBatchProgress({ current: 0, total: images.length });
-
-    try {
-      const csrfResponse = await fetch("http://localhost:5000/csrf-token", {
-        method: "GET",
-        credentials: "include",
-      });
-
-      if (!csrfResponse.ok) {
-        throw new Error("Failed to get CSRF token");
-      }
-
-      const csrfData = await csrfResponse.json();
-      const updatedImages = [...images];
-
-      for (let i = 0; i < images.length; i++) {
-        if (images[i].processed) continue;
-
-        setBatchProgress({ current: i + 1, total: images.length });
-
-        const formData = new FormData();
-        formData.append("image", images[i].file);
-        formData.append("intensity", cropIntensity);
-        formData.append("csrf_token", csrfData.csrf_token);
-
-        try {
-          const res = await fetch("http://localhost:5000/detect_custom", {
-            method: "POST",
-            body: formData,
-            credentials: "include",
-            headers: {
-              "X-CSRF-Token": csrfData.csrf_token,
-            },
-          });
-
-          if (!res.ok) {
-            const errorData = await res.json().catch(() => ({}));
-            throw new Error(
-              errorData.error || `HTTP error! status: ${res.status}`
-            );
-          }
-
-          const data = await res.json();
-          updatedImages[i] = {
-            ...updatedImages[i],
-            crops: data.crops,
-            processed: true,
-          };
-          setImages(updatedImages);
-
-          if (i === currentImageIndex) {
-            setCrops(data.crops);
-          }
-        } catch (error) {
-          console.error(`Error processing image ${i}:`, error);
-          updatedImages[i] = {
-            ...updatedImages[i],
-            error: error.message,
-            processed: false,
-          };
-          setImages(updatedImages);
-          continue;
-        }
-      }
-    } catch (error) {
-      console.error("Batch processing error:", error);
-      alert("Batch processing failed: " + error.message);
-    } finally {
-      setBatchLoading(false);
-      setBatchProgress({ current: 0, total: 0 });
     }
   };
 
   const clearImages = () => {
     images.forEach((image) => URL.revokeObjectURL(image.preview));
     setImages([]);
-    setCurrentImageIndex(0);
-    setCrops([]);
   };
 
   const removeImage = (index) => {
     const newImages = [...images];
     URL.revokeObjectURL(newImages[index].preview);
     newImages.splice(index, 1);
-
     setImages(newImages);
-
-    if (currentImageIndex >= newImages.length) {
-      setCurrentImageIndex(Math.max(0, newImages.length - 1));
-    }
-
-    if (newImages.length === 0) {
-      setCrops([]);
-    } else if (index === currentImageIndex) {
-      setCrops(newImages[currentImageIndex]?.crops || []);
-    }
   };
 
-  const downloadCrop = (cropUrl, index) => {
-    const link = document.createElement("a");
-    link.href = `http://localhost:5000/${cropUrl}`;
-    link.download = `crop_${index + 1}_${images[currentImageIndex].file.name}`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  const UploadStatusModal = ({ isOpen, onClose, uploadStatus }) => {
+    if (!isOpen) return null;
 
-  const downloadBatchCrops = () => {
-    let totalCrops = 0;
-    images.forEach((image, imgIndex) => {
-      if (image.crops && image.crops.length > 0) {
-        image.crops.forEach((crop, cropIndex) => {
-          setTimeout(() => {
-            const link = document.createElement("a");
-            link.href = `http://localhost:5000/${crop}`;
-            link.download = `img_${imgIndex + 1}_crop_${cropIndex + 1}_${
-              image.file.name
-            }`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-          }, totalCrops * 200);
-          totalCrops++;
-        });
-      }
-    });
-  };
+    return (
+      <div className="modal-overlay">
+        <div className="upload-status-modal">
+          <div className="modal-header">
+            <h3>Upload Complete!</h3>
+            <button className="close-btn" onClick={onClose}>
+              <FiX size={20} />
+            </button>
+          </div>
+          <div className="modal-content">
+            <div className="status-icon success">
+              <FiCheck size={40} />
+            </div>
 
-  const totalCrops = images.reduce(
-    (sum, img) => sum + (img.crops?.length || 0),
-    0
-  );
+            <div className="upload-summary">
+              <h4>Upload Summary</h4>
+              <div className="summary-stats">
+                <div className="stat-item success">
+                  <FiCheckCircle size={20} />
+                  <span>
+                    {uploadStatus.successfulImages} Images Successfully
+                    Processed
+                  </span>
+                </div>
+                <div className="stat-item info">
+                  <FiImage size={20} />
+                  <span>
+                    {uploadStatus.uploadedImages.reduce(
+                      (total, img) => total + img.crops.length,
+                      0
+                    )}{" "}
+                    Quadrat Crops Created
+                  </span>
+                </div>
+                {uploadStatus.rejectedImages > 0 && (
+                  <div className="stat-item error">
+                    <FiAlertTriangle size={20} />
+                    <span>{uploadStatus.rejectedImages} Images Rejected</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Show cropped quadrats preview */}
+            {uploadStatus.uploadedImages.length > 0 && (
+              <div className="cropped-preview">
+                <h5>Cropped Quadrats Created:</h5>
+                <div className="crops-preview-grid">
+                  {uploadStatus.uploadedImages
+                    .slice(0, 3)
+                    .map((image, imgIndex) => (
+                      <div key={imgIndex} className="image-crops-preview">
+                        <h6>{image.original_filename}</h6>
+                        <div className="crops-row">
+                          {image.crops.slice(0, 3).map((crop, cropIndex) => (
+                            <div key={cropIndex} className="crop-preview-item">
+                              <img
+                                src={`http://localhost:5000/${crop.crop_url}`}
+                                alt={`${crop.quadrat_type} ${crop.quadrat_number}`}
+                                className="crop-thumbnail"
+                              />
+                              <div className="crop-info">
+                                <span className="crop-type">
+                                  {crop.quadrat_type}
+                                </span>
+                                <span className="crop-confidence">
+                                  {(crop.confidence * 100).toFixed(0)}%
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                          {image.crops.length > 3 && (
+                            <div className="more-crops">
+                              +{image.crops.length - 3} more
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {uploadStatus.successfulImages > 0 && (
+              <div className="status-details">
+                <h5>Your cropped quadrats are now pending review</h5>
+                <div className="detail-item">
+                  <FiClock size={16} />
+                  <span>Review typically takes 24-48 hours</span>
+                </div>
+                <div className="detail-item">
+                  <FiEye size={16} />
+                  <span>You'll be notified once reviewed</span>
+                </div>
+                <div className="detail-item">
+                  <FiCheck size={16} />
+                  <span>
+                    Approved quadrats will be ready for coral analysis
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {uploadStatus.rejectedDetails &&
+              uploadStatus.rejectedDetails.length > 0 && (
+                <div className="rejected-details">
+                  <h5>Rejected Images:</h5>
+                  <div className="rejected-list">
+                    {uploadStatus.rejectedDetails.map((rejected, index) => (
+                      <div key={index} className="rejected-item">
+                        <FiX size={16} />
+                        <span>
+                          {rejected.filename}: {rejected.reason}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+          </div>
+          <div className="modal-footer">
+            <button className="primary-btn" onClick={onClose}>
+              <FiCheck size={16} />
+              Got it!
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <div className="content-section">
+    <div className="content-section guest-upload">
+      {/* Guest Upload Header */}
+      <div className="upload-header">
+        <h2>Upload Coral Images</h2>
+        <p>Upload your coral quadrat images for expert review and analysis</p>
+        <div className="upload-info">
+          <div className="info-item">
+            <FiCheckCircle size={16} />
+            <span>Images are reviewed by coral experts</span>
+          </div>
+          <div className="info-item">
+            <FiClock size={16} />
+            <span>Review process takes 24-48 hours</span>
+          </div>
+          <div className="info-item">
+            <FiEye size={16} />
+            <span>Approved images can be analyzed</span>
+          </div>
+        </div>
+      </div>
+
       {images.length === 0 ? (
         <div className="upload-section">
           <div
@@ -308,10 +347,10 @@ function UploadImage() {
             </div>
 
             <div className="upload-text">
-              <h3>Drag & drop images or folders here</h3>
+              <h3>Drag & drop coral images here</h3>
               <p>
-                Support for batch processing • JPG, PNG, WEBP formats • Up to 50
-                images
+                Upload coral quadrat images for expert review • JPG, PNG, WEBP
+                formats • Up to 50 images
               </p>
 
               <div className="upload-buttons">
@@ -371,6 +410,10 @@ function UploadImage() {
                 <option value="aggressive">Aggressive (18% crop)</option>
                 <option value="smart">Smart (Edge Detection)</option>
               </select>
+              <p className="intensity-help">
+                This setting will be applied when your images are processed
+                after approval
+              </p>
             </div>
           </div>
         </div>
@@ -398,287 +441,122 @@ function UploadImage() {
                 </select>
               </div>
 
-              <div className="process-buttons">
+              <div className="upload-actions">
                 <button
-                  onClick={handleSubmit}
-                  disabled={images.length === 0 || loading || batchLoading}
-                  className="process-button primary"
+                  onClick={handleGuestUpload}
+                  disabled={images.length === 0 || loading}
+                  className="upload-btn primary"
                 >
                   {loading ? (
                     <>
-                      <FiLoader size={20} />
-                      Processing...
+                      <FiLoader size={20} className="spinning" />
+                      Uploading...
                     </>
                   ) : (
                     <>
-                      <FiEye size={20} />
-                      Process Current
+                      <FiUpload size={20} />
+                      Upload for Review
                     </>
                   )}
                 </button>
 
-                <button
-                  onClick={handleBatchSubmit}
-                  disabled={images.length === 0 || batchLoading}
-                  className="process-button secondary"
-                >
-                  {batchLoading ? (
-                    <>
-                      <FiLoader size={20} />
-                      {batchProgress.current}/{batchProgress.total}
-                    </>
-                  ) : (
-                    <>
-                      <FiGrid size={20} />
-                      Process All
-                    </>
-                  )}
+                <button onClick={clearImages} className="clear-btn secondary">
+                  <FiTrash2 size={20} />
+                  Clear All
                 </button>
               </div>
             </div>
           </div>
-          {/* <div className="batch-stats">
-                    <div className="stat-card">
-                      <div className="stat-number">{images.length}</div>
-                      <div className="stat-label">Total Images</div>
-                    </div>
-                    <div className="stat-card">
-                      <div className="stat-number">{completedImages}</div>
-                      <div className="stat-label">Processed</div>
-                    </div>
-                    <div className="stat-card">
-                      <div className="stat-number">{totalCrops}</div>
-                      <div className="stat-label">Crops Detected</div>
-                    </div>
-                  </div> */}
 
-          {/* Gallery Controls */}
-          <div className="gallery-controls">
+          {/* Image Gallery */}
+          <div className="gallery-section">
             <div className="gallery-header">
               <div className="gallery-title">
-                <FiGrid size={24} />
-                Image Gallery ({images.length})
-              </div>
-
-              <div className="view-toggle">
-                <button
-                  className={`view-toggle-btn ${
-                    viewMode === "grid" ? "active" : ""
-                  }`}
-                  onClick={() => setViewMode("grid")}
-                >
-                  <FiGrid size={18} />
-                </button>
-                <button
-                  className={`view-toggle-btn ${
-                    viewMode === "list" ? "active" : ""
-                  }`}
-                  onClick={() => setViewMode("list")}
-                >
-                  <FiList size={18} />
-                </button>
-              </div>
-
-              <div className="gallery-actions">
-                {totalCrops > 0 && (
-                  <button
-                    onClick={downloadBatchCrops}
-                    className="action-button download-all-button"
-                  >
-                    <FiDownload size={16} />
-                    Download All ({totalCrops})
-                  </button>
-                )}
-                <button
-                  onClick={clearImages}
-                  className="action-button clear-button"
-                >
-                  <FiTrash2 size={16} />
-                  Clear
-                </button>
+                <FiImage size={24} />
+                Selected Images ({images.length})
               </div>
             </div>
 
-            <div className={`image-gallery ${viewMode}`}>
+            <div className="image-gallery guest-gallery">
               {images.map((image, index) => (
-                <div
-                  key={index}
-                  className={`gallery-item ${
-                    index === currentImageIndex ? "active" : ""
-                  }`}
-                  onClick={() => {
-                    setCurrentImageIndex(index);
-                    setCrops(image.crops || []);
-                  }}
-                >
+                <div key={index} className="gallery-item guest-item">
                   <div className="item-thumbnail">
                     <img src={image.preview} alt={`Thumbnail ${index}`} />
-                    {image.processed && (
-                      <div className="processed-badge">
-                        <FiCheck size={12} />
-                      </div>
-                    )}
                     <button
                       className="remove-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeImage(index);
-                      }}
+                      onClick={() => removeImage(index)}
                     >
                       <FiX size={12} />
                     </button>
                   </div>
                   <div className="item-info">
                     <span className="filename">{image.file.name}</span>
-                    {image.crops?.length > 0 && (
-                      <span className="crop-count">
-                        {image.crops.length} crops
-                      </span>
-                    )}
+                    <span className="file-size">
+                      {(image.file.size / 1024 / 1024).toFixed(2)} MB
+                    </span>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Current Image Preview */}
-          {/* {images.length > 0 && (
-                    <div className="current-image-section">
-                      <div className="image-header">
-                        <div className="image-nav">
-                          <button
-                            className="nav-button"
-                            onClick={() =>
-                              setCurrentImageIndex((prev) => {
-                                const newIndex = Math.max(0, prev - 1);
-                                setCrops(images[newIndex]?.crops || []);
-                                return newIndex;
-                              })
-                            }
-                            disabled={currentImageIndex === 0}
-                          >
-                            <FiChevronLeft size={24} />
-                          </button>
-                          <h3 className="current-filename">
-                            {images[currentImageIndex]?.file.name}
-                          </h3>
-                          <button
-                            className="nav-button"
-                            onClick={() =>
-                              setCurrentImageIndex((prev) => {
-                                const newIndex = Math.min(images.length - 1, prev + 1);
-                                setCrops(images[newIndex]?.crops || []);
-                                return newIndex;
-                              })
-                            }
-                            disabled={currentImageIndex === images.length - 1}
-                          >
-                            <FiChevronRight size={24} />
-                          </button>
-                        </div>
-        
-                        <div className="gallery-actions">
-                          {crops.length > 0 && (
-                            <button
-                              onClick={downloadAllCrops}
-                              className="action-button download-all-button"
-                            >
-                              <FiDownload size={16} />
-                              Download Current ({crops.length})
-                            </button>
-                          )}
-                        </div>
-                      </div>
-        
-                      <div className="current-image-container">
-                        <img
-                          src={images[currentImageIndex]?.preview}
-                          alt="Current Preview"
-                          className="current-image"
-                        />
-                      </div>
-        
-                      <div className="image-info">
-                        <span>
-                          <strong>{images[currentImageIndex]?.file.name}</strong>
-                        </span>
-                        <span>
-                          {formatFileSize(images[currentImageIndex]?.file.size || 0)}
-                        </span>
-                      </div>
-                    </div>
-                  )} */}
-
-          {/* Crops Section */}
-          {crops.length > 0 && (
-            <div className="crops-section">
-              <div className="crops-header">
-                <div className="crops-title">
-                  <FiGrid size={24} />
-                  Detected Crops ({crops.length})
-                </div>
-                <div className="method-tag">
-                  {cropIntensity.charAt(0).toUpperCase() +
-                    cropIntensity.slice(1)}
+          {/* Upload Instructions */}
+          <div className="upload-instructions">
+            <h4>What happens next?</h4>
+            <div className="instruction-steps">
+              <div className="step">
+                <div className="step-number">1</div>
+                <div className="step-content">
+                  <h5>Upload & Validation</h5>
+                  <p>
+                    Your images are uploaded and automatically validated for
+                    coral quadrats
+                  </p>
                 </div>
               </div>
-
-              <div className="crops-grid">
-                {crops.map((crop, i) => (
-                  <div key={i} className="crop-card">
-                    <div className="crop-image-container">
-                      <img
-                        src={`http://localhost:5000/${crop}`}
-                        alt={`Crop ${i + 1}`}
-                        className="crop-image"
-                      />
-                      <div className="crop-overlay">
-                        <button
-                          className="download-btn"
-                          onClick={() => downloadCrop(crop, i)}
-                          title="Download crop"
-                        >
-                          <FiDownload size={16} />
-                          Download
-                        </button>
-                      </div>
-                    </div>
-                    <div className="crop-info">
-                      <span className="crop-label">Crop {i + 1}</span>
-                    </div>
-                  </div>
-                ))}
+              <div className="step">
+                <div className="step-number">2</div>
+                <div className="step-content">
+                  <h5>Expert Review</h5>
+                  <p>
+                    Coral experts review your images for quality and content
+                  </p>
+                </div>
+              </div>
+              <div className="step">
+                <div className="step-number">3</div>
+                <div className="step-content">
+                  <h5>Analysis Ready</h5>
+                  <p>
+                    Approved images become available for coral coverage analysis
+                  </p>
+                </div>
               </div>
             </div>
-          )}
+          </div>
         </>
       )}
 
-      {(loading || batchLoading) && (
+      {loading && (
         <div className="loading-overlay">
           <div className="loading-content">
             <div className="loading-spinner"></div>
-            <div className="loading-text">
-              {batchLoading ? "Processing Batch..." : "Processing Image..."}
-            </div>
+            <div className="loading-text">Uploading your images...</div>
             <div className="loading-subtext">
-              {batchLoading
-                ? `${batchProgress.current} of ${batchProgress.total} images processed`
-                : "Please wait while we analyze your image"}
-            </div>
-            <div className="progress-bar-container">
-              <div
-                className="progress-bar"
-                style={{
-                  width: batchLoading
-                    ? `${(batchProgress.current / batchProgress.total) * 100}%`
-                    : "50%",
-                }}
-              ></div>
+              Please wait while we validate and upload your coral images
             </div>
           </div>
         </div>
       )}
+
+      <UploadStatusModal
+        isOpen={showStatusModal}
+        onClose={() => {
+          setShowStatusModal(false);
+          clearImages(); // Clear images after showing status
+        }}
+        uploadStatus={uploadStatus}
+      />
     </div>
   );
 }

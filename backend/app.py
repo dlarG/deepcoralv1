@@ -24,8 +24,10 @@ def create_app():
     # CSRF protection middleware
     @app.before_request
     def csrf_protect():
+        if request.method == 'OPTIONS':
+            return
+            
         if request.method in ['POST', 'PUT', 'DELETE', 'PATCH']:
-            # Skip CSRF for file upload endpoints and distribution endpoints
             if request.endpoint in [
                 'image.detect_custom', 
                 'image.detect', 
@@ -35,7 +37,15 @@ def create_app():
                 'gis.save_images_with_location',
                 'gis.get_location_details',
                 'gis.find_nearby_locations',
-                'distribution.delete_image' 
+                'distribution.delete_image',
+                'admin.get_pending_users', 
+                'validation.manage_image_uploads',
+                'validation.delete_pending_images',
+                'admin.manage_user_validation',
+                'approved.analyze_approved_image',   
+                'approved.batch_analyze_approved',   
+                'approved.delete_guest_images',      
+                'image.guest_upload_only', 
             ]:
                 return
             
@@ -45,6 +55,7 @@ def create_app():
             if not csrf_token or csrf_token != request_csrf:
                 return jsonify({'error': 'CSRF token missing or invalid'}), 403
     
+    # Return the app OUTSIDE the csrf_protect function
     return app
 
 if __name__ == '__main__':

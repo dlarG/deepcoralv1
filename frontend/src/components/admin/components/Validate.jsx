@@ -1,5 +1,4 @@
-// src/components/admin/components/Validate.js
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   FiUsers,
   FiImage,
@@ -9,26 +8,284 @@ import {
   FiCalendar,
   FiUser,
   FiShield,
+  FiEye,
+  FiTrash2,
+  FiCheckCircle,
+  FiXCircle,
+  FiChevronDown,
+  FiChevronUp,
+  FiAlertTriangle,
+  FiUserCheck,
+  FiUserX,
 } from "react-icons/fi";
-import useValidate from "../hooks/useValidate";
+import { useAuth } from "../../../context/AuthContext";
 import SuccessModal from "../../SuccessMessage";
 import "../styles/validateStyle.css";
 
 function Validate() {
-  const {
-    activeFilter,
-    setActiveFilter,
-    pendingUsers,
-    loading,
-    actionLoading,
-    approveUser,
-    rejectUser,
-    showModal,
-    modalConfig,
-    setShowModal,
-    handleConfirm,
-    cancelAction,
-  } = useValidate();
+  const { user } = useAuth();
+  const [activeFilter, setActiveFilter] = useState("images");
+
+  // Image validation state
+  const [pendingUploads, setPendingUploads] = useState([]);
+  const [expandedUser, setExpandedUser] = useState(null);
+  const [selectedImages, setSelectedImages] = useState(new Set());
+
+  // User validation state
+  const [pendingUsers, setPendingUsers] = useState([]);
+  const [selectedUsers, setSelectedUsers] = useState(new Set());
+
+  // Common state
+  const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [modalConfig, setModalConfig] = useState({});
+
+  useEffect(() => {
+    if (activeFilter === "images") {
+      fetchPendingUploads();
+    } else if (activeFilter === "users") {
+      fetchPendingUsers();
+    }
+  }, [activeFilter]);
+
+  // Image validation functions
+  const fetchPendingUploads = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(
+        "http://localhost:5000/admin/pending-image-uploads",
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setPendingUploads(data.pending_uploads);
+      } else {
+        console.error("Failed to fetch pending uploads");
+      }
+    } catch (error) {
+      console.error("Error fetching pending uploads:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // User validation functions
+  const fetchPendingUsers = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(
+        "http://localhost:5000/admin/pending-users",
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setPendingUsers(data.pending_users);
+      } else {
+        console.error("Failed to fetch pending users");
+      }
+    } catch (error) {
+      console.error("Error fetching pending users:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleUserSelection = (userId) => {
+    const newSelection = new Set(selectedUsers);
+    if (newSelection.has(userId)) {
+      newSelection.delete(userId);
+    } else {
+      newSelection.add(userId);
+    }
+    setSelectedUsers(newSelection);
+  };
+
+  const selectAllUsers = () => {
+    const allUserIds = pendingUsers.map((user) => user.id);
+    const newSelection = new Set(selectedUsers);
+
+    const allSelected = allUserIds.every((id) => newSelection.has(id));
+
+    if (allSelected) {
+      // Deselect all
+      allUserIds.forEach((id) => newSelection.delete(id));
+    } else {
+      // Select all
+      allUserIds.forEach((id) => newSelection.add(id));
+    }
+
+    setSelectedUsers(newSelection);
+  };
+
+  // Image functions (existing)
+  const toggleUserExpansion = (uploaderId) => {
+    setExpandedUser(expandedUser === uploaderId ? null : uploaderId);
+    setSelectedImages(new Set());
+  };
+
+  const toggleImageSelection = (imageId) => {
+    const newSelection = new Set(selectedImages);
+    if (newSelection.has(imageId)) {
+      newSelection.delete(imageId);
+    } else {
+      newSelection.add(imageId);
+    }
+    setSelectedImages(newSelection);
+  };
+
+  const selectAllUserImages = (userImages) => {
+    const imageIds = userImages.map((img) => img.id);
+    const newSelection = new Set(selectedImages);
+
+    const allSelected = imageIds.every((id) => newSelection.has(id));
+
+    if (allSelected) {
+      imageIds.forEach((id) => newSelection.delete(id));
+    } else {
+      imageIds.forEach((id) => newSelection.add(id));
+    }
+
+    setSelectedImages(newSelection);
+  };
+
+  // Generic bulk action handler
+  const handleBulkAction = async (action) => {
+    const isUserAction = activeFilter === "users";
+    const selectedItems = isUserAction ? selectedUsers : selectedImages;
+
+    if (selectedItems.size === 0) {
+      setModalConfig({
+        title: "No Selection",
+        message: `Please select at least one ${
+          isUserAction ? "user" : "image"
+        } to perform this action.`,
+        type: "warning",
+        autoClose: true,
+      });
+      setShowModal(true);
+      return;
+    }
+
+    const actionText =
+      action === "approve"
+        ? "approve"
+        : action === "reject"
+        ? "reject"
+        : "delete";
+    const itemType = isUserAction ? "user" : "image";
+
+    setModalConfig({
+      title: `Confirm ${
+        actionText.charAt(0).toUpperCase() + actionText.slice(1)
+      }`,
+      message: `Are you sure you want to ${actionText} ${selectedItems.size} selected ${itemType}(s)?`,
+      type: "warning",
+      customActions: true,
+      confirmText: actionText.charAt(0).toUpperCase() + actionText.slice(1),
+      cancelText: "Cancel",
+    });
+    setShowModal(true);
+
+    window.pendingAction = action;
+  };
+
+  const handleConfirmAction = async () => {
+    const action = window.pendingAction;
+    const isUserAction = activeFilter === "users";
+    const selectedItems = isUserAction ? selectedUsers : selectedImages;
+
+    setActionLoading(true);
+    setShowModal(false);
+
+    try {
+      // Get CSRF token first
+      const csrfResponse = await fetch("http://localhost:5000/csrf-token", {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (!csrfResponse.ok) {
+        throw new Error("Failed to get CSRF token");
+      }
+
+      const csrfData = await csrfResponse.json();
+
+      const itemIds = Array.from(selectedItems);
+      let endpoint = "";
+      let requestData = {};
+
+      if (isUserAction) {
+        // User validation endpoints
+        endpoint = "http://localhost:5000/admin/manage-user-validation";
+        requestData = { user_ids: itemIds, action };
+      } else {
+        // Image validation endpoints
+        if (action === "delete") {
+          endpoint =
+            "http://localhost:5000/validation/admin/delete-pending-images";
+          requestData = { image_ids: itemIds };
+        } else {
+          endpoint =
+            "http://localhost:5000/validation/admin/manage-image-uploads";
+          requestData = { image_ids: itemIds, action };
+        }
+      }
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfData.csrf_token, // Add CSRF token here
+        },
+        credentials: "include",
+        body: JSON.stringify(requestData),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        setModalConfig({
+          title: "Success",
+          message: data.message,
+          type: "success",
+          autoClose: true,
+        });
+        setShowModal(true);
+
+        // Refresh the appropriate data
+        if (isUserAction) {
+          await fetchPendingUsers();
+          setSelectedUsers(new Set());
+        } else {
+          await fetchPendingUploads();
+          setSelectedImages(new Set());
+          setExpandedUser(null);
+        }
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Operation failed");
+      }
+    } catch (error) {
+      setModalConfig({
+        title: "Error",
+        message: error.message,
+        type: "error",
+        autoClose: true,
+      });
+      setShowModal(true);
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   const getTimeSince = (dateString) => {
     const now = new Date();
@@ -81,11 +338,19 @@ function Validate() {
         >
           <FiImage size={18} />
           Image Uploads
-          <span className="coming-soon-badge">Coming Soon</span>
+          {pendingUploads.length > 0 && (
+            <span className="notification-badge">
+              {pendingUploads.reduce(
+                (sum, upload) => sum + upload.pending_count,
+                0
+              )}
+            </span>
+          )}
         </button>
       </div>
 
       <div className="validation-content">
+        {/* USER VALIDATION SECTION */}
         {activeFilter === "users" && (
           <div className="pending-users-section">
             {loading ? (
@@ -96,16 +361,62 @@ function Validate() {
             ) : pendingUsers.length === 0 ? (
               <div className="empty-state">
                 <FiUsers size={48} />
-                <h3>No Pending Users</h3>
+                <h3>No Pending User Registrations</h3>
                 <p>All user registrations have been processed.</p>
               </div>
             ) : (
-              <div className="pending-users-grid">
-                {pendingUsers.map((user) => (
-                  <div key={user.id} className="pending-user-card">
-                    <div className="user-card-header">
-                      <div className="user-avatars-section">
-                        <div className="user-avatars">
+              <>
+                {/* User Bulk Actions */}
+                {selectedUsers.size > 0 && (
+                  <div className="bulk-actions-bar">
+                    <div className="selected-count">
+                      {selectedUsers.size} user(s) selected
+                    </div>
+                    <div className="bulk-actions">
+                      <button
+                        className="bulk-action-btn approve"
+                        onClick={() => handleBulkAction("approve")}
+                        disabled={actionLoading}
+                      >
+                        <FiUserCheck size={16} />
+                        Approve Selected
+                      </button>
+                      <button
+                        className="bulk-action-btn reject"
+                        onClick={() => handleBulkAction("reject")}
+                        disabled={actionLoading}
+                      >
+                        <FiUserX size={16} />
+                        Reject Selected
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Users Header */}
+                <div className="users-list-header">
+                  <div className="header-controls">
+                    <button className="select-all-btn" onClick={selectAllUsers}>
+                      {selectedUsers.size === pendingUsers.length
+                        ? "Deselect All"
+                        : "Select All"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Users List */}
+                <div className="pending-users-list">
+                  {pendingUsers.map((user) => (
+                    <div key={user.id} className="user-card">
+                      <div className="user-card-header">
+                        <input
+                          type="checkbox"
+                          checked={selectedUsers.has(user.id)}
+                          onChange={() => toggleUserSelection(user.id)}
+                          className="user-checkbox"
+                        />
+
+                        <div className="user-avatar">
                           {user.profile_image ? (
                             <img
                               src={`/profile_uploads/${user.profile_image}`}
@@ -115,131 +426,305 @@ function Validate() {
                                 e.target.nextSibling.style.display = "flex";
                               }}
                             />
-                          ) : null}
+                          ) : (
+                            <div className="avatar-initials">
+                              {user.firstname?.charAt(0)?.toUpperCase()}
+                              {user.lastname?.charAt(0)?.toUpperCase()}
+                            </div>
+                          )}
                           <div
-                            className="avatar-initials"
-                            style={{
-                              display: user.profile_image ? "none" : "flex",
-                            }}
+                            className="avatar-placeholder"
+                            style={{ display: "none" }}
                           >
-                            {user.firstname?.charAt(0)?.toUpperCase()}
-                            {user.lastname?.charAt(0)?.toUpperCase()}
+                            <FiUser size={24} />
                           </div>
                         </div>
-                      </div>
-                      <div className="user-info">
-                        <h3 className="user-name">
-                          {user.firstname} {user.lastname}
-                        </h3>
-                        <p className="user-username">@{user.username}</p>
-                      </div>
-                    </div>
 
-                    <div className="user-details">
-                      <div className="detail-row">
-                        <FiUser size={16} />
-                        <span className="detail-label">Role:</span>
-                        <span className={`role-badge ${user.roletype}`}>
-                          <FiShield size={12} />
-                          {user.roletype.charAt(0).toUpperCase() +
-                            user.roletype.slice(1)}
-                        </span>
-                      </div>
+                        <div className="user-info">
+                          <h3 className="user-name">
+                            {user.firstname} {user.lastname}
+                          </h3>
+                          <p className="user-username">@{user.username}</p>
+                          <span className={`role-badge ${user.roletype}`}>
+                            <FiShield size={12} />
+                            {user.roletype.charAt(0).toUpperCase() +
+                              user.roletype.slice(1)}
+                          </span>
+                        </div>
 
-                      {/* Updated: Use FiClock for time since registration */}
-                      <div className="detail-row">
-                        <FiClock size={16} />
-                        <span className="detail-label">Waiting:</span>
-                        <span className="detail-value time-since">
-                          {getTimeSince(user.created_at)}
-                        </span>
-                      </div>
-
-                      <div className="detail-row">
-                        <FiCalendar size={16} />
-                        <span className="detail-label">Requested:</span>
-                        <span className="detail-value">
-                          {formatDate(user.created_at)}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="user-actions">
-                      <button
-                        className="action-btn approve"
-                        onClick={() => approveUser(user.id)}
-                        disabled={actionLoading[user.id]}
-                      >
-                        {actionLoading[user.id] === "approving" ? (
-                          <div className="btn-loading">
-                            <div className="spinner"></div>
-                            Approving...
+                        <div className="user-meta">
+                          <div className="meta-item">
+                            <FiCalendar size={14} />
+                            <span>
+                              Registered {getTimeSince(user.created_at)}
+                            </span>
                           </div>
-                        ) : (
-                          <>
+                          <div className="meta-item">
+                            <FiClock size={14} />
+                            <span>{formatDate(user.created_at)}</span>
+                          </div>
+                        </div>
+
+                        <div className="user-actions">
+                          <button
+                            className="action-btn approve"
+                            onClick={() => {
+                              setSelectedUsers(new Set([user.id]));
+                              handleBulkAction("approve");
+                            }}
+                            disabled={actionLoading}
+                          >
                             <FiCheck size={16} />
                             Approve
-                          </>
-                        )}
-                      </button>
-                      <button
-                        className="action-btn reject"
-                        onClick={() => rejectUser(user.id)}
-                        disabled={actionLoading[user.id]}
-                      >
-                        {actionLoading[user.id] === "rejecting" ? (
-                          <div className="btn-loading">
-                            <div className="spinner"></div>
-                            Rejecting...
-                          </div>
-                        ) : (
-                          <>
+                          </button>
+                          <button
+                            className="action-btn reject"
+                            onClick={() => {
+                              setSelectedUsers(new Set([user.id]));
+                              handleBulkAction("reject");
+                            }}
+                            disabled={actionLoading}
+                          >
                             <FiX size={16} />
                             Reject
-                          </>
-                        )}
-                      </button>
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </>
             )}
           </div>
         )}
 
+        {/* IMAGE VALIDATION SECTION (existing code) */}
         {activeFilter === "images" && (
-          <div className="coming-soon-section">
-            <div className="coming-soon-content">
-              <FiImage size={64} />
-              <h3>Image Upload Validation</h3>
-              <p>
-                This feature will be available once the AI model for automatic
-                image cropping and segmentation is integrated.
-              </p>
-              <div className="feature-list">
-                <div className="feature-item">
-                  <FiCheck size={16} />
-                  <span>Automatic image cropping</span>
-                </div>
-                <div className="feature-item">
-                  <FiCheck size={16} />
-                  <span>Coral segmentation</span>
-                </div>
-                <div className="feature-item">
-                  <FiCheck size={16} />
-                  <span>Quality validation</span>
-                </div>
-                <div className="feature-item">
-                  <FiCheck size={16} />
-                  <span>Manual review and approval</span>
-                </div>
+          <div className="pending-images-section">
+            {loading ? (
+              <div className="loading-container">
+                <div className="loading-spinner"></div>
+                <p>Loading pending uploads...</p>
               </div>
-            </div>
+            ) : pendingUploads.length === 0 ? (
+              <div className="empty-state">
+                <FiImage size={48} />
+                <h3>No Pending Image Uploads</h3>
+                <p>All image uploads have been processed.</p>
+              </div>
+            ) : (
+              <>
+                {/* Bulk Actions */}
+                {selectedImages.size > 0 && (
+                  <div className="bulk-actions-bar">
+                    <div className="selected-count">
+                      {selectedImages.size} image(s) selected
+                    </div>
+                    <div className="bulk-actions">
+                      <button
+                        className="bulk-action-btn approve"
+                        onClick={() => handleBulkAction("approve")}
+                        disabled={actionLoading}
+                      >
+                        <FiCheckCircle size={16} />
+                        Approve Selected
+                      </button>
+                      <button
+                        className="bulk-action-btn reject"
+                        onClick={() => handleBulkAction("reject")}
+                        disabled={actionLoading}
+                      >
+                        <FiXCircle size={16} />
+                        Reject Selected
+                      </button>
+                      <button
+                        className="bulk-action-btn delete"
+                        onClick={() => handleBulkAction("delete")}
+                        disabled={actionLoading}
+                      >
+                        <FiTrash2 size={16} />
+                        Delete Selected
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Upload Groups */}
+                <div className="pending-uploads-list">
+                  {pendingUploads.map((upload) => (
+                    <div key={upload.uploader_id} className="upload-group">
+                      <div className="upload-group-header">
+                        <div className="user-info-section">
+                          <div className="user-avatar">
+                            <div className="avatar-initials">
+                              {upload.firstname?.charAt(0)?.toUpperCase()}
+                              {upload.lastname?.charAt(0)?.toUpperCase()}
+                            </div>
+                          </div>
+                          <div className="user-details">
+                            <h3 className="user-name">
+                              {upload.firstname} {upload.lastname}
+                            </h3>
+                            <p className="user-username">@{upload.username}</p>
+                            <span className={`role-badge ${upload.roletype}`}>
+                              <FiShield size={12} />
+                              {upload.roletype.charAt(0).toUpperCase() +
+                                upload.roletype.slice(1)}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="upload-summary">
+                          <div className="summary-stat">
+                            <span className="stat-number">
+                              {upload.pending_count}
+                            </span>
+                            <span className="stat-label">Pending Images</span>
+                          </div>
+                          <div className="summary-stat">
+                            <span className="stat-time">
+                              {getTimeSince(upload.last_upload)}
+                            </span>
+                            <span className="stat-label">Last Upload</span>
+                          </div>
+                        </div>
+
+                        <div className="group-actions">
+                          <button
+                            className="select-all-btn"
+                            onClick={() => selectAllUserImages(upload.images)}
+                          >
+                            Select All
+                          </button>
+                          <button
+                            className="expand-btn"
+                            onClick={() =>
+                              toggleUserExpansion(upload.uploader_id)
+                            }
+                          >
+                            {expandedUser === upload.uploader_id ? (
+                              <>
+                                <FiChevronUp size={16} />
+                                Hide Details
+                              </>
+                            ) : (
+                              <>
+                                <FiChevronDown size={16} />
+                                View Details
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      {expandedUser === upload.uploader_id && (
+                        <div className="upload-details">
+                          <div className="images-grid">
+                            {upload.images.map((image) => (
+                              <div
+                                key={image.id}
+                                className={`image-card ${
+                                  selectedImages.has(image.id) ? "selected" : ""
+                                }`}
+                              >
+                                <div className="image-header">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedImages.has(image.id)}
+                                    onChange={() =>
+                                      toggleImageSelection(image.id)
+                                    }
+                                    className="image-checkbox"
+                                  />
+                                  <span className="image-filename">
+                                    {image.filename}
+                                  </span>
+                                </div>
+
+                                <div className="image-preview">
+                                  <img
+                                    src={`http://localhost:5000/crops/${image.filename}`}
+                                    alt={image.filename}
+                                    onError={(e) => {
+                                      e.target.style.display = "none";
+                                      e.target.nextSibling.style.display =
+                                        "flex";
+                                    }}
+                                  />
+                                  <div
+                                    className="preview-placeholder"
+                                    style={{ display: "none" }}
+                                  >
+                                    <FiImage size={24} />
+                                    <span>Preview not available</span>
+                                  </div>
+                                </div>
+
+                                <div className="image-meta">
+                                  <div className="meta-item">
+                                    <FiClock size={12} />
+                                    <span>
+                                      {getTimeSince(image.uploaded_at)}
+                                    </span>
+                                  </div>
+                                  {image.analysis_confidence && (
+                                    <div className="meta-item">
+                                      <FiEye size={12} />
+                                      <span>
+                                        {(
+                                          image.analysis_confidence * 100
+                                        ).toFixed(1)}
+                                        %
+                                      </span>
+                                    </div>
+                                  )}
+                                  <div className="meta-item">
+                                    <span
+                                      className={`status-badge ${image.processing_status}`}
+                                    >
+                                      {image.processing_status}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="image-actions">
+                                  <button
+                                    className="action-btn view"
+                                    onClick={() =>
+                                      window.open(
+                                        `http://localhost:5000/crops/${image.filename}`,
+                                        "_blank"
+                                      )
+                                    }
+                                  >
+                                    <FiEye size={14} />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>
 
-      {/* Updated SuccessModal with all required props */}
+      {/* Loading Overlay */}
+      {actionLoading && (
+        <div className="loading-overlay">
+          <div className="loading-content">
+            <div className="loading-spinner"></div>
+            <div className="loading-text">Processing action...</div>
+          </div>
+        </div>
+      )}
+
+      {/* Success/Error Modal */}
       <SuccessModal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
@@ -249,8 +734,10 @@ function Validate() {
         autoClose={modalConfig.autoClose}
         autoCloseDelay={3000}
         customActions={modalConfig.customActions}
-        onConfirm={modalConfig.customActions ? handleConfirm : null}
-        onCancel={modalConfig.customActions ? cancelAction : null}
+        onConfirm={modalConfig.customActions ? handleConfirmAction : null}
+        onCancel={modalConfig.customActions ? () => setShowModal(false) : null}
+        confirmText={modalConfig.confirmText}
+        cancelText={modalConfig.cancelText}
       />
     </div>
   );

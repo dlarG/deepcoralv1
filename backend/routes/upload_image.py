@@ -298,7 +298,7 @@ def enhanced_crop_inside_quadrat(image_path, bbox, crop_method='conservative'):
     y1 += height * margin
     x2 -= width * margin
     y2 -= height * margin
-    
+        
     img = Image.open(image_path)
     img_width, img_height = img.size
     
@@ -1014,7 +1014,7 @@ def save_segmentation_results(image_id, coverage_data, mask_path):
 @image_bp.route("/batch_analyze", methods=["POST", "OPTIONS"])
 @cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
 def batch_analyze_images():
-    """New endpoint for batch analysis with quadrat validation"""
+    """Enhanced batch analysis with manual override support"""
     if request.method == "OPTIONS":
         return jsonify({}), 200
     
@@ -1025,24 +1025,30 @@ def batch_analyze_images():
         if not files:
             return jsonify({"error": "No image files provided"}), 400
 
-        uploader_id = request.form.get('uploader_id', 1)
-        crop_intensity = request.form.get('intensity', 'aggressive')
+        # Get manual override information from form data
+        manually_included = request.form.get('manually_included', '[]')
+        try:
+            manually_included_indices = json.loads(manually_included) if manually_included else []
+        except:
+            manually_included_indices = []
+
+        uploader_id = user_id
+        crop_intensity = request.form.get('intensity', 'conservative')
         
         log_system_action(
             user_id=user_id,
             action='batch_upload_started',
-            description=f"Started batch analysis of {len(files)} images",
+            description=f"Started batch analysis of {len(files)} images ({len(manually_included_indices)} manually included)",
             details={
                 'file_count': len(files),
                 'crop_intensity': crop_intensity,
-                'uploader_id': uploader_id
+                'manually_included_count': len(manually_included_indices),
+                'manually_included_indices': manually_included_indices
             }
         )
-        # FIXED: Ensure user exists before proceeding
+
         if not ensure_user_exists(uploader_id):
             return jsonify({"error": f"Cannot create or find user with ID {uploader_id}"}), 400
-        
-        print(f"Processing batch with uploader_id: {uploader_id}")
         
         all_results = []
         batch_coverage_data = {}
@@ -1053,13 +1059,17 @@ def batch_analyze_images():
             if not file or file.filename == '':
                 continue
                 
+            # Check if this file was manually included
+            is_manually_included = file_index in manually_included_indices
+                
             # Validate file extension
             allowed_extensions = {'png', 'jpg', 'jpeg', 'webp'}
             ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
             if ext not in allowed_extensions:
                 rejected_images.append({
                     'filename': file.filename,
-                    'reason': 'Invalid file type'
+                    'reason': 'Invalid file type',
+                    'file_index': file_index
                 })
                 continue
                 
@@ -1073,7 +1083,7 @@ def batch_analyze_images():
             # Detection and processing
             detection_results = detection_model(image_path)
             
-            # Check for valid quadrat detections
+            # Check for valid quadrat detections (OR manually included)
             valid_detections = []
             if detection_results[0].boxes:
                 for box in detection_results[0].boxes:
@@ -1084,10 +1094,42 @@ def batch_analyze_images():
                     if label.lower() in ['full_quadrat', 'half_quadrat'] and confidence > 0.4:
                         valid_detections.append(box)
             
+            # If no valid detections but manually included, create a full-image crop
+            if len(valid_detections) == 0 and is_manually_included:
+                print(f"No quadrats detected in {file.filename}, but manually included - processing entire image")
+                
+                # Create a fake detection box covering the entire image
+                img = cv2.imread(image_path)
+                if img is not None:
+                    height, width = img.shape[:2]
+                    
+                    # Create a mock detection result for the entire image
+                    class MockBox:
+                        def __init__(self, width, height):
+                            self.xyxy = [[0, 0, width, height]]  # Full image coordinates
+                            self.conf = 0.5  # Default confidence for manual override
+                            
+                    mock_detection = MockBox(width, height)
+                    valid_detections.append(mock_detection)
+                    
+                    log_system_action(
+                        user_id=user_id,
+                        action='manual_override_processed',
+                        description=f"Processing manually included image {file.filename} without detected quadrats",
+                        details={
+                            'filename': file.filename,
+                            'file_index': file_index,
+                            'image_dimensions': f"{width}x{height}",
+                            'override_reason': 'User manually included despite no quadrat detection'
+                        }
+                    )
+            
+            # If still no valid detections and not manually included, reject
             if len(valid_detections) == 0:
                 rejected_images.append({
                     'filename': file.filename,
-                    'reason': 'No coral quadrats (full_quadrat or half_quadrat) detected'
+                    'reason': 'No coral quadrats detected and not manually included',
+                    'file_index': file_index
                 })
                 try:
                     os.remove(image_path)
@@ -1099,15 +1141,22 @@ def batch_analyze_images():
             
             for i, box in enumerate(valid_detections):
                 try:
-                    x1, y1, x2, y2 = box.xyxy[0].tolist()
-                    cls = int(box.cls)
-                    label = detection_model.names[cls]
+                    x1, y1, x2, y2 = box.xyxy[0].tolist() if hasattr(box.xyxy[0], 'tolist') else box.xyxy[0]
+                    
+                    # Determine label - use mock label for manual overrides
+                    if hasattr(box, 'cls'):
+                        cls = int(box.cls)
+                        label = detection_model.names[cls]
+                    else:
+                        label = "manual_override"
 
                     # Crop and segment
                     cropped = enhanced_crop_inside_quadrat(image_path, [x1, y1, x2, y2], crop_intensity)
                     cropped = enhance_cropped_image(cropped)
 
-                    crop_filename = f"{label}_{i}_{file_index}_{safe_filename}"
+                    # Add manual override indicator to filename
+                    override_suffix = "_manual" if is_manually_included else ""
+                    crop_filename = f"{label}_{i}_{file_index}{override_suffix}_{safe_filename}"
                     crop_path = os.path.join(OUTPUT_FOLDER, crop_filename)
                     cropped.save(crop_path, quality=95)
 
@@ -1119,14 +1168,22 @@ def batch_analyze_images():
                         cv2.imwrite(viz_path, cv2.cvtColor(visualization_mask, cv2.COLOR_RGB2BGR))
 
                     # Save to database with proper error handling
-                    analysis_confidence = float(box.conf) if hasattr(box, 'conf') else 0.85
-                    image_id = save_image_to_database(crop_filename, uploader_id, total_pixels, total_pixels, analysis_confidence)
+                    analysis_confidence = float(box.conf) if hasattr(box, 'conf') else 0.5  # Default for manual overrides
+                    
+                    # Add manual override flag to database
+                    image_id = save_image_to_database_with_override(
+                        crop_filename, 
+                        uploader_id, 
+                        total_pixels, 
+                        total_pixels, 
+                        analysis_confidence,
+                        is_manually_included,
+                        file.filename  # Original filename
+                    )
                     
                     if image_id is None:
                         print(f"Failed to save image {crop_filename} to database")
                         continue
-                    
-                    print(f"Successfully saved image with ID: {image_id}")
                     
                     if image_id and coverage_data:
                         save_segmentation_results(image_id, coverage_data, f"masks/{viz_filename}")
@@ -1144,9 +1201,6 @@ def batch_analyze_images():
                                 'images_found_in': 0
                             }
                         batch_coverage_data[class_name]['total_pixels'] += coral['pixel_count']
-                    
-                    print(f"DEBUG: About to append crop with image_id: {image_id}")
-                    print(f"DEBUG: Full crop data: {{'crop_url': f'crops/{crop_filename}', 'image_id': {image_id}}}")
 
                     image_crops.append({
                         'crop_url': f"crops/{crop_filename}",
@@ -1154,20 +1208,22 @@ def batch_analyze_images():
                         'coverage_data': coverage_data,
                         'total_pixels': total_pixels,
                         'detection_label': label,
-                        'image_id': image_id
+                        'image_id': image_id,
+                        'manually_included': is_manually_included,
+                        'confidence': analysis_confidence
                     })
-
-                    print(f"DEBUG: Crop appended. Total crops for this image: {len(image_crops)}")
 
                 except Exception as e:
                     print(f"Error processing crop {i} in image {file_index}: {e}")
                     continue
             
-            if image_crops:  # Only add if crops were successfully processed
+            if image_crops:
                 all_results.append({
                     'filename': file.filename,
                     'crops': image_crops,
-                    'processed': True
+                    'processed': True,
+                    'manually_included': is_manually_included,
+                    'file_index': file_index
                 })
             
             # Clean up
@@ -1184,6 +1240,7 @@ def batch_analyze_images():
 
         successful_images = len(all_results)
         total_crops = sum(len(result['crops']) for result in all_results)
+        manually_included_count = sum(1 for result in all_results if result.get('manually_included', False))
 
         log_batch_analysis_activity(
             user_id=user_id,
@@ -1192,17 +1249,6 @@ def batch_analyze_images():
             rejected_images=rejected_images,
             total_crops=total_crops
         )
-        
-        # Log individual segmentation activities for successful images
-        for result in all_results:
-            for crop in result['crops']:
-                if crop.get('coverage_data'):
-                    log_image_segmentation_activity(
-                        user_id=user_id,
-                        filename=crop['crop_url'],
-                        coverage_data=crop['coverage_data'],
-                        total_pixels=crop['total_pixels']
-                    )
 
         return jsonify({
             "results": all_results,
@@ -1210,11 +1256,17 @@ def batch_analyze_images():
             "batch_statistics": {
                 "total_images_processed": len(all_results),
                 "total_images_rejected": len(rejected_images),
-                "total_crops": sum(len(result['crops']) for result in all_results),
+                "manually_included_count": manually_included_count,
+                "total_crops": total_crops,
                 "total_pixels": batch_total_pixels,
                 "coverage_summary": list(batch_coverage_data.values())
             },
-            "method": crop_intensity
+            "method": crop_intensity,
+            "manual_overrides": {
+                "enabled": len(manually_included_indices) > 0,
+                "count": manually_included_count,
+                "indices": manually_included_indices
+            }
         })
 
     except Exception as e:
@@ -1229,52 +1281,78 @@ def batch_analyze_images():
         traceback.print_exc()
         return jsonify({"error": f"Batch analysis failed: {str(e)}"}), 500
     
-def save_image_to_database(filename, uploader_id, total_pixels, analyzed_area_px, analysis_confidence):
-    """Save image metadata to database"""
+def save_image_to_database_with_override(filename, uploader_id, total_pixels, analyzed_area_px, analysis_confidence, manually_included=False, original_filename=None):
+    """Enhanced save function with manual override support"""
     conn = get_db_connection()
     if conn is None:
-        log_system_action(
-            user_id=uploader_id,
-            action='database_connection_failed',
-            description=f"Failed to connect to database while saving {filename}",
-            details={'filename': filename}
-        )
         return None
     
     try:
         with conn.cursor() as cur:
+            # Get user role
+            cur.execute("SELECT roletype FROM users WHERE id = %s", (uploader_id,))
+            user_result = cur.fetchone()
+            
+            if user_result:
+                user_role = user_result[0].lower()
+                upload_status = 'approved' if user_role in ['admin', 'biologist'] else 'pending'
+            else:
+                upload_status = 'pending'
+            
+            # Determine processing status based on manual override
+            if manually_included:
+                processing_status = 'manually_included_completed'
+            else:
+                processing_status = 'completed'
+            
             cur.execute("""
-                INSERT INTO images (filename, uploader_id, uploaded_at, total_pixels, 
-                                  analyzed_area_px, analysis_confidence, processing_status)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO images (
+                    filename, 
+                    uploader_id, 
+                    uploaded_at, 
+                    total_pixels, 
+                    analyzed_area_px, 
+                    analysis_confidence, 
+                    processing_status, 
+                    upload_status,
+                    original_image_path,
+                    manual_override
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
-            """, (filename, uploader_id, datetime.now(), total_pixels, 
-                  analyzed_area_px, analysis_confidence, 'completed'))
+            """, (
+                filename, 
+                uploader_id, 
+                datetime.now(), 
+                total_pixels, 
+                analyzed_area_px, 
+                analysis_confidence, 
+                processing_status, 
+                upload_status,
+                original_filename,
+                manually_included
+            ))
             
             image_id = cur.fetchone()[0]
             conn.commit()
+            
             log_system_action(
                 user_id=uploader_id,
-                action='image_saved_to_database',
-                description=f"Successfully saved image {filename} to database with ID {image_id}",
+                action='image_saved_with_override_info',
+                description=f"Saved image {filename} (manual override: {manually_included})",
                 details={
                     'image_id': image_id,
                     'filename': filename,
-                    'total_pixels': total_pixels,
-                    'analysis_confidence': analysis_confidence
+                    'original_filename': original_filename,
+                    'manually_included': manually_included,
+                    'processing_status': processing_status,
+                    'upload_status': upload_status
                 }
             )
 
             return image_id
     except Exception as e:
-        # Log database save error
-        log_system_action(
-            user_id=uploader_id,
-            action='database_save_error',
-            description=f"Failed to save image {filename} to database",
-            details={'error': str(e), 'filename': filename}
-        )
-        print(f"Database error saving image: {e}")
+        print(f"Database error saving image with override info: {e}")
         conn.rollback()
         return None
     finally:
@@ -1417,3 +1495,577 @@ def get_analysis_stats():
     finally:
         if conn:
             conn.close()
+
+@image_bp.route("/upload_status_info", methods=["GET"])
+@cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
+def get_upload_status_info():
+    """Get upload status information for the current user"""
+    user_id = get_user_id_from_session()
+    
+    try:
+        conn = get_db_connection()
+        if conn is None:
+            return jsonify({"error": "Database connection failed"}), 500
+            
+        with conn.cursor() as cur:
+            # Get user role
+            cur.execute("SELECT roletype FROM users WHERE id = %s", (user_id,))
+            user_result = cur.fetchone()
+            
+            if not user_result:
+                return jsonify({"error": "User not found"}), 404
+            
+            user_role = user_result[0].lower()
+            auto_approved = user_role in ['admin', 'biologist']
+            
+            # Get upload statistics for the user
+            cur.execute("""
+                SELECT upload_status, COUNT(*) as count
+                FROM images 
+                WHERE uploader_id = %s 
+                GROUP BY upload_status
+            """, (user_id,))
+            
+            status_counts = {}
+            for row in cur.fetchall():
+                status_counts[row[0]] = row[1]
+            
+            return jsonify({
+                "user_role": user_role,
+                "auto_approved": auto_approved,
+                "upload_status_message": f"Your uploads are {'automatically approved' if auto_approved else 'pending approval'}",
+                "status_counts": status_counts
+            })
+            
+    except Exception as e:
+        log_system_action(
+            user_id=user_id,
+            action='upload_status_error',
+            description="Error retrieving upload status information",
+            details={'error': str(e)}
+        )
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+@image_bp.route("/manage_uploads", methods=["GET", "POST"])
+@cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
+def manage_uploads():
+    """Manage image upload approvals (Admin only)"""
+    user_id = get_user_id_from_session()
+    
+    try:
+        conn = get_db_connection()
+        if conn is None:
+            return jsonify({"error": "Database connection failed"}), 500
+            
+        with conn.cursor() as cur:
+            # Check if user is admin
+            cur.execute("SELECT roletype FROM users WHERE id = %s", (user_id,))
+            user_result = cur.fetchone()
+            
+            if not user_result or user_result[0].lower() != 'admin':
+                return jsonify({"error": "Admin access required"}), 403
+            
+            if request.method == "GET":
+                # Get pending uploads
+                cur.execute("""
+                    SELECT i.id, i.filename, i.uploader_id, i.uploaded_at, i.upload_status,
+                           u.username, u.firstname, u.lastname, u.roletype
+                    FROM images i
+                    JOIN users u ON i.uploader_id = u.id
+                    WHERE i.upload_status = 'pending'
+                    ORDER BY i.uploaded_at DESC
+                """)
+                
+                pending_uploads = []
+                for row in cur.fetchall():
+                    pending_uploads.append({
+                        'image_id': row[0],
+                        'filename': row[1],
+                        'uploader_id': row[2],
+                        'uploaded_at': row[3].isoformat() if row[3] else None,
+                        'upload_status': row[4],
+                        'uploader_username': row[5],
+                        'uploader_name': f"{row[6]} {row[7]}",
+                        'uploader_role': row[8]
+                    })
+                
+                return jsonify({
+                    "pending_uploads": pending_uploads,
+                    "total_pending": len(pending_uploads)
+                })
+            
+            elif request.method == "POST":
+                # Approve or reject uploads
+                data = request.get_json()
+                image_ids = data.get('image_ids', [])
+                action = data.get('action')  # 'approve' or 'reject'
+                
+                if not image_ids or action not in ['approve', 'reject']:
+                    return jsonify({"error": "Invalid request data"}), 400
+                
+                new_status = 'approved' if action == 'approve' else 'rejected'
+                
+                # Update upload status
+                placeholders = ','.join(['%s'] * len(image_ids))
+                cur.execute(f"""
+                    UPDATE images 
+                    SET upload_status = %s 
+                    WHERE id IN ({placeholders})
+                """, [new_status] + image_ids)
+                
+                affected_rows = cur.rowcount
+                conn.commit()
+                
+                log_system_action(
+                    user_id=user_id,
+                    action=f'uploads_{action}d',
+                    description=f"{action.capitalize()}d {affected_rows} image upload(s)",
+                    details={
+                        'image_ids': image_ids,
+                        'new_status': new_status,
+                        'affected_count': affected_rows
+                    }
+                )
+                
+                return jsonify({
+                    "message": f"Successfully {action}d {affected_rows} upload(s)",
+                    "affected_count": affected_rows,
+                    "new_status": new_status
+                })
+                
+    except Exception as e:
+        log_system_action(
+            user_id=user_id,
+            action='upload_management_error',
+            description="Error managing upload approvals",
+            details={'error': str(e)}
+        )
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@image_bp.route("/guest_upload_only", methods=["POST", "OPTIONS"])
+@cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
+def guest_upload_only():
+    """Dedicated endpoint for guest users - upload and save cropped images with pending status"""
+    if request.method == "OPTIONS":
+        return jsonify({}), 200
+    
+    user_id = get_user_id_from_session()
+    
+    try:
+        files = request.files.getlist('images')
+        if not files:
+            return jsonify({"error": "No image files provided"}), 400
+
+        crop_intensity = request.form.get('intensity', 'conservative')
+        
+        # Verify user is guest
+        conn = get_db_connection()
+        if conn is None:
+            return jsonify({"error": "Database connection failed"}), 500
+            
+        with conn.cursor() as cur:
+            cur.execute("SELECT roletype FROM users WHERE id = %s", (user_id,))
+            user_result = cur.fetchone()
+            
+            if not user_result:
+                return jsonify({"error": "User not found"}), 404
+            
+            user_role = user_result[0].lower()
+            
+            if user_role != 'guest':
+                return jsonify({"error": "This endpoint is for guest users only"}), 403
+        
+        conn.close()
+        
+        log_system_action(
+            user_id=user_id,
+            action='guest_upload_started',
+            description=f"Guest started upload of {len(files)} images (upload-only mode with cropping)",
+            details={
+                'file_count': len(files),
+                'crop_intensity': crop_intensity,
+                'mode': 'upload_and_crop'
+            }
+        )
+        
+        uploaded_images = []
+        rejected_images = []
+        
+        for file_index, file in enumerate(files):
+            if not file or file.filename == '':
+                continue
+                
+            # Validate file extension
+            allowed_extensions = {'png', 'jpg', 'jpeg', 'webp'}
+            ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
+            if ext not in allowed_extensions:
+                rejected_images.append({
+                    'filename': file.filename,
+                    'reason': 'Invalid file type'
+                })
+                continue
+                
+            # Validate file size
+            if file.content_length and file.content_length > 10 * 1024 * 1024:  # 10MB limit
+                rejected_images.append({
+                    'filename': file.filename,
+                    'reason': 'File too large (max 10MB)'
+                })
+                continue
+            
+            # Process each file for cropping and saving
+            unique_id = str(uuid.uuid4())[:8]
+            safe_filename = f"guest_upload_{file_index}_{unique_id}.{ext}"
+            temp_path = os.path.join(UPLOAD_FOLDER, safe_filename)
+            
+            try:
+                file.save(temp_path)
+                
+                # Basic image validation
+                try:
+                    img = cv2.imread(temp_path)
+                    if img is None:
+                        rejected_images.append({
+                            'filename': file.filename,
+                            'reason': 'Invalid image file'
+                        })
+                        os.remove(temp_path)
+                        continue
+                        
+                    height, width = img.shape[:2]
+                    if width < 200 or height < 200:
+                        rejected_images.append({
+                            'filename': file.filename,
+                            'reason': 'Image too small (minimum 200x200 pixels)'
+                        })
+                        os.remove(temp_path)
+                        continue
+                        
+                except Exception as e:
+                    rejected_images.append({
+                        'filename': file.filename,
+                        'reason': f'Image validation failed: {str(e)}'
+                    })
+                    os.remove(temp_path)
+                    continue
+                
+                # Run detection and crop quadrats
+                try:
+                    detection_results = detection_model(temp_path)
+                    
+                    valid_quadrats = []
+                    
+                    if detection_results[0].boxes:
+                        for box in detection_results[0].boxes:
+                            cls = int(box.cls)
+                            confidence = float(box.conf)
+                            label = detection_model.names[cls]
+                            
+                            if label.lower() in ['full_quadrat', 'half_quadrat'] and confidence > 0.4:
+                                valid_quadrats.append({
+                                    'box': box,
+                                    'label': label,
+                                    'confidence': confidence
+                                })
+                    
+                    if len(valid_quadrats) == 0:
+                        rejected_images.append({
+                            'filename': file.filename,
+                            'reason': 'No coral quadrats detected'
+                        })
+                        os.remove(temp_path)
+                        continue
+                    
+                    # Process and save each detected quadrat as a separate cropped image
+                    file_crops = []
+                    
+                    for quadrat_index, quadrat_data in enumerate(valid_quadrats):
+                        box = quadrat_data['box']
+                        label = quadrat_data['label']
+                        confidence = quadrat_data['confidence']
+                        
+                        x1, y1, x2, y2 = box.xyxy[0].tolist()
+                        
+                        # Create enhanced crop
+                        cropped = enhanced_crop_inside_quadrat(temp_path, [x1, y1, x2, y2], crop_intensity)
+                        cropped = enhance_cropped_image(cropped)
+                        
+                        # Create unique filename for the cropped image
+                        crop_filename = f"guest_crop_{label}_{quadrat_index}_{file_index}_{user_id}_{unique_id}.{ext}"
+                        crop_path = os.path.join(OUTPUT_FOLDER, crop_filename)
+                        
+                        # Save cropped image
+                        cropped.save(crop_path, quality=95)
+                        
+                        # Get cropped image dimensions for database
+                        crop_width, crop_height = cropped.size
+                        total_pixels = crop_width * crop_height
+                        
+                        # Save cropped image to database with pending status
+                        image_id = save_guest_cropped_to_database(
+                            crop_filename,
+                            user_id,
+                            total_pixels,
+                            confidence,
+                            file.filename,  # Original filename for reference
+                            label,
+                            crop_intensity,
+                            quadrat_index + 1  # Quadrat number (1-based)
+                        )
+                        
+                        if image_id:
+                            file_crops.append({
+                                'image_id': image_id,
+                                'crop_filename': crop_filename,
+                                'quadrat_type': label,
+                                'confidence': round(confidence, 2),
+                                'crop_url': f"crops/{crop_filename}",
+                                'quadrat_number': quadrat_index + 1,
+                                'total_pixels': total_pixels,
+                                'status': 'pending'
+                            })
+                        else:
+                            # If saving failed, remove the cropped file
+                            try:
+                                os.remove(crop_path)
+                            except:
+                                pass
+                    
+                    if file_crops:
+                        uploaded_images.append({
+                            'original_filename': file.filename,
+                            'crops': file_crops,
+                            'total_quadrats': len(file_crops),
+                            'crop_intensity': crop_intensity,
+                            'status': 'pending'
+                        })
+                    else:
+                        rejected_images.append({
+                            'filename': file.filename,
+                            'reason': 'Failed to save cropped quadrats to database'
+                        })
+                        
+                except Exception as e:
+                    rejected_images.append({
+                        'filename': file.filename,
+                        'reason': f'Processing failed: {str(e)}'
+                    })
+                    
+                finally:
+                    # Clean up temporary original file
+                    try:
+                        os.remove(temp_path)
+                    except:
+                        pass
+                        
+            except Exception as e:
+                rejected_images.append({
+                    'filename': file.filename,
+                    'reason': f'Upload failed: {str(e)}'
+                })
+                continue
+        
+        # Calculate totals
+        total_crops_saved = sum(len(img['crops']) for img in uploaded_images)
+        
+        # Log the upload results
+        log_batch_analysis_activity(
+            user_id=user_id,
+            total_images=len(files),
+            successful_images=len(uploaded_images),
+            rejected_images=rejected_images,
+            total_crops=total_crops_saved
+        )
+        
+        return jsonify({
+            "uploaded_images": uploaded_images,
+            "rejected_images": rejected_images,
+            "upload_statistics": {
+                "total_images_submitted": len(files),
+                "successfully_uploaded": len(uploaded_images),
+                "total_crops_saved": total_crops_saved,
+                "rejected_images": len(rejected_images),
+                "status": "pending_review"
+            },
+            "message": f"Successfully processed {len(uploaded_images)} images into {total_crops_saved} cropped quadrats. They are now pending review by coral experts."
+        })
+
+    except Exception as e:
+        log_system_action(
+            user_id=user_id,
+            action='guest_upload_error',
+            description=f"Error during guest upload",
+            details={'error': str(e), 'file_count': len(files) if 'files' in locals() else 0}
+        )
+        print(f"Guest upload error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Upload failed: {str(e)}"}), 500
+
+def save_guest_cropped_to_database(filename, uploader_id, total_pixels, confidence, original_filename, quadrat_type, crop_intensity, quadrat_number):
+    """Save guest cropped quadrat image to database with pending status"""
+    conn = get_db_connection()
+    if conn is None:
+        return None
+    
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO images (
+                    filename, 
+                    uploader_id, 
+                    uploaded_at, 
+                    total_pixels,
+                    analyzed_area_px,
+                    analysis_confidence, 
+                    processing_status, 
+                    upload_status,
+                    quadrat_crop_path,
+                    original_image_path
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+            """, (
+                filename,                    # The cropped filename
+                uploader_id, 
+                datetime.now(), 
+                total_pixels,               # Pixels in cropped image
+                total_pixels,               # All pixels are "analyzed area" for cropped image
+                confidence,                 # Detection confidence
+                'cropped_pending',          # Processing status indicating it's cropped but pending approval
+                'pending',                  # Upload status
+                filename,                   # Quadrat crop path (same as filename since it's already cropped)
+                original_filename           # Original image path for reference
+            ))
+            
+            image_id = cur.fetchone()[0]
+            conn.commit()
+            
+            log_system_action(
+                user_id=uploader_id,
+                action='guest_cropped_image_saved',
+                description=f"Guest saved cropped quadrat {filename} from {original_filename} (pending review)",
+                details={
+                    'image_id': image_id,
+                    'cropped_filename': filename,
+                    'original_filename': original_filename,
+                    'quadrat_type': quadrat_type,
+                    'crop_intensity': crop_intensity,
+                    'quadrat_number': quadrat_number,
+                    'confidence': confidence,
+                    'total_pixels': total_pixels,
+                    'status': 'pending'
+                }
+            )
+
+            return image_id
+    except Exception as e:
+        print(f"Database error saving guest cropped image: {e}")
+        conn.rollback()
+        return None
+    finally:
+        conn.close()
+
+@image_bp.route("/manual_override_analyze", methods=["POST", "OPTIONS"])
+@cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
+def manual_override_analyze():
+    """Analyze a single image that was manually overridden"""
+    if request.method == "OPTIONS":
+        return jsonify({}), 200
+    
+    user_id = get_user_id_from_session()
+    
+    try:
+        if 'image' not in request.files:
+            return jsonify({"error": "No image file provided"}), 400
+            
+        file = request.files['image']
+        crop_intensity = request.form.get('intensity', 'conservative')
+        
+        # Process the manually overridden image
+        unique_id = str(uuid.uuid4())[:8]
+        ext = file.filename.split('.')[-1].lower()
+        safe_filename = f"manual_override_{unique_id}.{ext}"
+        image_path = os.path.join(UPLOAD_FOLDER, safe_filename)
+        
+        file.save(image_path)
+        
+        # Skip detection and process entire image as one crop
+        img = cv2.imread(image_path)
+        height, width = img.shape[:2]
+        
+        # Create crop of entire image with margin
+        cropped = enhanced_crop_inside_quadrat(image_path, [0, 0, width, height], crop_intensity)
+        cropped = enhance_cropped_image(cropped)
+        
+        crop_filename = f"manual_override_{crop_intensity}_{safe_filename}"
+        crop_path = os.path.join(OUTPUT_FOLDER, crop_filename)
+        cropped.save(crop_path, quality=95)
+        
+        # Segment the image
+        coverage_data, class_masks, visualization_mask, total_pixels = segment_coral_lifeforms(crop_path)
+        
+        # Save visualization
+        viz_filename = f"manual_viz_{crop_filename}"
+        viz_path = os.path.join(MASKS_FOLDER, viz_filename)
+        if visualization_mask is not None:
+            cv2.imwrite(viz_path, cv2.cvtColor(visualization_mask, cv2.COLOR_RGB2BGR))
+        
+        # Save to database with manual override flag
+        image_id = save_image_to_database_with_override(
+            crop_filename,
+            user_id,
+            total_pixels,
+            total_pixels,
+            0.5,  # Default confidence for manual override
+            True,  # manually_included = True
+            file.filename
+        )
+        
+        if image_id and coverage_data:
+            save_segmentation_results(image_id, coverage_data, f"masks/{viz_filename}")
+        
+        # Clean up
+        try:
+            os.remove(image_path)
+        except:
+            pass
+        
+        log_system_action(
+            user_id=user_id,
+            action='manual_override_analysis',
+            description=f"Manually analyzed overridden image {file.filename}",
+            details={
+                'filename': file.filename,
+                'image_id': image_id,
+                'coral_types_found': len(coverage_data),
+                'total_pixels': total_pixels
+            }
+        )
+        
+        return jsonify({
+            "success": True,
+            "crop_url": f"crops/{crop_filename}",
+            "visualization_url": f"masks/{viz_filename}",
+            "coverage_data": coverage_data,
+            "total_pixels": total_pixels,
+            "image_id": image_id,
+            "manually_overridden": True,
+            "message": "Manual override analysis completed successfully"
+        })
+        
+    except Exception as e:
+        log_system_action(
+            user_id=user_id,
+            action='manual_override_error',
+            description=f"Error in manual override analysis",
+            details={'error': str(e)}
+        )
+        return jsonify({"error": f"Manual override analysis failed: {str(e)}"}), 500

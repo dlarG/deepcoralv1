@@ -75,3 +75,41 @@ def rate_limit(max_per_minute):
             return f(*args, **kwargs)
         return wrapper
     return decorator
+
+def roles_required(*allowed_roles):
+    """
+    Decorator that allows multiple roles to access a route
+    Usage: @roles_required('admin', 'biologist')
+    """
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if 'user_id' not in session:
+                return jsonify({'error': 'Unauthorized'}), 401
+            
+            from db import get_db_connection
+            conn = get_db_connection()
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT roletype FROM users WHERE id = %s", (session['user_id'],))
+                    user = cur.fetchone()
+                    if not user:
+                        return jsonify({'error': 'User not found'}), 401
+                    
+                    user_role = user[0].lower()
+                    allowed_roles_lower = [role.lower() for role in allowed_roles]
+                    
+                    if user_role not in allowed_roles_lower:
+                        return jsonify({
+                            'error': f'Access denied. Required roles: {", ".join(allowed_roles)}'
+                        }), 403
+                        
+            except Exception as e:
+                return jsonify({'error': str(e)}), 500
+            finally:
+                if conn:
+                    conn.close()
+                    
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
