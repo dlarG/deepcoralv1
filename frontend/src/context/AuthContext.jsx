@@ -86,6 +86,9 @@ export function AuthProvider({ children }) {
 
   const login = async (credentials) => {
     try {
+      console.log('Sending login request to:', `${API_BASE_URL}/login`);
+      console.log('With CSRF token:', csrfToken);
+      
       const res = await axios.post(`${API_BASE_URL}/login`, credentials, {
         withCredentials: true,
         headers: {
@@ -93,18 +96,29 @@ export function AuthProvider({ children }) {
         },
       });
 
+      console.log('Full backend response:', res);
+      console.log('Response data:', res.data);
+      console.log('User from response:', res.data.user);
+      console.log('Redirect from response:', res.data.redirect_to);
+
       // Save user and csrf token in context
       setUser(res.data.user);
       setCsrfToken(res.data.csrf_token);
 
       // Return user along with redirect path so callers (like Login.jsx)
       // can use result.user.roletype safely instead of getting undefined.
-      return {
+      const returnValue = {
         success: true,
         redirectTo: res.data.redirect_to,
         user: res.data.user,
       };
+      
+      console.log('Returning from login():', returnValue);
+      
+      return returnValue;
     } catch (err) {
+      console.error('Login error:', err);
+      console.error('Error response:', err.response);
       return {
         success: false,
         error: err.response?.data?.error || "Login failed",
