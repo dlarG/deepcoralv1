@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useAuth } from "../../../context/AuthContext";
+import { API_BASE_URL } from "../../../config/api";
 
 export default function useSystemSettings() {
   const { logout } = useAuth();
@@ -22,9 +23,6 @@ export default function useSystemSettings() {
     analysisTimeout: "300",
     maxConcurrentAnalysis: "5",
   });
-
-  // API base URL
-  const API_BASE_URL = `${API_BASE_URL}`;
 
   // Clear message after 5 seconds
   useEffect(() => {
