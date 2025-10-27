@@ -21,6 +21,7 @@ import {
 import { useAuth } from "../../../context/AuthContext";
 import SuccessModal from "../../SuccessMessage";
 import "../styles/validateStyle.css";
+import { API_BASE_URL } from "../../../config/api";
 
 function Validate() {
   const { user } = useAuth();
@@ -54,7 +55,7 @@ function Validate() {
     setLoading(true);
     try {
       const response = await fetch(
-        "http://localhost:5000/admin/pending-image-uploads",
+        '${API_BASE_URL}/admin/pending-image-uploads',
         {
           method: "GET",
           credentials: "include",
@@ -79,7 +80,7 @@ function Validate() {
     setLoading(true);
     try {
       const response = await fetch(
-        "http://localhost:5000/admin/pending-users",
+        '${API_BASE_URL}/admin/pending-users',
         {
           method: "GET",
           credentials: "include",
@@ -208,7 +209,7 @@ function Validate() {
 
     try {
       // Get CSRF token first
-      const csrfResponse = await fetch("http://localhost:5000/csrf-token", {
+      const csrfResponse = await fetch('${API_BASE_URL}/csrf-token', {
         method: "GET",
         credentials: "include",
       });
@@ -225,17 +226,17 @@ function Validate() {
 
       if (isUserAction) {
         // User validation endpoints
-        endpoint = "http://localhost:5000/admin/manage-user-validation";
+        endpoint = '${API_BASE_URL}/admin/manage-user-validation';
         requestData = { user_ids: itemIds, action };
       } else {
         // Image validation endpoints
         if (action === "delete") {
           endpoint =
-            "http://localhost:5000/validation/admin/delete-pending-images";
+            '${API_BASE_URL}/validation/admin/delete-pending-images';
           requestData = { image_ids: itemIds };
         } else {
           endpoint =
-            "http://localhost:5000/validation/admin/manage-image-uploads";
+            '${API_BASE_URL}/validation/admin/manage-image-uploads';
           requestData = { image_ids: itemIds, action };
         }
       }
@@ -643,7 +644,7 @@ function Validate() {
 
                                 <div className="image-preview">
                                   <img
-                                    src={`http://localhost:5000/crops/${image.filename}`}
+                                    src={`${API_BASE_URL}/crops/${image.filename}`}
                                     alt={image.filename}
                                     onError={(e) => {
                                       e.target.style.display = "none";
@@ -692,7 +693,7 @@ function Validate() {
                                     className="action-btn view"
                                     onClick={() =>
                                       window.open(
-                                        `http://localhost:5000/crops/${image.filename}`,
+                                        `${API_BASE_URL}/crops/${image.filename}`,
                                         "_blank"
                                       )
                                     }
