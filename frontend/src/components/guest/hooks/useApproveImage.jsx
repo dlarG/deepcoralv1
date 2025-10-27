@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { API_BASE_URL } from "../../../config/api";
 
 const useApprovedImage = () => {
   const [approvedImages, setApprovedImages] = useState([]);
