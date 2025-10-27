@@ -112,7 +112,7 @@ function UploadImage() {
 
     try {
       const csrfResponse = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/csrf-token`,
+        `${API_BASE_URL}/csrf-token`,
         {
           method: "GET",
           credentials: "include",
@@ -136,7 +136,7 @@ function UploadImage() {
       formData.append("csrf_token", csrfData.csrf_token);
 
       const res = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/guest_upload_only`,
+        `${API_BASE_URL}/guest_upload_only`,
         {
           method: "POST",
           body: formData,
@@ -243,7 +243,7 @@ function UploadImage() {
                           {image.crops.slice(0, 3).map((crop, cropIndex) => (
                             <div key={cropIndex} className="crop-preview-item">
                               <img
-                                src={`http://${process.env.REACT_APP_API_URL}/${crop.crop_url}`}
+                                src={`${API_BASE_URL}/${crop.crop_url}`}
                                 alt={`${crop.quadrat_type} ${crop.quadrat_number}`}
                                 className="crop-thumbnail"
                               />

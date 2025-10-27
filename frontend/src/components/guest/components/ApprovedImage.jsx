@@ -165,7 +165,7 @@ function ApprovedImage() {
     setDeleting(true);
     try {
       const response = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/approved/guest/delete-images`,
+        `${API_BASE_URL}/approved/guest/delete-images`,
         {
           method: "POST",
           headers: {
@@ -417,7 +417,7 @@ function ApprovedImage() {
 
         <div className="image-preview">
           <img
-            src={`http://${process.env.REACT_APP_API_URL}/${image.image_url}`}
+            src={`${API_BASE_URL}/${image.image_url}`}
             alt={image.filename}
             onError={(e) => {
               e.target.style.display = "none";
@@ -535,7 +535,7 @@ function ApprovedImage() {
               className="view-btn secondary"
               onClick={() =>
                 window.open(
-                  `http://${process.env.REACT_APP_API_URL}/${image.image_url}`,
+                  `${API_BASE_URL}/${image.image_url}`,
                   "_blank"
                 )
               }
@@ -580,7 +580,7 @@ function ApprovedImage() {
 
         <div className="image-preview">
           <img
-            src={`http://${process.env.REACT_APP_API_URL}/${image.image_url}`}
+            src={`${API_BASE_URL}/${image.image_url}`}
             alt={image.filename}
           />
         </div>
@@ -631,7 +631,7 @@ function ApprovedImage() {
           <button
             onClick={() =>
               window.open(
-                `http://${process.env.REACT_APP_API_URL}/${image.image_url}`,
+                `${API_BASE_URL}/${image.image_url}`,
                 "_blank"
               )
             }

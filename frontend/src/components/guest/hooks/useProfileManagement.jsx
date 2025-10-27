@@ -67,7 +67,7 @@ export default function useProfileManagement(user) {
     try {
       const csrfToken = await fetchCsrfToken();
 
-      await axios.delete(`http://${process.env.REACT_APP_API_URL}/profile`, {
+      await axios.delete(`${API_BASE_URL}/profile`, {
         data: { password: deletePassword },
         headers: {
           "Content-Type": "application/json",
@@ -242,7 +242,7 @@ export default function useProfileManagement(user) {
       }
 
       const response = await axios.put(
-        `http://${process.env.REACT_APP_API_URL}/profile`,
+        `${API_BASE_URL}/profile`,
         formData,
         {
           headers: {

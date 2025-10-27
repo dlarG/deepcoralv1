@@ -110,7 +110,7 @@ function UploadImage() {
 
     try {
       const csrfResponse = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/csrf-token`,
+        `${API_BASE_URL}/csrf-token`,
         {
           method: "GET",
           credentials: "include",
@@ -125,7 +125,7 @@ function UploadImage() {
       formData.append("csrf_token", csrfData.csrf_token);
 
       const res = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/detect_custom`,
+        `${API_BASE_URL}/detect_custom`,
         {
           method: "POST",
           body: formData,
@@ -169,7 +169,7 @@ function UploadImage() {
 
     try {
       const csrfResponse = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/csrf-token`,
+        `${API_BASE_URL}/csrf-token`,
         {
           method: "GET",
           credentials: "include",
@@ -195,7 +195,7 @@ function UploadImage() {
 
         try {
           const res = await fetch(
-            `http://${process.env.REACT_APP_API_URL}/detect_custom`,
+            `${API_BASE_URL}/detect_custom`,
             {
               method: "POST",
               body: formData,
@@ -271,7 +271,7 @@ function UploadImage() {
 
   const downloadCrop = (cropUrl, index) => {
     const link = document.createElement("a");
-    link.href = `http://${process.env.REACT_APP_API_URL}/${cropUrl}`;
+    link.href = `${API_BASE_URL}/${cropUrl}`;
     link.download = `crop_${index + 1}_${images[currentImageIndex].file.name}`;
     document.body.appendChild(link);
     link.click();
@@ -285,7 +285,7 @@ function UploadImage() {
         image.crops.forEach((crop, cropIndex) => {
           setTimeout(() => {
             const link = document.createElement("a");
-            link.href = `http://${process.env.REACT_APP_API_URL}/${crop}`;
+            link.href = `${API_BASE_URL}/${crop}`;
             link.download = `img_${imgIndex + 1}_crop_${cropIndex + 1}_${
               image.file.name
             }`;
@@ -640,7 +640,7 @@ function UploadImage() {
                   <div key={i} className="crop-card">
                     <div className="crop-image-container">
                       <img
-                        src={`http://${process.env.REACT_APP_API_URL}/${crop}`}
+                        src={`${API_BASE_URL}/${crop}`}
                         alt={`Crop ${i + 1}`}
                         className="crop-image"
                       />

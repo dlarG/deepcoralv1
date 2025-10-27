@@ -74,7 +74,7 @@ export default function useUserManagement() {
     const fetchUsers = async () => {
       try {
         const response = await axios.get(
-          `http://${process.env.REACT_APP_API_URL}/biologist/users`,
+          `${API_BASE_URL}/biologist/users`,
           {
             withCredentials: true,
           }
@@ -198,7 +198,7 @@ export default function useUserManagement() {
 
       if (userModalMode === "create") {
         response = await axios.post(
-          `http://${process.env.REACT_APP_API_URL}/biologist/users`,
+          `${API_BASE_URL}/biologist/users`,
           formData,
           {
             withCredentials: true,
@@ -220,7 +220,7 @@ export default function useUserManagement() {
         }
 
         response = await axios.put(
-          `http://${process.env.REACT_APP_API_URL}/biologist/users/${selectedUser.id}`,
+          `${API_BASE_URL}/biologist/users/${selectedUser.id}`,
           updateData,
           {
             withCredentials: true,
@@ -272,7 +272,7 @@ export default function useUserManagement() {
     ) {
       try {
         const csrfResponse = await axios.get(
-          `http://${process.env.REACT_APP_API_URL}/csrf-token`,
+          `${API_BASE_URL}/csrf-token`,
           {
             withCredentials: true,
           }
@@ -280,7 +280,7 @@ export default function useUserManagement() {
         const csrfToken = csrfResponse.data.csrf_token;
 
         await axios.delete(
-          `http://${process.env.REACT_APP_API_URL}/biologist/users/${userId}`,
+          `${API_BASE_URL}/biologist/users/${userId}`,
           {
             withCredentials: true,
             headers: {
