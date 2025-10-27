@@ -55,7 +55,7 @@ function Validate() {
     setLoading(true);
     try {
       const response = await fetch(
-        '${API_BASE_URL}/admin/pending-image-uploads',
+        `${API_BASE_URL}/admin/pending-image-uploads`,
         {
           method: "GET",
           credentials: "include",
@@ -80,7 +80,7 @@ function Validate() {
     setLoading(true);
     try {
       const response = await fetch(
-        '${API_BASE_URL}/admin/pending-users',
+        `${API_BASE_URL}/admin/pending-users`,
         {
           method: "GET",
           credentials: "include",
@@ -209,7 +209,7 @@ function Validate() {
 
     try {
       // Get CSRF token first
-      const csrfResponse = await fetch('${API_BASE_URL}/csrf-token', {
+      const csrfResponse = await fetch(`${API_BASE_URL}/csrf-token`, {
         method: "GET",
         credentials: "include",
       });
@@ -226,17 +226,17 @@ function Validate() {
 
       if (isUserAction) {
         // User validation endpoints
-        endpoint = '${API_BASE_URL}/admin/manage-user-validation';
+        endpoint = `${API_BASE_URL}/admin/manage-user-validation`;
         requestData = { user_ids: itemIds, action };
       } else {
         // Image validation endpoints
         if (action === "delete") {
           endpoint =
-            '${API_BASE_URL}/validation/admin/delete-pending-images';
+            `${API_BASE_URL}/validation/admin/delete-pending-images`;
           requestData = { image_ids: itemIds };
         } else {
           endpoint =
-            '${API_BASE_URL}/validation/admin/manage-image-uploads';
+            `${API_BASE_URL}/validation/admin/manage-image-uploads`;
           requestData = { image_ids: itemIds, action };
         }
       }
