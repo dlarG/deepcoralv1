@@ -22,12 +22,13 @@ from routes.activity_log import (
 image_bp = Blueprint('image', __name__)
 
 # Load detection model
-detection_model = YOLO("../models/autocrop_yolov11_best.pt")
+BASE_DIR = Path(__file__).parent.parent
+YOLO_MODEL_PATH = BASE_DIR / "models" / "autocrop_yolov11_best.pt"
+detection_model = YOLO(str(YOLO_MODEL_PATH))
 
 print("YOLO model classes:", detection_model.names)
 # Load segmentation model
-BASE_DIR = Path(__file__).parent.parent
-MODEL_PATH = BASE_DIR.parent / "models" / "coral_unet_best.pth"
+MODEL_PATH = BASE_DIR / "models" / "coral_unet_best.pth"
 
 print(f"Loading segmentation model from: {MODEL_PATH}")
 print(f"Model exists: {MODEL_PATH.exists()}")
