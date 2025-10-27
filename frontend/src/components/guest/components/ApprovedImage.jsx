@@ -14,13 +14,10 @@ import {
   FiCheckCircle,
   FiXCircle,
   FiTarget,
-  FiDownload,
   FiTrash2,
   FiGrid,
   FiList,
-  FiFilter,
   FiSearch,
-  FiCalendar,
 } from "react-icons/fi";
 import { Bar, Pie, Doughnut } from "react-chartjs-2";
 import {
@@ -168,7 +165,7 @@ function ApprovedImage() {
     setDeleting(true);
     try {
       const response = await fetch(
-        "http://localhost:5000/approved/guest/delete-images",
+        `http://${process.env.REACT_APP_API_URL}/approved/guest/delete-images`,
         {
           method: "POST",
           headers: {
@@ -420,7 +417,7 @@ function ApprovedImage() {
 
         <div className="image-preview">
           <img
-            src={`http://localhost:5000/${image.image_url}`}
+            src={`http://${process.env.REACT_APP_API_URL}/${image.image_url}`}
             alt={image.filename}
             onError={(e) => {
               e.target.style.display = "none";
@@ -538,7 +535,7 @@ function ApprovedImage() {
               className="view-btn secondary"
               onClick={() =>
                 window.open(
-                  `http://localhost:5000/${image.image_url}`,
+                  `http://${process.env.REACT_APP_API_URL}/${image.image_url}`,
                   "_blank"
                 )
               }
@@ -583,7 +580,7 @@ function ApprovedImage() {
 
         <div className="image-preview">
           <img
-            src={`http://localhost:5000/${image.image_url}`}
+            src={`http://${process.env.REACT_APP_API_URL}/${image.image_url}`}
             alt={image.filename}
           />
         </div>
@@ -633,7 +630,10 @@ function ApprovedImage() {
         <div className="image-actions">
           <button
             onClick={() =>
-              window.open(`http://localhost:5000/${image.image_url}`, "_blank")
+              window.open(
+                `http://${process.env.REACT_APP_API_URL}/${image.image_url}`,
+                "_blank"
+              )
             }
           >
             <FiEye size={16} />

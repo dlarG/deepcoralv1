@@ -111,10 +111,13 @@ function UploadImage() {
     setLoading(true);
 
     try {
-      const csrfResponse = await fetch("http://localhost:5000/csrf-token", {
-        method: "GET",
-        credentials: "include",
-      });
+      const csrfResponse = await fetch(
+        `http://${process.env.REACT_APP_API_URL}/csrf-token`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
 
       if (!csrfResponse.ok) {
         throw new Error("Failed to get CSRF token");
@@ -132,14 +135,17 @@ function UploadImage() {
       formData.append("intensity", cropIntensity);
       formData.append("csrf_token", csrfData.csrf_token);
 
-      const res = await fetch("http://localhost:5000/guest_upload_only", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-        headers: {
-          "X-CSRF-Token": csrfData.csrf_token,
-        },
-      });
+      const res = await fetch(
+        `http://${process.env.REACT_APP_API_URL}/guest_upload_only`,
+        {
+          method: "POST",
+          body: formData,
+          credentials: "include",
+          headers: {
+            "X-CSRF-Token": csrfData.csrf_token,
+          },
+        }
+      );
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
@@ -237,7 +243,7 @@ function UploadImage() {
                           {image.crops.slice(0, 3).map((crop, cropIndex) => (
                             <div key={cropIndex} className="crop-preview-item">
                               <img
-                                src={`http://localhost:5000/${crop.crop_url}`}
+                                src={`http://${process.env.REACT_APP_API_URL}/${crop.crop_url}`}
                                 alt={`${crop.quadrat_type} ${crop.quadrat_number}`}
                                 className="crop-thumbnail"
                               />

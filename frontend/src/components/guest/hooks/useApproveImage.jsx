@@ -81,10 +81,13 @@ const useApprovedImage = () => {
     setAnalyzing(true);
     try {
       // Get CSRF token first
-      const csrfResponse = await fetch("http://localhost:5000/csrf-token", {
-        method: "GET",
-        credentials: "include",
-      });
+      const csrfResponse = await fetch(
+        `http://${process.env.REACT_APP_API_URL}/csrf-token`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
 
       if (!csrfResponse.ok) {
         throw new Error("Failed to get CSRF token");
@@ -93,7 +96,7 @@ const useApprovedImage = () => {
       const csrfData = await csrfResponse.json();
 
       const response = await fetch(
-        "http://localhost:5000/approved/guest/batch-analyze-approved",
+        `http://${process.env.REACT_APP_API_URL}/approved/guest/batch-analyze-approved`,
         {
           method: "POST",
           headers: {
@@ -125,10 +128,13 @@ const useApprovedImage = () => {
     setAnalyzing(true);
     try {
       // Get CSRF token first
-      const csrfResponse = await fetch("http://localhost:5000/csrf-token", {
-        method: "GET",
-        credentials: "include",
-      });
+      const csrfResponse = await fetch(
+        `http://${process.env.REACT_APP_API_URL}/csrf-token`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
 
       if (!csrfResponse.ok) {
         throw new Error("Failed to get CSRF token");
@@ -137,7 +143,7 @@ const useApprovedImage = () => {
       const csrfData = await csrfResponse.json();
 
       const response = await fetch(
-        `http://localhost:5000/approved/guest/analyze-approved-image/${imageId}`,
+        `http://${process.env.REACT_APP_API_URL}/approved/guest/analyze-approved-image/${imageId}`,
         {
           method: "POST",
           headers: {

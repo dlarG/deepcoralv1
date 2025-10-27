@@ -3,6 +3,7 @@ import axios from "axios";
 
 const AuthContext = createContext();
 
+const API_BASE_URL = process.env.REACT_APP_API_BASE || "http://localhost:5000";
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -15,7 +16,7 @@ export function AuthProvider({ children }) {
     if (csrfInitialized && csrfToken) return csrfToken; // Return if already exists
 
     try {
-      const response = await axios.get("http://localhost:5000/csrf-token", {
+      const response = await axios.get(`${API_BASE_URL}/csrf-token`, {
         withCredentials: true,
       });
       setCsrfToken(response.data.csrf_token);
@@ -34,7 +35,7 @@ export function AuthProvider({ children }) {
     setAuthCheckInProgress(true);
     try {
       const token = csrfToken || (await fetchCsrfToken());
-      const response = await axios.get("http://localhost:5000/check-auth", {
+      const response = await axios.get(`${API_BASE_URL}/check-auth`, {
         withCredentials: true,
         headers: {
           "X-CSRF-Token": token,
@@ -85,7 +86,7 @@ export function AuthProvider({ children }) {
 
   const login = async (credentials) => {
     try {
-      const res = await axios.post("http://localhost:5000/login", credentials, {
+      const res = await axios.post(`${API_BASE_URL}/login`, credentials, {
         withCredentials: true,
         headers: {
           "X-CSRF-Token": csrfToken,
@@ -112,7 +113,7 @@ export function AuthProvider({ children }) {
       const token = await fetchCsrfToken();
 
       const response = await axios.post(
-        "http://localhost:5000/logout",
+        `${API_BASE_URL}/logout`,
         {},
         {
           withCredentials: true,
@@ -145,7 +146,7 @@ export function AuthProvider({ children }) {
 
   // Create axios instance with default credentials
   const authAxios = axios.create({
-    baseURL: "http://localhost:5000",
+    baseURL: API_BASE_URL,
     withCredentials: true,
     headers: {
       "X-CSRF-Token": csrfToken,

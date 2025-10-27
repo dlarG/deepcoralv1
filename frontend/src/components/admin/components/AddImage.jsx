@@ -220,7 +220,7 @@ function AddImage() {
 
   const downloadSegmentationMask = (maskUrl, index) => {
     const link = document.createElement("a");
-    link.href = `http://localhost:5000/${maskUrl}`;
+    link.href = `http://${process.env.REACT_APP_API_URL}/${maskUrl}`;
     link.download = `segmentation_${index + 1}_${
       images[currentImageIndex].file.name
     }`;
@@ -326,7 +326,7 @@ function AddImage() {
 
   const downloadCrop = (cropUrl, index) => {
     const link = document.createElement("a");
-    link.href = `http://localhost:5000/${cropUrl}`;
+    link.href = `http://${process.env.REACT_APP_API_URL}/${cropUrl}`;
     link.download = `crop_${index + 1}_${images[currentImageIndex].file.name}`;
     document.body.appendChild(link);
     link.click();
@@ -339,21 +339,27 @@ function AddImage() {
       formData.append("image", imageFile);
       formData.append("intensity", "conservative");
 
-      const csrfResponse = await fetch("http://localhost:5000/csrf-token", {
-        method: "GET",
-        credentials: "include",
-      });
+      const csrfResponse = await fetch(
+        `http://${process.env.REACT_APP_API_URL}/csrf-token`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
       const csrfData = await csrfResponse.json();
       formData.append("csrf_token", csrfData.csrf_token);
 
-      const response = await fetch("http://localhost:5000/detect_custom", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-        headers: {
-          "X-CSRF-Token": csrfData.csrf_token,
-        },
-      });
+      const response = await fetch(
+        `http://${process.env.REACT_APP_API_URL}/detect_custom`,
+        {
+          method: "POST",
+          body: formData,
+          credentials: "include",
+          headers: {
+            "X-CSRF-Token": csrfData.csrf_token,
+          },
+        }
+      );
 
       // Don't throw error on 400 - handle it gracefully
       if (response.ok) {
@@ -488,7 +494,7 @@ function AddImage() {
         image.crops.forEach((crop, cropIndex) => {
           setTimeout(() => {
             const link = document.createElement("a");
-            link.href = `http://localhost:5000/${crop}`;
+            link.href = `http://${process.env.REACT_APP_API_URL}/${crop}`;
             link.download = `img_${imgIndex + 1}_crop_${cropIndex + 1}_${
               image.file.name
             }`;
@@ -566,10 +572,13 @@ function AddImage() {
     setBatchProgress({ current: 0, total: validImages.length });
 
     try {
-      const csrfResponse = await fetch("http://localhost:5000/csrf-token", {
-        method: "GET",
-        credentials: "include",
-      });
+      const csrfResponse = await fetch(
+        `http://${process.env.REACT_APP_API_URL}/csrf-token`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
       const csrfData = await csrfResponse.json();
 
       const formData = new FormData();
@@ -583,14 +592,17 @@ function AddImage() {
         JSON.stringify(manuallyIncludedIndices)
       ); // Add this line
 
-      const res = await fetch("http://localhost:5000/batch_analyze", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-        headers: {
-          "X-CSRF-Token": csrfData.csrf_token,
-        },
-      });
+      const res = await fetch(
+        `http://${process.env.REACT_APP_API_URL}/batch_analyze`,
+        {
+          method: "POST",
+          body: formData,
+          credentials: "include",
+          headers: {
+            "X-CSRF-Token": csrfData.csrf_token,
+          },
+        }
+      );
 
       // improved error handling: read response body for 400/500
       const contentType = res.headers.get("content-type") || "";
@@ -1277,7 +1289,7 @@ function AddImage() {
                 <div className="quadrat-visuals">
                   <div className="visual-item">
                     <img
-                      src={`http://localhost:5000/${cropData.crop_url}`}
+                      src={`http://${process.env.REACT_APP_API_URL}/${cropData.crop_url}`}
                       alt={`Crop ${cropIndex + 1}`}
                       className="analysis-image"
                     />
@@ -1285,7 +1297,7 @@ function AddImage() {
                   </div>
                   <div className="visual-item">
                     <img
-                      src={`http://localhost:5000/${cropData.visualization_url}`}
+                      src={`http://${process.env.REACT_APP_API_URL}/${cropData.visualization_url}`}
                       alt={`Segmentation ${cropIndex + 1}`}
                       className="analysis-image"
                     />
@@ -1632,7 +1644,7 @@ function AddImage() {
                           <div key={i} className="crop-card">
                             <div className="crop-image-container">
                               <img
-                                src={`http://localhost:5000/${crop}`}
+                                src={`http://${process.env.REACT_APP_API_URL}/${crop}`}
                                 alt={`Crop ${i + 1}`}
                                 className="crop-image"
                               />

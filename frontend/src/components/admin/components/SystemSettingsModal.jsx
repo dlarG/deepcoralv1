@@ -4,11 +4,9 @@ import {
   FiSettings,
   FiCpu,
   FiUpload,
-  FiDownload,
   FiRefreshCw,
   FiCheck,
   FiAlertTriangle,
-  FiFile,
   FiTrash2,
 } from "react-icons/fi";
 import useSystemSettings from "../hooks/useSystemSettings";

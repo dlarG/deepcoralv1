@@ -213,18 +213,12 @@ export default function useCoralManagement() {
         }
       });
 
-      // Debug: Log what we're sending
-      console.log("Admin sending form data:");
-      for (let [key, value] of formData.entries()) {
-        console.log(key, value);
-      }
-
       const csrfToken = await fetchCsrfToken();
       let response;
 
       if (coralModalMode === "add") {
         response = await axios.post(
-          "http://localhost:5000/admin/corals",
+          `http://${process.env.REACT_APP_API_URL}/admin/corals`,
           formData,
           {
             headers: {
@@ -249,7 +243,7 @@ export default function useCoralManagement() {
         );
       } else if (coralModalMode === "edit") {
         response = await axios.put(
-          `http://localhost:5000/admin/corals/${currentCoral.id}`,
+          `http://${process.env.REACT_APP_API_URL}/admin/corals/${currentCoral.id}`,
           formData,
           {
             headers: {
@@ -322,10 +316,13 @@ export default function useCoralManagement() {
 
     try {
       const csrfToken = await fetchCsrfToken();
-      await axios.delete(`http://localhost:5000/admin/corals/${coralId}`, {
-        headers: { "X-CSRF-Token": csrfToken },
-        withCredentials: true,
-      });
+      await axios.delete(
+        `http://${process.env.REACT_APP_API_URL}/admin/corals/${coralId}`,
+        {
+          headers: { "X-CSRF-Token": csrfToken },
+          withCredentials: true,
+        }
+      );
 
       setCoralData((prev) => prev.filter((c) => c.id !== coralId));
 

@@ -8,8 +8,17 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
     
-    # Initialize CORS
-    CORS(app, supports_credentials=True, origins=Config.CORS_ORIGINS)
+    # Set debug mode from config
+    app.debug = Config.DEBUG
+    
+    # Initialize CORS - ONLY ONE CONFIGURATION
+    CORS(app, 
+         supports_credentials=True, 
+         origins=Config.CORS_ORIGINS,
+         allow_headers=['Content-Type', 'X-CSRF-Token', 'Authorization'],
+         methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
+    
+    # REMOVE the after_request function - it's causing duplicates
     
     # Initialize routes
     init_routes(app)
@@ -55,9 +64,9 @@ def create_app():
             if not csrf_token or csrf_token != request_csrf:
                 return jsonify({'error': 'CSRF token missing or invalid'}), 403
     
-    # Return the app OUTSIDE the csrf_protect function
     return app
 
 if __name__ == '__main__':
     app = create_app()
-    app.run(debug=True)
+    # Use debug setting from config
+    app.run(debug=Config.DEBUG, host='0.0.0.0', port=5000)

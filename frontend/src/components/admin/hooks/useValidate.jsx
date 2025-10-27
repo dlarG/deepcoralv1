@@ -53,7 +53,7 @@ export default function useValidate() {
     setLoading(true);
     try {
       const response = await axios.get(
-        "http://localhost:5000/admin/pending-users",
+        `http://${process.env.REACT_APP_API_URL}/admin/pending-users`,
         {
           withCredentials: true,
         }
@@ -134,7 +134,7 @@ export default function useValidate() {
     try {
       const csrfToken = await fetchCsrfToken();
       await axios.put(
-        `http://localhost:5000/admin/users/${userId}/approve`,
+        `http://${process.env.REACT_APP_API_URL}/admin/users/${userId}/approve`,
         {},
         {
           headers: {
@@ -209,12 +209,15 @@ export default function useValidate() {
 
     try {
       const csrfToken = await fetchCsrfToken();
-      await axios.delete(`http://localhost:5000/admin/users/${userId}/reject`, {
-        headers: {
-          "X-CSRF-Token": csrfToken,
-        },
-        withCredentials: true,
-      });
+      await axios.delete(
+        `http://${process.env.REACT_APP_API_URL}/admin/users/${userId}/reject`,
+        {
+          headers: {
+            "X-CSRF-Token": csrfToken,
+          },
+          withCredentials: true,
+        }
+      );
 
       setPendingUsers((prev) => prev.filter((user) => user.id !== userId));
 
@@ -317,7 +320,7 @@ export default function useValidate() {
   //     const csrfToken = await fetchCsrfToken();
   //     const approvalPromises = userIds.map((userId) =>
   //       axios.put(
-  //         `http://localhost:5000/admin/users/${userId}/approve`,
+  //         `http://${process.env.REACT_APP_API_URL}/admin/users/${userId}/approve`,
   //         {},
   //         {
   //           headers: { "X-CSRF-Token": csrfToken },

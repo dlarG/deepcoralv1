@@ -24,7 +24,7 @@ export default function useSystemSettings() {
   });
 
   // API base URL
-  const API_BASE_URL = "http://localhost:5000";
+  const API_BASE_URL = `http://${process.env.REACT_APP_API_URL}`;
 
   // Clear message after 5 seconds
   useEffect(() => {
@@ -259,13 +259,9 @@ export default function useSystemSettings() {
   const handleSystemSettingsUpdate = async () => {
     setLoading(true);
     try {
-      const response = await axios.put(
-        `${API_BASE_URL}/admin/system/settings`,
-        systemSettings,
-        {
-          withCredentials: true,
-        }
-      );
+      await axios.put(`${API_BASE_URL}/admin/system/settings`, systemSettings, {
+        withCredentials: true,
+      });
 
       setMessage({
         type: "success",
