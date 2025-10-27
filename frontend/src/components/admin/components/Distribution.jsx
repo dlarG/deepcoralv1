@@ -158,7 +158,7 @@ function Distribution() {
 
       // FIXED: Use the correct distribution endpoint
       const response = await fetch(
-        `http://localhost:5000/distribution/images/${imageToDelete.id}`,
+        `http://${process.env.REACT_APP_API_URL}/distribution/images/${imageToDelete.id}`,
         {
           method: "DELETE",
           credentials: "include",
@@ -235,7 +235,7 @@ function Distribution() {
 
       // Load  date range
       const dateRangeResponse = await fetch(
-        "http://localhost:5000/distribution/date-range"
+        `http://${process.env.REACT_APP_API_URL}/distribution/date-range`
       );
       const dateRangeData = await dateRangeResponse.json();
 
@@ -278,8 +278,8 @@ function Distribution() {
       }
 
       const url = params.toString()
-        ? `http://localhost:5000/distribution/locations?${params}`
-        : "http://localhost:5000/distribution/locations";
+        ? `http://${process.env.REACT_APP_API_URL}/distribution/locations?${params}`
+        : `http://${process.env.REACT_APP_API_URL}/distribution/locations`;
 
       console.log("Loading locations from:", url); // Debug log
 
@@ -318,8 +318,8 @@ function Distribution() {
 
       // Load images for this location
       const imagesUrl = paramString
-        ? `http://localhost:5000/distribution/location/${location.latitude}/${location.longitude}/images?${paramString}`
-        : `http://localhost:5000/distribution/location/${location.latitude}/${location.longitude}/images`;
+        ? `http://${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/images?${paramString}`
+        : `http://${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/images`;
 
       console.log("Loading images from:", imagesUrl); // Debug log
 
@@ -333,8 +333,8 @@ function Distribution() {
 
       // Load analytics for this location
       const analyticsUrl = paramString
-        ? `http://localhost:5000/distribution/location/${location.latitude}/${location.longitude}/analytics?${paramString}`
-        : `http://localhost:5000/distribution/location/${location.latitude}/${location.longitude}/analytics`;
+        ? `http://${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/analytics?${paramString}`
+        : `http://${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/analytics`;
 
       const analyticsResponse = await fetch(analyticsUrl);
       const analyticsData = await analyticsResponse.json();
@@ -605,7 +605,7 @@ function Distribution() {
   return (
     <div className="content-section">
       {/* Header */}
-      <div className="user-management-header">
+      <div className="distribution-management-header">
         <div className="header-content">
           <div className="header-left">
             <h1 className="report-title">Coral Distribution Analysis</h1>
@@ -613,68 +613,73 @@ function Distribution() {
               Geographic distribution and temporal trends of coral coverage
             </p>
           </div>
-          {/* <div className="header-controls">
-            <button
-              className={`view-toggle ${viewMode === "map" ? "active" : ""}`}
-              onClick={() => setViewMode("map")}
-            >
-              <FiMap size={18} />
-              Map View
-            </button>
-          </div> */}
+
+          {/* Move filters to header-right */}
+          <div className="header-right">
+            <div className="filters-container">
+              <div className="date-filters">
+                <div className="filter-group compact">
+                  <label>
+                    <FiCalendar size={14} />
+                    Start Date
+                  </label>
+                  <input
+                    type="date"
+                    value={dateRange.start}
+                    min={dateRange.min}
+                    max={dateRange.max}
+                    onChange={(e) =>
+                      setDateRange((prev) => ({
+                        ...prev,
+                        start: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+
+                <div className="filter-group compact">
+                  <label>
+                    <FiCalendar size={14} />
+                    End Date
+                  </label>
+                  <input
+                    type="date"
+                    value={dateRange.end}
+                    min={dateRange.min}
+                    max={dateRange.max}
+                    onChange={(e) =>
+                      setDateRange((prev) => ({ ...prev, end: e.target.value }))
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="filter-actions">
+                <button
+                  className="apply-filters-btn compact"
+                  onClick={handleDateRangeChange}
+                  disabled={loading}
+                  title="Apply date filters"
+                >
+                  <FiFilter size={14} />
+                  {loading ? "Applying..." : "Apply"}
+                </button>
+
+                <button
+                  className="refresh-btn compact"
+                  onClick={loadInitialData}
+                  disabled={loading}
+                  title="Refresh data"
+                >
+                  <FiRefreshCw size={14} />
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="user-management-header">
-        <div className="date-range-filter">
-          <div className="filter-group">
-            <label>
-              <FiCalendar size={16} />
-              Start Date
-            </label>
-            <input
-              type="date"
-              value={dateRange.start}
-              min={dateRange.min}
-              max={dateRange.max}
-              onChange={(e) =>
-                setDateRange((prev) => ({ ...prev, start: e.target.value }))
-              }
-            />
-          </div>
-          <div className="filter-group">
-            <label>
-              <FiCalendar size={16} />
-              End Date
-            </label>
-            <input
-              type="date"
-              value={dateRange.end}
-              min={dateRange.min}
-              max={dateRange.max}
-              onChange={(e) =>
-                setDateRange((prev) => ({ ...prev, end: e.target.value }))
-              }
-            />
-          </div>
-          <button
-            className="apply-filters-btn"
-            onClick={handleDateRangeChange}
-            disabled={loading}
-          >
-            <FiFilter size={16} />
-            {loading ? "Applying..." : "Apply Filters"}
-          </button>
-          <button
-            className="refresh-btn"
-            onClick={loadInitialData}
-            disabled={loading}
-          >
-            <FiRefreshCw size={16} />
-          </button>
-        </div>
-
+      <div className="stats-summary-section">
         <div className="stats-summary">
           <div className="distribution-stat-card">
             <FiMapPin size={20} />
@@ -711,6 +716,7 @@ function Distribution() {
           </div>
         </div>
       </div>
+      <br />
 
       {/* Main Content */}
       <div className="distribution-content">
@@ -849,7 +855,7 @@ function Distribution() {
                             >
                               <div className="image-thumbnail">
                                 <img
-                                  src={`http://localhost:5000/crops/${image.filename}`}
+                                  src={`http://${process.env.REACT_APP_API_URL}/crops/${image.filename}`}
                                   alt={image.filename}
                                   onError={(e) => {
                                     e.target.src =
@@ -1059,7 +1065,7 @@ function Distribution() {
                 <div className="image-display-container">
                   <div className="main-image-wrapper">
                     <img
-                      src={`http://localhost:5000/crops/${locationImages[currentImageIndex].filename}`}
+                      src={`http://${process.env.REACT_APP_API_URL}/crops/${locationImages[currentImageIndex].filename}`}
                       alt={locationImages[currentImageIndex].filename}
                       className="main-display-image"
                       onError={(e) => {

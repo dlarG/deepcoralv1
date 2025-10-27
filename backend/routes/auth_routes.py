@@ -4,6 +4,7 @@ from db import get_db_connection
 from utils.auth_utils import login_required, rate_limit
 import requests
 from config import Config
+from flask_cors import cross_origin
 import secrets
 from routes.activity_log import (
     log_login, log_logout, log_user_registration, log_system_action, ActivityLogger
@@ -98,16 +99,18 @@ def register_user():
             conn.close()
 
 
-@auth_bp.route('/logout', methods=['POST'])
+@auth_bp.route('/logout', methods=['POST', 'OPTIONS'])
+@cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
 @login_required
 def logout():
-    # Get user info before clearing session for logging
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+        
     user_id = session.get('user_id')
     username = session.get('username', 'Unknown')
     roletype = session.get('roletype', 'Unknown')
     
     try:
-        # Log logout activity before clearing session
         if user_id and username:
             log_logout(user_id, username)
             
@@ -118,7 +121,7 @@ def logout():
                 details={
                     'username': username,
                     'roletype': roletype,
-                    'session_duration': None,  # You can calculate this if you store login time
+                    'session_duration': None,
                     'ip_address': request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR')),
                     'user_agent': request.headers.get('User-Agent', '')
                 }
@@ -127,11 +130,11 @@ def logout():
         new_csrf = secrets.token_hex(32)
         
         session.clear()
-        session['csrf_token'] = new_csrf  # Set new token for next request
+        session['csrf_token'] = new_csrf
         
         response = jsonify({
             'message': 'Logout successful',
-            'csrf_token': new_csrf  # Send new token to client
+            'csrf_token': new_csrf
         })
         
         response.set_cookie(
@@ -142,10 +145,6 @@ def logout():
             secure=current_app.config.get('SESSION_COOKIE_SECURE', False),
             samesite='Lax'
         )
-        
-        response.headers.add('Access-Control-Allow-Origin', 'http://localhost:3000')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, X-CSRF-Token')
         
         return response, 200
         
@@ -165,15 +164,24 @@ def logout():
         return jsonify({'error': 'Logout failed'}), 500
     
 
-@auth_bp.route('/csrf-token', methods=['GET'])
+@auth_bp.route('/csrf-token', methods=['GET', 'OPTIONS'])
+@cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
 def get_csrf_token():
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+        
     if 'csrf_token' not in session:
         session['csrf_token'] = secrets.token_hex(32)
+    
     return jsonify({'csrf_token': session['csrf_token']})
 
 
-@auth_bp.route('/check-auth', methods=['GET'])
+@auth_bp.route('/check-auth', methods=['GET', 'OPTIONS'])
+@cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
 def check_auth():
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+        
     if 'user_id' not in session:
         return jsonify({'authenticated': False}), 200
     
@@ -207,9 +215,10 @@ def check_auth():
                     'profile_image': user[6],
                     'created_at': user[7].isoformat() if user[7] else None,
                     'status': user[8],
-                    'last_login': user[9].isoformat() if user[9] else None  # Include last_login
+                    'last_login': user[9].isoformat() if user[9] else None
                 }
             }), 200
+            
     except Exception as e:
         log_system_action(
             user_id=session.get('user_id'),
@@ -227,9 +236,14 @@ def check_auth():
         if conn:
             conn.close()
 
-@auth_bp.route('/login', methods=['POST'])
+
+@auth_bp.route('/login', methods=['POST', 'OPTIONS'])
+@cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
 @rate_limit(6)
 def login_user():
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+        
     data = request.get_json()
     if not data:
         return jsonify({'error': 'No data provided'}), 400
@@ -246,7 +260,6 @@ def login_user():
             return jsonify({"error": "Database connection failed"}), 500
             
         with conn.cursor() as cur:  
-            # Include ALL necessary columns including status and last_login
             cur.execute("""
                 SELECT id, username, password, firstname, lastname, roletype, bio, profile_image, created_at, status, last_login 
                 FROM users WHERE username = %s
@@ -315,8 +328,8 @@ def login_user():
 
             session['csrf_token'] = secrets.token_hex(32)
             session['user_id'] = user[0]
-            session['roletype'] = user[5]  # roletype is at index 5
-            session['username'] = user[1]  # Store username for logout logging
+            session['roletype'] = user[5]
+            session['username'] = user[1]
             
             log_login(user[0], username)
             
@@ -327,7 +340,7 @@ def login_user():
                 details={
                     'username': username,
                     'roletype': user[5],
-                    'previous_login': user[10].isoformat() if user[10] else None,  # last_login is at index 10
+                    'previous_login': user[10].isoformat() if user[10] else None,
                     'current_login': current_time.isoformat(),
                     'ip_address': request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR')),
                     'user_agent': request.headers.get('User-Agent', '')
@@ -344,7 +357,7 @@ def login_user():
                 'profile_image': user[7],
                 'created_at': user[8].isoformat() if user[8] else None,
                 'status': user[9],
-                'last_login': current_time.isoformat(),  # Return the updated last_login
+                'last_login': current_time.isoformat(),
                 'redirect_to': f'/{user[5].lower()}-dashboard'
             }
             
