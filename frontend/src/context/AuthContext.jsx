@@ -93,11 +93,16 @@ export function AuthProvider({ children }) {
         },
       });
 
+      // Save user and csrf token in context
       setUser(res.data.user);
       setCsrfToken(res.data.csrf_token);
+
+      // Return user along with redirect path so callers (like Login.jsx)
+      // can use result.user.roletype safely instead of getting undefined.
       return {
         success: true,
         redirectTo: res.data.redirect_to,
+        user: res.data.user,
       };
     } catch (err) {
       return {
