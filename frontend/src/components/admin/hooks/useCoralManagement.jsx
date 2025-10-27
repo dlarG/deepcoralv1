@@ -99,7 +99,7 @@ export default function useCoralManagement() {
       if (file.size > maxSize) {
         showErrorModal(
           "File Too Large",
-          "Please select an image smaller than 5MB."
+          "Please select an image smaller than 10MB."
         );
         return;
       }
@@ -199,8 +199,16 @@ export default function useCoralManagement() {
 
     try {
       const formData = new FormData();
+
+      // Add all form fields
       Object.keys(coralFormData).forEach((key) => {
-        if (coralFormData[key] !== null && coralFormData[key] !== "") {
+        if (key === "image" && coralFormData[key]) {
+          formData.append(key, coralFormData[key]);
+        } else if (
+          key !== "image" &&
+          coralFormData[key] !== null &&
+          coralFormData[key] !== ""
+        ) {
           formData.append(key, coralFormData[key]);
         }
       });
@@ -210,7 +218,7 @@ export default function useCoralManagement() {
 
       if (coralModalMode === "add") {
         response = await axios.post(
-          "http://localhost:5000/admin/corals",
+          `http://${process.env.REACT_APP_API_URL}/admin/corals`,
           formData,
           {
             headers: {
@@ -227,15 +235,15 @@ export default function useCoralManagement() {
         // Close modal BEFORE showing success message
         closeCoralModal();
 
-        // Show success modal with no auto-close to prevent page refresh
+        // Show success modal
         showSuccessModal(
           "Coral Added Successfully!",
           `${coralFormData.common_name} (${coralFormData.scientific_name}) has been added to the coral database.`,
-          false // Disable auto-close
+          false
         );
       } else if (coralModalMode === "edit") {
         response = await axios.put(
-          `http://localhost:5000/admin/corals/${currentCoral.id}`,
+          `http://${process.env.REACT_APP_API_URL}/admin/corals/${currentCoral.id}`,
           formData,
           {
             headers: {
@@ -254,36 +262,34 @@ export default function useCoralManagement() {
         // Close modal BEFORE showing success message
         closeCoralModal();
 
-        // Show success modal with no auto-close
+        // Show success modal
         showSuccessModal(
           "Coral Updated Successfully!",
           `${coralFormData.common_name} information has been updated in the database.`,
-          false // Disable auto-close
+          false
         );
       }
     } catch (error) {
-      console.error("Coral operation failed:", error);
+      console.error("Admin coral operation failed:", error);
+      console.error("Error response:", error.response?.data);
 
-      if (error.response?.status === 400) {
+      // Better error handling
+      if (error.response?.status === 500) {
+        showErrorModal(
+          "Server Error",
+          error.response?.data?.error ||
+            "An internal server error occurred. Please try again or contact support."
+        );
+      } else if (error.response?.status === 403) {
+        showErrorModal(
+          "Access Denied",
+          "You don't have permission to perform this action. Please check your admin privileges."
+        );
+      } else if (error.response?.status === 400) {
         showErrorModal(
           "Invalid Data",
           error.response.data?.error ||
             "Please check your input data and try again."
-        );
-      } else if (error.response?.status === 409) {
-        showErrorModal(
-          "Duplicate Entry",
-          "A coral with this information already exists in the database."
-        );
-      } else if (error.response?.status === 413) {
-        showErrorModal(
-          "File Too Large",
-          "The uploaded image is too large. Please choose a smaller image file."
-        );
-      } else if (error.response?.status === 422) {
-        showErrorModal(
-          "Invalid File Format",
-          "Please upload a valid image file (JPEG, PNG, or WEBP format)."
         );
       } else {
         showErrorModal(
@@ -310,10 +316,13 @@ export default function useCoralManagement() {
 
     try {
       const csrfToken = await fetchCsrfToken();
-      await axios.delete(`http://localhost:5000/admin/corals/${coralId}`, {
-        headers: { "X-CSRF-Token": csrfToken },
-        withCredentials: true,
-      });
+      await axios.delete(
+        `http://${process.env.REACT_APP_API_URL}/admin/corals/${coralId}`,
+        {
+          headers: { "X-CSRF-Token": csrfToken },
+          withCredentials: true,
+        }
+      );
 
       setCoralData((prev) => prev.filter((c) => c.id !== coralId));
 
@@ -325,7 +334,12 @@ export default function useCoralManagement() {
     } catch (error) {
       console.error("Delete failed:", error);
 
-      if (error.response?.status === 404) {
+      if (error.response?.status === 403) {
+        showErrorModal(
+          "Access Denied",
+          "You don't have permission to delete coral information."
+        );
+      } else if (error.response?.status === 404) {
         showErrorModal(
           "Coral Not Found",
           "The coral information you're trying to delete no longer exists."

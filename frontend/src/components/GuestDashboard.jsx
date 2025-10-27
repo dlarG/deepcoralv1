@@ -10,6 +10,7 @@ import ViewMap from "./guest/components/ViewMap";
 import ViewResults from "./guest/components/ViewResults";
 import ProfileManagement from "./guest/components/ProfileManagement";
 import { getGuestStyles } from "./guest/styles/GuestStyles";
+import ApprovedImage from "./guest/components/ApprovedImage";
 
 function GuestDashboard() {
   const navigate = useNavigate();
@@ -72,6 +73,8 @@ function GuestDashboard() {
         return <ProfileManagement user={user} />;
       case "Upload Image":
         return <UploadImage />;
+      case "Approved Image":
+        return <ApprovedImage />;
       case "View Map":
         return <ViewMap />;
       case "View Results":

@@ -1,7 +1,13 @@
 import os
 from dotenv import load_dotenv
 import secrets
-load_dotenv()
+
+# Determine environment and load appropriate .env file
+env = os.getenv('FLASK_ENV', 'development')
+if env == 'production':
+    load_dotenv('.env.production')
+else:
+    load_dotenv('.env.development')
 
 class Config:
     # App configuration
@@ -15,10 +21,14 @@ class Config:
     DB_PORT = os.getenv('DB_PORT')     
     DB_USER = os.getenv('DB_USER')
     DB_PASSWORD = os.getenv('DB_PASSWORD')
-    DB_TABLE = os.getenv('DB_TABLE')
+    DB_NAME = os.getenv('DB_NAME') 
     
     # reCAPTCHA
     RECAPTCHA_SECRET = os.getenv('RECAPTCHA_SECRET')
     
-    # CORS
-    CORS_ORIGINS = os.getenv('CORS_ORIGINS', 'http://localhost:3000').split(',')
+    # CORS - Make sure this is a list
+    cors_origins_str = os.getenv('CORS_ORIGINS', 'http://localhost:3000')
+    CORS_ORIGINS = [origin.strip() for origin in cors_origins_str.split(',')]
+    
+    # Debug mode
+    DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'

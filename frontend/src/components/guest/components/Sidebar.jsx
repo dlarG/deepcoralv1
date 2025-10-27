@@ -1,12 +1,20 @@
 // src/components/guest/components/Sidebar.js
 import React from "react";
-import { FiHome, FiImage, FiMap, FiFileText, FiUser } from "react-icons/fi";
+import {
+  FiHome,
+  FiImage,
+  FiUpload,
+  FiMap,
+  FiFileText,
+  FiUser,
+} from "react-icons/fi";
 import "../styles/sidebar.css";
 
 function Sidebar({ activeTab, setActiveTab, sidebarOpen }) {
   const navItems = [
     { icon: FiHome, label: "Coral LifeForms", value: "Coral LifeForms" },
-    { icon: FiImage, label: "Upload Image", value: "Upload Image" },
+    { icon: FiUpload, label: "Upload Image", value: "Upload Image" },
+    { icon: FiImage, label: "Approved Image", value: "Approved Image" },
     { icon: FiMap, label: "View Map", value: "View Map" },
     { icon: FiFileText, label: "View Results", value: "View Results" },
     { icon: FiUser, label: "Profile Management", value: "Profile Management" },

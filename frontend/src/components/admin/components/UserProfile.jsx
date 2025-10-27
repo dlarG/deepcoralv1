@@ -43,7 +43,7 @@ function UserProfile({ darkMode }) {
         }
 
         const response = await axios.get(
-          `http://localhost:5000/admin/users/${decryptedId}`,
+          `http://${process.env.REACT_APP_API_URL}/admin/users/${decryptedId}`,
           { withCredentials: true }
         );
         setUser(response.data.user);
@@ -97,19 +97,22 @@ function UserProfile({ darkMode }) {
         }
 
         const csrfResponse = await axios.get(
-          "http://localhost:5000/csrf-token",
+          `http://${process.env.REACT_APP_API_URL}/csrf-token`,
           {
             withCredentials: true,
           }
         );
         const csrfToken = csrfResponse.data.csrf_token;
 
-        await axios.delete(`http://localhost:5000/admin/users/${decryptedId}`, {
-          withCredentials: true,
-          headers: {
-            "X-CSRF-Token": csrfToken,
-          },
-        });
+        await axios.delete(
+          `http://${process.env.REACT_APP_API_URL}/admin/users/${decryptedId}`,
+          {
+            withCredentials: true,
+            headers: {
+              "X-CSRF-Token": csrfToken,
+            },
+          }
+        );
 
         alert("User deleted successfully!");
         navigate("/admin-dashboard", {

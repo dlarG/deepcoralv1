@@ -74,9 +74,12 @@ export default function useUserManagement() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await axios.get("http://localhost:5000/admin/users", {
-          withCredentials: true,
-        });
+        const response = await axios.get(
+          `http://${process.env.REACT_APP_API_URL}/admin/users`,
+          {
+            withCredentials: true,
+          }
+        );
         setUsers(response.data.users);
       } catch (err) {
         setError(err.response?.data?.error || "Failed to fetch users");
@@ -201,7 +204,7 @@ export default function useUserManagement() {
 
       if (userModalMode === "create") {
         response = await axios.post(
-          "http://localhost:5000/admin/users",
+          `http://${process.env.REACT_APP_API_URL}/admin/users`,
           formData,
           {
             withCredentials: true,
@@ -225,7 +228,7 @@ export default function useUserManagement() {
         }
 
         response = await axios.put(
-          `http://localhost:5000/admin/users/${selectedUser.id}`,
+          `http://${process.env.REACT_APP_API_URL}/admin/users/${selectedUser.id}`,
           updateData,
           {
             withCredentials: true,
@@ -325,17 +328,23 @@ export default function useUserManagement() {
       : "this user";
 
     try {
-      const csrfResponse = await axios.get("http://localhost:5000/csrf-token", {
-        withCredentials: true,
-      });
+      const csrfResponse = await axios.get(
+        `http://${process.env.REACT_APP_API_URL}/csrf-token`,
+        {
+          withCredentials: true,
+        }
+      );
       const csrfToken = csrfResponse.data.csrf_token;
 
-      await axios.delete(`http://localhost:5000/admin/users/${userId}`, {
-        withCredentials: true,
-        headers: {
-          "X-CSRF-Token": csrfToken,
-        },
-      });
+      await axios.delete(
+        `http://${process.env.REACT_APP_API_URL}/admin/users/${userId}`,
+        {
+          withCredentials: true,
+          headers: {
+            "X-CSRF-Token": csrfToken,
+          },
+        }
+      );
 
       setUsers(users.filter((user) => user.id !== userId));
 

@@ -81,6 +81,7 @@ CREATE TABLE images (
     total_pixels INTEGER,          -- Total pixels in analyzed area
     analyzed_area_px INTEGER,      -- Pixels actually analyzed (after masking invalid areas)
     analysis_confidence NUMERIC(3,2), -- How confident the ML model was
+    updated_at TIMESTAMP,
     processing_status VARCHAR(20) DEFAULT 'pending', -- pending, processing, completed, failed
     -- Spatial index for performance
     CONSTRAINT enforce_srid_location CHECK (ST_SRID(location) = 4326)
@@ -174,3 +175,18 @@ ALTER TABLE activities ALTER COLUMN category TYPE activity_category USING catego
 -- Add indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_activities_category ON activities(category);
 CREATE INDEX IF NOT EXISTS idx_activities_user_created ON activities(user_id, created_at);
+
+-- Add upload_status column if it doesn't exist
+ALTER TABLE images ADD COLUMN IF NOT EXISTS upload_status VARCHAR(20) DEFAULT 'pending' 
+CHECK (upload_status IN ('pending', 'approved', 'rejected'));
+
+-- Add index for better performance
+CREATE INDEX IF NOT EXISTS idx_images_upload_status ON images(upload_status);
+CREATE INDEX IF NOT EXISTS idx_images_uploader_status ON images(uploader_id, upload_status);
+
+-- Add manual_override column to images table if it doesn't exist
+ALTER TABLE images ADD COLUMN IF NOT EXISTS manual_override BOOLEAN DEFAULT FALSE;
+
+-- Add index for better performance
+CREATE INDEX IF NOT EXISTS idx_images_manual_override ON images(manual_override);
+CREATE INDEX IF NOT EXISTS idx_images_processing_status ON images(processing_status);

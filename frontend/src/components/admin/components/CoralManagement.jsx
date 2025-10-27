@@ -15,25 +15,29 @@ import useCoralManagement from "../hooks/useCoralManagement";
 import SuccessModal from "../../SuccessMessage";
 import ImageViewer from "./CoralImageViewer";
 
-function CoralManagement() {
+function CoralManagement(props = {}) {
+  const adminHook = useCoralManagement();
+
   const {
-    coralData,
-    showCoralModal,
-    coralModalMode,
-    currentCoral,
-    coralFormData,
-    imagePreview,
-    coralLoading,
-    handleCoralInputChange,
-    handleCoralImageChange,
-    openCoralModal,
-    closeCoralModal,
-    handleCoralSubmit,
-    handleDeleteCoral,
-    showModal,
-    modalConfig,
-    setShowModal,
-  } = useCoralManagement();
+    coralData = props.coralData || adminHook.coralData,
+    showCoralModal = props.showCoralModal || adminHook.showCoralModal,
+    coralModalMode = props.coralModalMode || adminHook.coralModalMode,
+    currentCoral = props.currentCoral || adminHook.currentCoral,
+    coralFormData = props.coralFormData || adminHook.coralFormData,
+    imagePreview = props.imagePreview || adminHook.imagePreview,
+    coralLoading = props.coralLoading || adminHook.coralLoading,
+    handleCoralInputChange = props.handleCoralInputChange ||
+      adminHook.handleCoralInputChange,
+    handleCoralImageChange = props.handleCoralImageChange ||
+      adminHook.handleCoralImageChange,
+    openCoralModal = props.openCoralModal || adminHook.openCoralModal,
+    closeCoralModal = props.closeCoralModal || adminHook.closeCoralModal,
+    handleCoralSubmit = props.handleCoralSubmit || adminHook.handleCoralSubmit,
+    handleDeleteCoral = props.handleDeleteCoral || adminHook.handleDeleteCoral,
+    showModal = props.showModal || adminHook.showModal,
+    modalConfig = props.modalConfig || adminHook.modalConfig,
+    setShowModal = props.setShowModal || adminHook.setShowModal,
+  } = props.coralData ? props : adminHook;
 
   useEffect(() => {
     if (coralModalMode === "view") {
@@ -558,15 +562,17 @@ function CoralManagement() {
         downloadFilename={currentViewerImage?.filename}
       />
 
-      <SuccessModal
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        title={modalConfig.title}
-        message={modalConfig.message}
-        type={modalConfig.type}
-        autoClose={modalConfig.autoClose}
-        autoCloseDelay={3000}
-      />
+      {!props.coralData && (
+        <SuccessModal
+          isOpen={showModal}
+          onClose={() => setShowModal(false)}
+          title={modalConfig.title}
+          message={modalConfig.message}
+          type={modalConfig.type}
+          autoClose={modalConfig.autoClose}
+          autoCloseDelay={3000}
+        />
+      )}
     </div>
   );
 }

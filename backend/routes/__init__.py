@@ -6,6 +6,8 @@ from .upload_image import image_bp
 from .biologist_routes import biologist_bp
 from .gis_routes import gis_bp
 from .distribution_routes import distribution_bp
+from .validation_routes import validation_bp
+from .guest_approved_image import approved_bp
 
 def init_routes(app):
     app.register_blueprint(auth_bp)
@@ -14,5 +16,7 @@ def init_routes(app):
     app.register_blueprint(profile_bp)
     app.register_blueprint(image_bp)
     app.register_blueprint(biologist_bp)
+    app.register_blueprint(approved_bp, url_prefix='/approved')
+    app.register_blueprint(validation_bp, url_prefix='/validation')
     app.register_blueprint(gis_bp, url_prefix='/gis')
     app.register_blueprint(distribution_bp, url_prefix='/distribution')

@@ -73,9 +73,73 @@ function AddImage() {
   const [rejectedImages, setRejectedImages] = useState([]);
   const [showSaveButton, setShowSaveButton] = useState(false);
   const [savedToDatabase, setSavedToDatabase] = useState(false);
-
+  const [uploadStatus, setUploadStatus] = useState(null);
   const fileInputRef = useRef(null);
   const folderInputRef = useRef(null);
+
+  const [manuallyIncluded, setManuallyIncluded] = useState(new Set());
+  const [showManualOverrideModal, setShowManualOverrideModal] = useState(false);
+  const [imageToOverride, setImageToOverride] = useState(null);
+
+  const handleManualInclude = (imageIndex) => {
+    const image = images[imageIndex];
+    setImageToOverride({ index: imageIndex, image });
+    setShowManualOverrideModal(true);
+  };
+
+  const confirmManualInclude = () => {
+    if (imageToOverride) {
+      const newManuallyIncluded = new Set(manuallyIncluded);
+      newManuallyIncluded.add(imageToOverride.index);
+      setManuallyIncluded(newManuallyIncluded);
+
+      console.log("Updated manually included:", newManuallyIncluded); // Debug log
+
+      // Update the image status to manually_included
+      setImages((prev) =>
+        prev.map((img, idx) => {
+          if (idx === imageToOverride.index) {
+            console.log("Updating image at index", idx); // Debug log
+            return {
+              ...img,
+              status: "manually_included",
+              manualOverride: true,
+              originalRejectionReason: img.rejectionReason,
+              rejectionReason: null,
+            };
+          }
+          return img;
+        })
+      );
+
+      setShowManualOverrideModal(false);
+      setImageToOverride(null);
+    } else {
+      console.log("No imageToOverride found!");
+    }
+  };
+
+  const handleRemoveManualInclude = (imageIndex) => {
+    const newManuallyIncluded = new Set(manuallyIncluded);
+    newManuallyIncluded.delete(imageIndex);
+    setManuallyIncluded(newManuallyIncluded);
+
+    // Revert the image back to invalid status
+    setImages((prev) =>
+      prev.map((img, idx) =>
+        idx === imageIndex
+          ? {
+              ...img,
+              status: "invalid",
+              manualOverride: false,
+              rejectionReason:
+                img.originalRejectionReason || "No coral quadrats detected",
+              originalRejectionReason: null,
+            }
+          : img
+      )
+    );
+  };
 
   const handleUpload = (e) => {
     const files = Array.from(e.target.files);
@@ -154,179 +218,9 @@ function AddImage() {
     }
   };
 
-  // const handleSubmit = async () => {
-  //   if (images.length === 0) {
-  //     alert("Please select images first!");
-  //     return;
-  //   }
-
-  //   const currentImage = images[currentImageIndex];
-
-  //   // Validate first if not already validated
-  //   if (currentImage.status === "pending") {
-  //     setLoading(true);
-  //     const validation = await validateImageForQuadrats(currentImage.file);
-
-  //     if (!validation.valid) {
-  //       setImages((prev) =>
-  //         prev.map((img, idx) =>
-  //           idx === currentImageIndex
-  //             ? {
-  //                 ...img,
-  //                 status: "invalid",
-  //                 rejectionReason: validation.reason,
-  //               }
-  //             : img
-  //         )
-  //       );
-  //       setLoading(false);
-  //       alert(`Image rejected: ${validation.reason}`);
-  //       return;
-  //     }
-
-  //     setImages((prev) =>
-  //       prev.map((img, idx) =>
-  //         idx === currentImageIndex
-  //           ? {
-  //               ...img,
-  //               status: "valid",
-  //               quadratsDetected: validation.quadratCount,
-  //             }
-  //           : img
-  //       )
-  //     );
-  //   }
-
-  //   if (currentImage.status === "invalid") {
-  //     alert(`Cannot process invalid image: ${currentImage.rejectionReason}`);
-  //     return;
-  //   }
-
-  //   setLoading(true);
-  //   setActiveTab("crops");
-
-  //   try {
-  //     const csrfResponse = await fetch("http://localhost:5000/csrf-token", {
-  //       method: "GET",
-  //       credentials: "include",
-  //     });
-
-  //     const csrfData = await csrfResponse.json();
-
-  //     const formData = new FormData();
-  //     formData.append("image", currentImage.file);
-  //     formData.append("intensity", cropIntensity);
-  //     formData.append("csrf_token", csrfData.csrf_token);
-
-  //     const res = await fetch("http://localhost:5000/detect_custom", {
-  //       method: "POST",
-  //       body: formData,
-  //       credentials: "include",
-  //       headers: {
-  //         "X-CSRF-Token": csrfData.csrf_token,
-  //       },
-  //     });
-
-  //     if (!res.ok) {
-  //       throw new Error(`HTTP error! status: ${res.status}`);
-  //     }
-
-  //     const data = await res.json();
-  //     setCrops(data.crops);
-
-  //     setImages((prev) =>
-  //       prev.map((img, idx) =>
-  //         idx === currentImageIndex
-  //           ? {
-  //               ...img,
-  //               crops: data.crops,
-  //               processed: true,
-  //               status: "processed",
-  //             }
-  //           : img
-  //       )
-  //     );
-  //   } catch (error) {
-  //     console.error("Error:", error);
-  //     alert("Failed to process image: " + error.message);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-
-  // const handleSegmentAndDetect = async () => {
-  //   if (images.length === 0) {
-  //     alert("Please select images first!");
-  //     return;
-  //   }
-
-  //   const currentImage = images[currentImageIndex];
-
-  //   if (currentImage.status === "invalid") {
-  //     alert(`Cannot process invalid image: ${currentImage.rejectionReason}`);
-  //     return;
-  //   }
-
-  //   setLoading(true);
-  //   setActiveTab("analysis");
-
-  //   try {
-  //     const csrfResponse = await fetch("http://localhost:5000/csrf-token", {
-  //       method: "GET",
-  //       credentials: "include",
-  //     });
-
-  //     const csrfData = await csrfResponse.json();
-
-  //     const formData = new FormData();
-  //     formData.append("image", currentImage.file);
-  //     formData.append("intensity", cropIntensity);
-  //     formData.append("csrf_token", csrfData.csrf_token);
-
-  //     const res = await fetch("http://localhost:5000/detect_and_segment", {
-  //       method: "POST",
-  //       body: formData,
-  //       credentials: "include",
-  //       headers: {
-  //         "X-CSRF-Token": csrfData.csrf_token,
-  //       },
-  //     });
-
-  //     if (!res.ok) {
-  //       throw new Error(`HTTP error! status: ${res.status}`);
-  //     }
-
-  //     const data = await res.json();
-
-  //     setCrops(data.crops);
-  //     setShowSaveButton(true);
-
-  //     setImages((prev) =>
-  //       prev.map((img, idx) =>
-  //         idx === currentImageIndex
-  //           ? {
-  //               ...img,
-  //               crops: data.crops,
-  //               processed: true,
-  //               status: "processed",
-  //               segmentationData: data,
-  //             }
-  //           : img
-  //       )
-  //     );
-
-  //     setProcessedImagesForSaving([images[currentImageIndex]]);
-  //   } catch (error) {
-  //     console.error("Error:", error);
-  //     alert("Failed to analyze image: " + error.message);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-
   const downloadSegmentationMask = (maskUrl, index) => {
     const link = document.createElement("a");
-    link.href = `http://localhost:5000/${maskUrl}`;
+    link.href = `http://${process.env.REACT_APP_API_URL}/${maskUrl}`;
     link.download = `segmentation_${index + 1}_${
       images[currentImageIndex].file.name
     }`;
@@ -335,92 +229,13 @@ function AddImage() {
     document.body.removeChild(link);
   };
 
-  // const handleBatchSubmit = async () => {
-  //   if (images.length === 0) {
-  //     alert("Please select images first!");
-  //     return;
-  //   }
-
-  //   setBatchLoading(true);
-  //   setBatchProgress({ current: 0, total: images.length });
-
-  //   try {
-  //     const csrfResponse = await fetch("http://localhost:5000/csrf-token", {
-  //       method: "GET",
-  //       credentials: "include",
-  //     });
-
-  //     if (!csrfResponse.ok) {
-  //       throw new Error("Failed to get CSRF token");
-  //     }
-
-  //     const csrfData = await csrfResponse.json();
-  //     const updatedImages = [...images];
-
-  //     for (let i = 0; i < images.length; i++) {
-  //       if (images[i].processed) continue;
-
-  //       setBatchProgress({ current: i + 1, total: images.length });
-
-  //       const formData = new FormData();
-  //       formData.append("image", images[i].file);
-  //       formData.append("intensity", cropIntensity);
-  //       formData.append("csrf_token", csrfData.csrf_token);
-
-  //       try {
-  //         const res = await fetch("http://localhost:5000/detect_custom", {
-  //           method: "POST",
-  //           body: formData,
-  //           credentials: "include",
-  //           headers: {
-  //             "X-CSRF-Token": csrfData.csrf_token,
-  //           },
-  //         });
-
-  //         if (!res.ok) {
-  //           const errorData = await res.json().catch(() => ({}));
-  //           throw new Error(
-  //             errorData.error || `HTTP error! status: ${res.status}`
-  //           );
-  //         }
-
-  //         const data = await res.json();
-  //         updatedImages[i] = {
-  //           ...updatedImages[i],
-  //           crops: data.crops,
-  //           processed: true,
-  //         };
-  //         setImages(updatedImages);
-
-  //         if (i === currentImageIndex) {
-  //           setCrops(data.crops);
-  //         }
-  //       } catch (error) {
-  //         console.error(`Error processing image ${i}:`, error);
-  //         updatedImages[i] = {
-  //           ...updatedImages[i],
-  //           error: error.message,
-  //           processed: false,
-  //         };
-  //         setImages(updatedImages);
-  //         continue;
-  //       }
-  //     }
-  //   } catch (error) {
-  //     console.error("Batch processing error:", error);
-  //     alert("Batch processing failed: " + error.message);
-  //   } finally {
-  //     setBatchLoading(false);
-  //     setBatchProgress({ current: 0, total: 0 });
-  //   }
-  // };
-
   const clearImages = () => {
     images.forEach((image) => URL.revokeObjectURL(image.preview));
     setImages([]);
     setCurrentImageIndex(0);
     setCrops([]);
     setRejectedImages([]);
+    setManuallyIncluded(new Set()); // Add this line
     setShowSaveButton(false);
     setSavedToDatabase(false);
     setBatchResults(null);
@@ -511,7 +326,7 @@ function AddImage() {
 
   const downloadCrop = (cropUrl, index) => {
     const link = document.createElement("a");
-    link.href = `http://localhost:5000/${cropUrl}`;
+    link.href = `http://${process.env.REACT_APP_API_URL}/${cropUrl}`;
     link.download = `crop_${index + 1}_${images[currentImageIndex].file.name}`;
     document.body.appendChild(link);
     link.click();
@@ -524,21 +339,27 @@ function AddImage() {
       formData.append("image", imageFile);
       formData.append("intensity", "conservative");
 
-      const csrfResponse = await fetch("http://localhost:5000/csrf-token", {
-        method: "GET",
-        credentials: "include",
-      });
+      const csrfResponse = await fetch(
+        `http://${process.env.REACT_APP_API_URL}/csrf-token`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
       const csrfData = await csrfResponse.json();
       formData.append("csrf_token", csrfData.csrf_token);
 
-      const response = await fetch("http://localhost:5000/detect_custom", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-        headers: {
-          "X-CSRF-Token": csrfData.csrf_token,
-        },
-      });
+      const response = await fetch(
+        `http://${process.env.REACT_APP_API_URL}/detect_custom`,
+        {
+          method: "POST",
+          body: formData,
+          credentials: "include",
+          headers: {
+            "X-CSRF-Token": csrfData.csrf_token,
+          },
+        }
+      );
 
       // Don't throw error on 400 - handle it gracefully
       if (response.ok) {
@@ -666,19 +487,6 @@ function AddImage() {
     alert(validationSummary);
   };
 
-  // const downloadAllCrops = () => {
-  //   if (images.length === 0 || !images[currentImageIndex]?.crops?.length) {
-  //     alert("No crops to download");
-  //     return;
-  //   }
-
-  //   images[currentImageIndex].crops.forEach((crop, i) => {
-  //     setTimeout(() => {
-  //       downloadCrop(crop, i);
-  //     }, i * 200);
-  //   });
-  // };
-
   const downloadBatchCrops = () => {
     let totalCrops = 0;
     images.forEach((image, imgIndex) => {
@@ -686,7 +494,7 @@ function AddImage() {
         image.crops.forEach((crop, cropIndex) => {
           setTimeout(() => {
             const link = document.createElement("a");
-            link.href = `http://localhost:5000/${crop}`;
+            link.href = `http://${process.env.REACT_APP_API_URL}/${crop}`;
             link.download = `img_${imgIndex + 1}_crop_${cropIndex + 1}_${
               image.file.name
             }`;
@@ -706,32 +514,56 @@ function AddImage() {
       return;
     }
 
-    // Get only valid and processed images for analysis
+    // Get valid images AND manually included images
     const validImages = images.filter(
       (img) =>
         img.status === "valid" ||
         img.status === "processed" ||
+        img.status === "manually_included" ||
         (img.status === "pending" && img.processed !== false)
     );
+
+    const manuallyIncludedIndices = [];
+    validImages.forEach((img, index) => {
+      const originalIndex = images.findIndex(
+        (originalImg) => originalImg === img
+      );
+      if (img.status === "manually_included") {
+        manuallyIncludedIndices.push(originalIndex);
+      }
+    });
 
     const invalidCount = images.filter(
       (img) => img.status === "invalid"
     ).length;
 
+    const manuallyIncludedCount = images.filter(
+      (img) => img.status === "manually_included"
+    ).length;
+
     if (validImages.length === 0) {
       alert(
-        "No valid images to process. Please validate your images first or remove invalid images."
+        "No valid images to process. Please validate your images first or manually include some images."
       );
       return;
     }
 
-    // Show confirmation if there are invalid images
-    if (invalidCount > 0) {
-      const proceed = window.confirm(
-        `Found ${invalidCount} invalid image(s) that will be skipped. ` +
-          `Proceed with analyzing ${validImages.length} valid image(s)?`
-      );
+    let confirmMessage = `Found ${
+      validImages.length - manuallyIncludedCount
+    } valid image(s)`;
 
+    if (manuallyIncludedCount > 0) {
+      confirmMessage += ` and ${manuallyIncludedCount} manually included image(s)`;
+    }
+
+    if (invalidCount > 0) {
+      confirmMessage += `. ${invalidCount} invalid image(s) will be skipped.`;
+    }
+
+    confirmMessage += ` Proceed with analyzing ${validImages.length} total image(s)?`;
+
+    if (invalidCount > 0 || manuallyIncludedCount > 0) {
+      const proceed = window.confirm(confirmMessage);
       if (!proceed) return;
     }
 
@@ -740,28 +572,37 @@ function AddImage() {
     setBatchProgress({ current: 0, total: validImages.length });
 
     try {
-      // generate form data same as before
-      const csrfResponse = await fetch("http://localhost:5000/csrf-token", {
-        method: "GET",
-        credentials: "include",
-      });
+      const csrfResponse = await fetch(
+        `http://${process.env.REACT_APP_API_URL}/csrf-token`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
       const csrfData = await csrfResponse.json();
 
       const formData = new FormData();
       validImages.forEach((image) => {
-        // many backends expect either "images" (array) or multiple "image" fields
-        formData.append("images", image.file); // keep this for batch endpoint
+        formData.append("images", image.file);
       });
       formData.append("csrf_token", csrfData.csrf_token);
+      formData.append("intensity", cropIntensity);
+      formData.append(
+        "manually_included",
+        JSON.stringify(manuallyIncludedIndices)
+      ); // Add this line
 
-      const res = await fetch("http://localhost:5000/batch_analyze", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-        headers: {
-          "X-CSRF-Token": csrfData.csrf_token,
-        },
-      });
+      const res = await fetch(
+        `http://${process.env.REACT_APP_API_URL}/batch_analyze`,
+        {
+          method: "POST",
+          body: formData,
+          credentials: "include",
+          headers: {
+            "X-CSRF-Token": csrfData.csrf_token,
+          },
+        }
+      );
 
       // improved error handling: read response body for 400/500
       const contentType = res.headers.get("content-type") || "";
@@ -860,6 +701,9 @@ function AddImage() {
     const pendingImagesCount = images.filter(
       (img) => img.status === "pending"
     ).length;
+    const manuallyIncludedCount = images.filter(
+      (img) => img.status === "manually_included"
+    ).length;
 
     // Filter images based on showInvalidImages setting
     const displayImages = showInvalidImages
@@ -943,33 +787,49 @@ function AddImage() {
             <span className="status-count">{validImagesCount}</span>
             <span className="status-label">Valid</span>
           </div>
+
+          <div className="status-item manually-included">
+            <span className="status-count">{manuallyIncludedCount}</span>
+            <span className="status-label">Manually Included</span>
+          </div>
+
           <div className="status-item invalid">
             <span className="status-count">{invalidImagesCount}</span>
             <span className="status-label">Invalid</span>
           </div>
+
           <div className="status-item pending">
             <span className="status-count">{pendingImagesCount}</span>
             <span className="status-label">Pending</span>
           </div>
 
-          {validImagesCount > 0 && invalidImagesCount > 0 && (
-            <div className="analysis-info">
-              <FiAlertTriangle size={14} />
-              <span>Only valid images will be analyzed</span>
-            </div>
-          )}
+          {validImagesCount + manuallyIncludedCount > 0 &&
+            invalidImagesCount > 0 && (
+              <div className="analysis-info">
+                <FiAlertTriangle size={14} />
+                <span>
+                  {validImagesCount + manuallyIncludedCount} images ready for
+                  analysis
+                  {manuallyIncludedCount > 0 &&
+                    ` (${manuallyIncludedCount} manually included)`}
+                </span>
+              </div>
+            )}
         </div>
 
         <div className={`image-gallery ${viewMode}`}>
           {displayImages.map((image, index) => {
             const originalIndex = images.findIndex((img) => img === image);
+            const isManuallyIncluded = manuallyIncluded.has(originalIndex);
 
             return (
               <div
                 key={originalIndex}
                 className={`gallery-item ${
                   originalIndex === currentImageIndex ? "active" : ""
-                } ${image.status} ${image.processed ? "processed" : ""}`}
+                } ${image.status} ${image.processed ? "processed" : ""} ${
+                  isManuallyIncluded ? "manually-included" : ""
+                }`}
                 onClick={() => {
                   setCurrentImageIndex(originalIndex);
                   const currentCrops = image.crops || [];
@@ -984,6 +844,9 @@ function AddImage() {
                     <div className={`status-indicator ${image.status}`}>
                       {image.status === "valid" && <FiCheckCircle size={12} />}
                       {image.status === "invalid" && <FiX size={12} />}
+                      {image.status === "manually_included" && (
+                        <FiCheckCircle size={12} />
+                      )}
                       {image.status === "validating" && (
                         <FiLoader size={12} className="spinning" />
                       )}
@@ -992,7 +855,35 @@ function AddImage() {
                       )}
                     </div>
 
-                    {/* Enhanced Remove button with better styling */}
+                    {/* Manual Override Button for Invalid Images */}
+                    {image.status === "invalid" && (
+                      <button
+                        className="manual-include-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleManualInclude(originalIndex);
+                        }}
+                        title="Manually include this image in analysis"
+                      >
+                        <FiCheckCircle size={12} />
+                      </button>
+                    )}
+
+                    {/* Remove Manual Override Button */}
+                    {image.status === "manually_included" && (
+                      <button
+                        className="remove-manual-include-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveManualInclude(originalIndex);
+                        }}
+                        title="Remove manual inclusion"
+                      >
+                        <FiX size={12} />
+                      </button>
+                    )}
+
+                    {/* Enhanced Remove button */}
                     <button
                       className={`remove-btn ${image.status}`}
                       onClick={(e) => {
@@ -1001,7 +892,7 @@ function AddImage() {
                       }}
                       title={`Remove ${image.status} image`}
                     >
-                      <FiX size={14} />
+                      <FiTrash2 size={12} />
                     </button>
                   </div>
                 </div>
@@ -1018,12 +909,36 @@ function AddImage() {
                       </span>
                     )}
                     {image.status === "invalid" && (
-                      <span
-                        className="error-text"
-                        title={image.rejectionReason}
-                      >
-                        ✗ No quadrats detected
-                      </span>
+                      <div className="invalid-status">
+                        <span
+                          className="error-text"
+                          title={image.rejectionReason}
+                        >
+                          ✗ No quadrats detected
+                        </span>
+                        <button
+                          className="manual-include-text-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleManualInclude(originalIndex);
+                          }}
+                        >
+                          Click to include anyway
+                        </button>
+                      </div>
+                    )}
+                    {image.status === "manually_included" && (
+                      <div className="manually-included-status">
+                        <span className="manually-included-text">
+                          ✓ Manually included for analysis
+                        </span>
+                        <span
+                          className="original-reason"
+                          title={image.originalRejectionReason}
+                        >
+                          (Originally: No quadrats detected)
+                        </span>
+                      </div>
                     )}
                     {image.status === "processed" &&
                       image.crops?.length > 0 && (
@@ -1046,14 +961,20 @@ function AddImage() {
         </div>
 
         {/* Enhanced Analysis Readiness Indicator */}
-        {validImagesCount > 0 && (
+        {validImagesCount + manuallyIncludedCount > 0 && (
           <div className="analysis-readiness">
             <div className="readiness-content">
               <FiCheckCircle size={16} className="ready-icon" />
               <span className="ready-text">
-                {validImagesCount} image{validImagesCount > 1 ? "s" : ""} ready
+                {validImagesCount + manuallyIncludedCount} image
+                {validImagesCount + manuallyIncludedCount > 1 ? "s" : ""} ready
                 for batch analysis
               </span>
+              {manuallyIncludedCount > 0 && (
+                <span className="manual-text">
+                  ({manuallyIncludedCount} manually included)
+                </span>
+              )}
               {invalidImagesCount > 0 && (
                 <span className="skip-text">
                   ({invalidImagesCount} invalid image
@@ -1202,22 +1123,22 @@ function AddImage() {
     return (
       <div className="batch-analysis-results">
         <div className="batch-header">
-          <h3>Batch Analysis Results</h3>
-          <div className="batch-stats">
-            <div className="stat-card">
-              <span className="stat-number">
+          <h3 className="up-title">Batch Analysis Results</h3>
+          <div className="upload-batch-stats">
+            <div className="upload-stat-card">
+              <span className="upload-stat-number">
                 {batchResults.batch_statistics.total_crops}
               </span>
-              <span className="stat-label">Images Analyzed</span>
+              <span className="upload-stat-label">Images Analyzed</span>
             </div>
-            <div className="stat-card">
-              <span className="stat-number">
+            <div className="upload-stat-card">
+              <span className="upload-stat-number">
                 {batchResults.batch_statistics.total_crops}
               </span>
-              <span className="stat-label">Quadrats Detected</span>
+              <span className="upload-stat-label">Quadrats Detected</span>
             </div>
-            <div className="stat-card">
-              <span className="stat-number">
+            <div className="upload-stat-card">
+              <span className="upload-stat-number">
                 {Math.round(
                   batchResults.batch_statistics.coverage_summary.reduce(
                     (sum, coral) => sum + coral.coverage_percent,
@@ -1226,7 +1147,7 @@ function AddImage() {
                 )}
                 %
               </span>
-              <span className="stat-label">Total Coverage</span>
+              <span className="upload-stat-label">Total Coverage</span>
             </div>
           </div>
 
@@ -1321,11 +1242,13 @@ function AddImage() {
     const segmentationData = currentImage.segmentationData;
 
     return (
-      <div className="analysis-results">
+      <div className="upload-analysis-results">
         <div className="analysis-header">
-          <h3>Coral Analysis Results</h3>
+          <h3 className="up-title">Coral Analysis Results</h3>
           <div className="analysis-stats">
-            <span>{segmentationData.total_crops} quadrats analyzed</span>
+            <span className="uploaded-num">
+              {segmentationData.total_crops} quadrats analyzed
+            </span>
             <span className="method-tag">
               {cropIntensity.charAt(0).toUpperCase() + cropIntensity.slice(1)}
             </span>
@@ -1366,7 +1289,7 @@ function AddImage() {
                 <div className="quadrat-visuals">
                   <div className="visual-item">
                     <img
-                      src={`http://localhost:5000/${cropData.crop_url}`}
+                      src={`http://${process.env.REACT_APP_API_URL}/${cropData.crop_url}`}
                       alt={`Crop ${cropIndex + 1}`}
                       className="analysis-image"
                     />
@@ -1374,7 +1297,7 @@ function AddImage() {
                   </div>
                   <div className="visual-item">
                     <img
-                      src={`http://localhost:5000/${cropData.visualization_url}`}
+                      src={`http://${process.env.REACT_APP_API_URL}/${cropData.visualization_url}`}
                       alt={`Segmentation ${cropIndex + 1}`}
                       className="analysis-image"
                     />
@@ -1428,6 +1351,83 @@ function AddImage() {
               </div>
             </div>
           ))}
+        </div>
+      </div>
+    );
+  };
+
+  const renderManualOverrideModal = () => {
+    if (!showManualOverrideModal || !imageToOverride) return null;
+
+    return (
+      <div className="confirmation-overlay">
+        <div className="manual-override-modal">
+          <div className="upload-modal-header">
+            <h3>Manual Override Confirmation</h3>
+            <button
+              className="close-btn"
+              onClick={() => setShowManualOverrideModal(false)}
+            >
+              <FiX size={16} />
+            </button>
+          </div>
+
+          <div className="upload-modal-content">
+            <div className="override-image">
+              <img
+                src={imageToOverride.image.preview}
+                alt="Image to override"
+              />
+            </div>
+
+            <div className="override-details">
+              <p className="reason-text">
+                <strong>Reason:</strong> {imageToOverride.image.rejectionReason}
+              </p>
+
+              <div className="warning-box">
+                <FiAlertTriangle size={16} />
+                <div>
+                  <p>
+                    <strong>Manual Override Warning:</strong>
+                  </p>
+                  <p>
+                    The AI model did not detect any coral quadrats in this
+                    image. By manually including it, you're overriding the
+                    automated validation.
+                  </p>
+                  <p>
+                    <strong>This may result in:</strong>
+                  </p>
+                  <ul>
+                    <li>Analysis errors if no quadrats are actually present</li>
+                    <li>Inaccurate segmentation results</li>
+                    <li>Poor quality crops and data</li>
+                  </ul>
+                  <p>
+                    Only proceed if you're confident that coral quadrats exist
+                    in this image.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="modal-actions">
+            <button
+              className="btn-cancel"
+              onClick={() => setShowManualOverrideModal(false)}
+            >
+              Cancel
+            </button>
+            <button
+              className="btn-confirm override"
+              onClick={confirmManualInclude}
+            >
+              <FiCheckCircle size={16} />
+              Include Anyway
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -1644,7 +1644,7 @@ function AddImage() {
                           <div key={i} className="crop-card">
                             <div className="crop-image-container">
                               <img
-                                src={`http://localhost:5000/${crop}`}
+                                src={`http://${process.env.REACT_APP_API_URL}/${crop}`}
                                 alt={`Crop ${i + 1}`}
                                 className="crop-image"
                               />
@@ -1687,6 +1687,9 @@ function AddImage() {
           batchResults={batchResults}
         />
       )}
+
+      {renderConfirmationModal()}
+      {renderManualOverrideModal()}
 
       {/* Loading Overlay */}
       {(loading || batchLoading) && (

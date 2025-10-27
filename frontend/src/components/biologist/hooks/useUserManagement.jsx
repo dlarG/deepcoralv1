@@ -74,7 +74,7 @@ export default function useUserManagement() {
     const fetchUsers = async () => {
       try {
         const response = await axios.get(
-          "http://localhost:5000/biologist/users",
+          `http://${process.env.REACT_APP_API_URL}/biologist/users`,
           {
             withCredentials: true,
           }
@@ -198,7 +198,7 @@ export default function useUserManagement() {
 
       if (userModalMode === "create") {
         response = await axios.post(
-          "http://localhost:5000/biologist/users",
+          `http://${process.env.REACT_APP_API_URL}/biologist/users`,
           formData,
           {
             withCredentials: true,
@@ -220,7 +220,7 @@ export default function useUserManagement() {
         }
 
         response = await axios.put(
-          `http://localhost:5000/biologist/users/${selectedUser.id}`,
+          `http://${process.env.REACT_APP_API_URL}/biologist/users/${selectedUser.id}`,
           updateData,
           {
             withCredentials: true,
@@ -272,19 +272,22 @@ export default function useUserManagement() {
     ) {
       try {
         const csrfResponse = await axios.get(
-          "http://localhost:5000/csrf-token",
+          `http://${process.env.REACT_APP_API_URL}/csrf-token`,
           {
             withCredentials: true,
           }
         );
         const csrfToken = csrfResponse.data.csrf_token;
 
-        await axios.delete(`http://localhost:5000/biologist/users/${userId}`, {
-          withCredentials: true,
-          headers: {
-            "X-CSRF-Token": csrfToken,
-          },
-        });
+        await axios.delete(
+          `http://${process.env.REACT_APP_API_URL}/biologist/users/${userId}`,
+          {
+            withCredentials: true,
+            headers: {
+              "X-CSRF-Token": csrfToken,
+            },
+          }
+        );
 
         setUsers(users.filter((user) => user.id !== userId));
         showSuccessModal(
