@@ -23,7 +23,7 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [bubbles, setBubbles] = useState([]);
   const navigate = useNavigate();
-  const { login, csrfToken } = useAuth();
+  const { login, csrfToken, user } = useAuth();
 
   // Generate bubbles for animation
   useEffect(() => {
@@ -70,15 +70,30 @@ function Login() {
 
       if (result.success) {
         setMessage("Login successful");
-        navigate(
-          result.redirectTo ||
-            `/${result.user?.roletype?.toLowerCase()}-dashboard` ||
-            "/"
-        );
+        
+        // Wait a tick for context to update, then get user role
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Get user role from result or context (after login sets it)
+        const userRole = result.user?.roletype || user?.roletype;
+        
+        console.log('Login result:', result);
+        console.log('User role:', userRole);
+        console.log('Context user:', user);
+        
+        // Determine redirect path
+        let redirectPath = result.redirectTo;
+        if (!redirectPath && userRole) {
+          redirectPath = `/${userRole.toLowerCase()}-dashboard`;
+        }
+        
+        // Fallback to home if no role found
+        navigate(redirectPath || "/");
       } else {
         setMessage(result.error || "Login failed");
       }
     } catch (err) {
+      console.error('Login error:', err);
       setMessage("Login failed. Please try again.");
     } finally {
       setIsLoading(false);
