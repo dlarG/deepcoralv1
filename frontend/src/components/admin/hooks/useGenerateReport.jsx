@@ -2,6 +2,7 @@
 import { useState } from "react";
 import axios from "axios";
 import { useAuth } from "../../../context/AuthContext";
+import { API_BASE_URL } from "../../../config/api";
 
 export default function useGenerateReport() {
   const { fetchCsrfToken } = useAuth();

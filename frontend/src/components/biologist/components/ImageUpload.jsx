@@ -14,6 +14,7 @@ import {
   FiTrash2,
 } from "react-icons/fi";
 import "../styles/uploadImage.css";
+import { API_BASE_URL } from "../../../config/api";
 
 function UploadImage() {
   const [images, setImages] = useState([]);

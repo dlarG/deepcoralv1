@@ -17,6 +17,7 @@ import {
 } from "react-icons/fi";
 import { decryptId } from "../../../utils/encryption";
 import "../../admin/styles/profileStyles.css";
+import { API_BASE_URL } from "../../../config/api";
 
 function BiologistUserProfile() {
   const { userId: encodedUserId } = useParams();
