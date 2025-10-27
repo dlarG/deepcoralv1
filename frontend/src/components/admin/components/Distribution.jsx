@@ -158,7 +158,7 @@ function Distribution() {
 
       // FIXED: Use the correct distribution endpoint
       const response = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/distribution/images/${imageToDelete.id}`,
+        `${API_BASE_URL}/distribution/images/${imageToDelete.id}`,
         {
           method: "DELETE",
           credentials: "include",
@@ -235,7 +235,7 @@ function Distribution() {
 
       // Load  date range
       const dateRangeResponse = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/distribution/date-range`
+        `${API_BASE_URL}/distribution/date-range`
       );
       const dateRangeData = await dateRangeResponse.json();
 
@@ -278,8 +278,8 @@ function Distribution() {
       }
 
       const url = params.toString()
-        ? `http://${process.env.REACT_APP_API_URL}/distribution/locations?${params}`
-        : `http://${process.env.REACT_APP_API_URL}/distribution/locations`;
+        ? `${API_BASE_URL}/distribution/locations?${params}`
+        : `${API_BASE_URL}/distribution/locations`;
 
       console.log("Loading locations from:", url); // Debug log
 
@@ -318,8 +318,8 @@ function Distribution() {
 
       // Load images for this location
       const imagesUrl = paramString
-        ? `http://${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/images?${paramString}`
-        : `http://${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/images`;
+        ? `${API_BASE_URL}/distribution/location/${location.latitude}/${location.longitude}/images?${paramString}`
+        : `${API_BASE_URL}/distribution/location/${location.latitude}/${location.longitude}/images`;
 
       console.log("Loading images from:", imagesUrl); // Debug log
 
@@ -333,8 +333,8 @@ function Distribution() {
 
       // Load analytics for this location
       const analyticsUrl = paramString
-        ? `http://${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/analytics?${paramString}`
-        : `http://${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/analytics`;
+        ? `${API_BASE_URL}/distribution/location/${location.latitude}/${location.longitude}/analytics?${paramString}`
+        : `${API_BASE_URL}/distribution/location/${location.latitude}/${location.longitude}/analytics`;
 
       const analyticsResponse = await fetch(analyticsUrl);
       const analyticsData = await analyticsResponse.json();
@@ -855,7 +855,7 @@ function Distribution() {
                             >
                               <div className="image-thumbnail">
                                 <img
-                                  src={`http://${process.env.REACT_APP_API_URL}/crops/${image.filename}`}
+                                  src={`${API_BASE_URL}/crops/${image.filename}`}
                                   alt={image.filename}
                                   onError={(e) => {
                                     e.target.src =
@@ -1065,7 +1065,7 @@ function Distribution() {
                 <div className="image-display-container">
                   <div className="main-image-wrapper">
                     <img
-                      src={`http://${process.env.REACT_APP_API_URL}/crops/${locationImages[currentImageIndex].filename}`}
+                      src={`${API_BASE_URL}/crops/${locationImages[currentImageIndex].filename}`}
                       alt={locationImages[currentImageIndex].filename}
                       className="main-display-image"
                       onError={(e) => {

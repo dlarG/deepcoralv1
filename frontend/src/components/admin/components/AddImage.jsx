@@ -220,7 +220,7 @@ function AddImage() {
 
   const downloadSegmentationMask = (maskUrl, index) => {
     const link = document.createElement("a");
-    link.href = `http://${process.env.REACT_APP_API_URL}/${maskUrl}`;
+    link.href = `${API_BASE_URL}/${maskUrl}`;
     link.download = `segmentation_${index + 1}_${
       images[currentImageIndex].file.name
     }`;
@@ -326,7 +326,7 @@ function AddImage() {
 
   const downloadCrop = (cropUrl, index) => {
     const link = document.createElement("a");
-    link.href = `http://${process.env.REACT_APP_API_URL}/${cropUrl}`;
+    link.href = `${API_BASE_URL}/${cropUrl}`;
     link.download = `crop_${index + 1}_${images[currentImageIndex].file.name}`;
     document.body.appendChild(link);
     link.click();
@@ -340,7 +340,7 @@ function AddImage() {
       formData.append("intensity", "conservative");
 
       const csrfResponse = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/csrf-token`,
+        `${API_BASE_URL}/csrf-token`,
         {
           method: "GET",
           credentials: "include",
@@ -350,7 +350,7 @@ function AddImage() {
       formData.append("csrf_token", csrfData.csrf_token);
 
       const response = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/detect_custom`,
+        `${API_BASE_URL}/detect_custom`,
         {
           method: "POST",
           body: formData,
@@ -494,7 +494,7 @@ function AddImage() {
         image.crops.forEach((crop, cropIndex) => {
           setTimeout(() => {
             const link = document.createElement("a");
-            link.href = `http://${process.env.REACT_APP_API_URL}/${crop}`;
+            link.href = `${API_BASE_URL}/${crop}`;
             link.download = `img_${imgIndex + 1}_crop_${cropIndex + 1}_${
               image.file.name
             }`;
@@ -573,7 +573,7 @@ function AddImage() {
 
     try {
       const csrfResponse = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/csrf-token`,
+        `${API_BASE_URL}/csrf-token`,
         {
           method: "GET",
           credentials: "include",
@@ -593,7 +593,7 @@ function AddImage() {
       ); // Add this line
 
       const res = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/batch_analyze`,
+        `${API_BASE_URL}/batch_analyze`,
         {
           method: "POST",
           body: formData,
@@ -1289,7 +1289,7 @@ function AddImage() {
                 <div className="quadrat-visuals">
                   <div className="visual-item">
                     <img
-                      src={`http://${process.env.REACT_APP_API_URL}/${cropData.crop_url}`}
+                      src={`${API_BASE_URL}/${cropData.crop_url}`}
                       alt={`Crop ${cropIndex + 1}`}
                       className="analysis-image"
                     />
@@ -1297,7 +1297,7 @@ function AddImage() {
                   </div>
                   <div className="visual-item">
                     <img
-                      src={`http://${process.env.REACT_APP_API_URL}/${cropData.visualization_url}`}
+                      src={`${API_BASE_URL}/${cropData.visualization_url}`}
                       alt={`Segmentation ${cropIndex + 1}`}
                       className="analysis-image"
                     />
@@ -1644,7 +1644,7 @@ function AddImage() {
                           <div key={i} className="crop-card">
                             <div className="crop-image-container">
                               <img
-                                src={`http://${process.env.REACT_APP_API_URL}/${crop}`}
+                                src={`${API_BASE_URL}/${crop}`}
                                 alt={`Crop ${i + 1}`}
                                 className="crop-image"
                               />

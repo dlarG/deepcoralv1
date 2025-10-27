@@ -43,7 +43,7 @@ function UserProfile({ darkMode }) {
         }
 
         const response = await axios.get(
-          `http://${process.env.REACT_APP_API_URL}/admin/users/${decryptedId}`,
+          `${API_BASE_URL}/admin/users/${decryptedId}`,
           { withCredentials: true }
         );
         setUser(response.data.user);
@@ -97,7 +97,7 @@ function UserProfile({ darkMode }) {
         }
 
         const csrfResponse = await axios.get(
-          `http://${process.env.REACT_APP_API_URL}/csrf-token`,
+          `${API_BASE_URL}/csrf-token`,
           {
             withCredentials: true,
           }
@@ -105,7 +105,7 @@ function UserProfile({ darkMode }) {
         const csrfToken = csrfResponse.data.csrf_token;
 
         await axios.delete(
-          `http://${process.env.REACT_APP_API_URL}/admin/users/${decryptedId}`,
+          `${API_BASE_URL}/admin/users/${decryptedId}`,
           {
             withCredentials: true,
             headers: {

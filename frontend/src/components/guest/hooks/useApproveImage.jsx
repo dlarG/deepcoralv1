@@ -82,7 +82,7 @@ const useApprovedImage = () => {
     try {
       // Get CSRF token first
       const csrfResponse = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/csrf-token`,
+        `${API_BASE_URL}/csrf-token`,
         {
           method: "GET",
           credentials: "include",
@@ -96,7 +96,7 @@ const useApprovedImage = () => {
       const csrfData = await csrfResponse.json();
 
       const response = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/approved/guest/batch-analyze-approved`,
+        `${API_BASE_URL}/approved/guest/batch-analyze-approved`,
         {
           method: "POST",
           headers: {
@@ -129,7 +129,7 @@ const useApprovedImage = () => {
     try {
       // Get CSRF token first
       const csrfResponse = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/csrf-token`,
+        `${API_BASE_URL}/csrf-token`,
         {
           method: "GET",
           credentials: "include",
@@ -143,7 +143,7 @@ const useApprovedImage = () => {
       const csrfData = await csrfResponse.json();
 
       const response = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/approved/guest/analyze-approved-image/${imageId}`,
+        `${API_BASE_URL}/approved/guest/analyze-approved-image/${imageId}`,
         {
           method: "POST",
           headers: {

@@ -102,7 +102,7 @@ const LocationSelector = ({
     try {
       setLoading(true);
       const response = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/gis/locations`
+        `${API_BASE_URL}/gis/locations`
       );
       const data = await response.json();
 
@@ -362,7 +362,7 @@ const LocationSelector = ({
       console.log(`✅ Proceeding with ${imageIds.length} image IDs:`, imageIds);
 
       const response = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/gis/save_with_location`,
+        `${API_BASE_URL}/gis/save_with_location`,
         {
           method: "POST",
           headers: {

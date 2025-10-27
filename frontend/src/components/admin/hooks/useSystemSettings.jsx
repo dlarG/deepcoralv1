@@ -24,7 +24,7 @@ export default function useSystemSettings() {
   });
 
   // API base URL
-  const API_BASE_URL = `http://${process.env.REACT_APP_API_URL}`;
+  const API_BASE_URL = `${API_BASE_URL}`;
 
   // Clear message after 5 seconds
   useEffect(() => {
