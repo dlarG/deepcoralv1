@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
 import { validateUserForm } from "../utils/validationUtils";
 import { encryptId } from "../../../utils/encryption";
+import { API_BASE_URL } from "../../../config/api";
 
 export default function useUserManagement() {
   const navigate = useNavigate();

@@ -4,7 +4,6 @@ import { API_BASE_URL } from "../config/api";
 
 const AuthContext = createContext();
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE || "http://localhost:5000";
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
