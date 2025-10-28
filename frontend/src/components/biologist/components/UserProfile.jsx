@@ -220,7 +220,7 @@ function BiologistUserProfile() {
             <div className="avatar-container-modern">
               {user.profile_image ? (
                 <img
-                  src={`/profile_uploads/${user.profile_image}`}
+                  src={`${API_BASE_URL}/profile_uploads/${user.profile_image}`}
                   alt={`${user.firstname} ${user.lastname}`}
                   onError={(e) => {
                     e.target.style.display = "none";

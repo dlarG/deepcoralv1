@@ -729,7 +729,7 @@ def reject_user(user_id):
             if user[2]:
                 profile_image_path = os.path.join(
                     current_app.root_path, 
-                    '..', 'frontend', 'public', 'profile_uploads',
+                    'profile_uploads',
                     user[2]
                 )
                 if os.path.exists(profile_image_path):

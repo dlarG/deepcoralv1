@@ -11,6 +11,7 @@ import {
 } from "react-icons/fi";
 import useDashboardData from "../hooks/useDashboard";
 import "../styles/adminDashboardStyle.css";
+import { API_BASE_URL } from "../../../config/api";
 
 const Dashboard = ({ user, setActiveTab }) => {
   // Add setActiveTab prop
@@ -183,9 +184,9 @@ const Dashboard = ({ user, setActiveTab }) => {
                 {recentUsers.map((user) => (
                   <div key={user.id} className="user-item">
                     <div className="user-avatar">
-                      {user.profile_picture ? (
+                      {user.profile_image ? (
                         <img
-                          src={`/profile_uploads/${user.profile_picture}`}
+                          src={`${API_BASE_URL}/profile_uploads/${user.profile_image}`}
                           alt={`${user.firstname} ${user.lastname}`}
                         />
                       ) : (

@@ -38,7 +38,7 @@ export default function useProfileManagement(user) {
       }));
 
       if (user.profile_image) {
-        setProfileImagePreview(`/profile_uploads/${user.profile_image}`);
+        setProfileImagePreview(`${API_BASE_URL}/profile_uploads/${user.profile_image}`);
       }
     }
   }, [user]);
@@ -167,7 +167,7 @@ export default function useProfileManagement(user) {
 
     // Reset image preview to current user image
     if (user?.profile_image) {
-      setProfileImagePreview(`/profile_uploads/${user.profile_image}`);
+      setProfileImagePreview(`${API_BASE_URL}/profile_uploads/${user.profile_image}`);
     } else {
       setProfileImagePreview(null);
     }

@@ -18,6 +18,7 @@ import {
 import useProfileManagement from "../hooks/useProfileManagement";
 import dayjs from "dayjs";
 import SuccessModal from "../../SuccessMessage";
+import { getProfileImageUrl } from "../../../utils/imageUtils";
 import "../styles/profileStyles.css";
 
 function ProfileManagement({ user }) {
@@ -73,7 +74,7 @@ function ProfileManagement({ user }) {
                 <div className="profile-avatar-modern">
                   {user.profile_image ? (
                     <img
-                      src={`/profile_uploads/${user.profile_image}`}
+                      src={getProfileImageUrl(user.profile_image)}
                       alt={`${user.firstname} ${user.lastname}`}
                       onError={(e) => {
                         e.target.style.display = "none";
