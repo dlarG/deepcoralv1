@@ -300,10 +300,10 @@ def cleanup_user_files(user_images, mask_paths, profile_image):
         for image_data in user_images:
             filename, crop_path, original_path = image_data
             
-            # Delete crop file
+            # Delete crop file from backend/coral_uploads
             if filename:
                 crop_file_path = os.path.join(
-                    current_app.root_path, '..', 'frontend', 'public', 'crops', filename
+                    current_app.root_path, 'coral_uploads', filename
                 )
                 if os.path.exists(crop_file_path):
                     os.remove(crop_file_path)
@@ -313,7 +313,7 @@ def cleanup_user_files(user_images, mask_paths, profile_image):
             # Delete quadrat crop file if different
             if crop_path and crop_path != filename:
                 quadrat_file_path = os.path.join(
-                    current_app.root_path, '..', 'frontend', 'public', crop_path
+                    current_app.root_path, 'coral_uploads', crop_path
                 )
                 if os.path.exists(quadrat_file_path):
                     os.remove(quadrat_file_path)
@@ -323,7 +323,7 @@ def cleanup_user_files(user_images, mask_paths, profile_image):
             # Delete original image file
             if original_path:
                 original_file_path = os.path.join(
-                    current_app.root_path, '..', 'frontend', 'public', original_path
+                    current_app.root_path, 'coral_uploads', original_path
                 )
                 if os.path.exists(original_file_path):
                     os.remove(original_file_path)
@@ -335,7 +335,7 @@ def cleanup_user_files(user_images, mask_paths, profile_image):
             mask_path = mask_data[0]
             if mask_path:
                 mask_file_path = os.path.join(
-                    current_app.root_path, '..', 'frontend', 'public', mask_path
+                    current_app.root_path, 'coral_uploads', 'masks', mask_path
                 )
                 if os.path.exists(mask_file_path):
                     os.remove(mask_file_path)
