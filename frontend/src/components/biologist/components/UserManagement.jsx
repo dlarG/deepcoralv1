@@ -14,6 +14,7 @@ import dayjs from "dayjs";
 // import { encryptedId } from "../../../utils/encryption";
 import React from "react";
 import SuccessModal from "../../SuccessMessage";
+import { API_BASE_URL } from "../../../config/api";
 
 function UserManagement() {
   const {
@@ -191,11 +192,11 @@ function UserManagement() {
                       <div className="user-avatar-small">
                         {tableUser.profile_image ? (
                           <img
-                            src={`/profile_uploads/${tableUser.profile_image}`}
+                            src={`${API_BASE_URL}/profile_uploads/${tableUser.profile_image}`}
                             alt={`${tableUser.firstname} ${tableUser.lastname}`}
                             onError={(e) => {
                               console.log(
-                                `Failed to load image: /profile_uploads/${tableUser.profile_image}`
+                                `Failed to load image: ${API_BASE_URL}/profile_uploads/${tableUser.profile_image}`
                               );
                               e.target.style.display = "none";
                               e.target.nextSibling.style.display = "flex";

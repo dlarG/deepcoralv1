@@ -15,6 +15,7 @@ import {
 } from "react-icons/fi";
 import SystemSettingsModal from "./SystemSettingsModal"; // Add this import
 import "../styles/topnav.css";
+import { API_BASE_URL } from "../../../config/api";
 
 function TopNavigation({
   user,
@@ -274,7 +275,7 @@ function TopNavigation({
               <div className="profile-avatar">
                 {user?.profile_image ? (
                   <img
-                    src={`/profile_uploads/${user.profile_image}`}
+                    src={`${API_BASE_URL}/profile_uploads/${user.profile_image}`}
                     alt={`${user.firstname} ${user.lastname}`}
                   />
                 ) : (
@@ -301,7 +302,7 @@ function TopNavigation({
                     <div className="profile-avatar-larges">
                       {user?.profile_image ? (
                         <img
-                          src={`/profile_uploads/${user.profile_image}`}
+                          src={`${API_BASE_URL}/profile_uploads/${user.profile_image}`}
                           alt={`${user.firstname} ${user.lastname}`}
                         />
                       ) : (

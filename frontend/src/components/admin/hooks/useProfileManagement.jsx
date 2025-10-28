@@ -114,7 +114,7 @@ export default function useProfileManagement(user) {
       confirm_password: "",
     });
     setProfileImagePreview(
-      user.profile_image ? `/profile_uploads/${user.profile_image}` : null
+      user.profile_image ? `${API_BASE_URL}/profile_uploads/${user.profile_image}` : null
     );
     setShowProfileModal(true);
     setProfileTab("info");

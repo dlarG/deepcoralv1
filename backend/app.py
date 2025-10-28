@@ -1,8 +1,9 @@
-from flask import Flask, request, session, jsonify
+from flask import Flask, request, session, jsonify, send_from_directory
 from flask_cors import CORS
 from config import Config
 from routes import init_routes
 import secrets
+import os
 
 def create_app():
     app = Flask(__name__)
@@ -19,6 +20,13 @@ def create_app():
          methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
     
     # REMOVE the after_request function - it's causing duplicates
+    
+    # Serve static profile images
+    @app.route('/profile_uploads/<path:filename>')
+    def serve_profile_image(filename):
+        """Serve profile images from backend/profile_uploads directory"""
+        profile_uploads_dir = os.path.join(app.root_path, 'profile_uploads')
+        return send_from_directory(profile_uploads_dir, filename)
     
     # Initialize routes
     init_routes(app)

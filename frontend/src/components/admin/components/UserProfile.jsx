@@ -771,7 +771,7 @@ function UserProfile({ darkMode }) {
               <div className="avatar-container">
                 {user.profile_image ? (
                   <img
-                    src={`/profile_uploads/${user.profile_image}`}
+                    src={`${API_BASE_URL}/profile_uploads/${user.profile_image}`}
                     alt={`${user.firstname} ${user.lastname}`}
                     onLoad={() => setImageLoaded(true)}
                     onError={(e) => {

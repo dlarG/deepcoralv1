@@ -13,6 +13,7 @@ import {
   FiTrendingUp,
   FiFileText,
 } from "react-icons/fi";
+import { API_BASE_URL } from "../../../config/api";
 
 function TopNavigation({
   user,
@@ -265,7 +266,7 @@ function TopNavigation({
             <div className="profile-avatar">
               {user?.profile_image ? (
                 <img
-                  src={`/profile_uploads/${user.profile_image}`}
+                  src={`${API_BASE_URL}/profile_uploads/${user.profile_image}`}
                   alt={`${user.firstname} ${user.lastname}`}
                 />
               ) : (
@@ -295,7 +296,7 @@ function TopNavigation({
                   <div className="profile-avatar-large">
                     {user?.profile_image ? (
                       <img
-                        src={`/profile_uploads/${user.profile_image}`}
+                        src={`${API_BASE_URL}/profile_uploads/${user.profile_image}`}
                         alt={`${user.firstname} ${user.lastname}`}
                       />
                     ) : (
