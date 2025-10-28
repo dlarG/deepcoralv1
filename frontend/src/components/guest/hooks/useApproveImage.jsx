@@ -14,7 +14,7 @@ const useApprovedImage = () => {
     setLoading(true);
     try {
       const response = await fetch(
-        '${API_BASE_URL}/approved/guest/approved-images',
+        `${API_BASE_URL}/approved/guest/approved-images`,
         {
           method: "GET",
           credentials: "include",
@@ -56,7 +56,7 @@ const useApprovedImage = () => {
     setLoading(true);
     try {
       const response = await fetch(
-        '${API_BASE_URL}/approved/guest/analyzed-images',
+        `${API_BASE_URL}/approved/guest/analyzed-images`,
         {
           method: "GET",
           credentials: "include",

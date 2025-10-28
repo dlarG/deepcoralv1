@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 // import { useAuth } from "../../../context/AuthContext";
+import { API_BASE_URL } from "../../../config/api";
 
 export default function useDashboardData() {
   // const { logout } = useAuth();
@@ -20,12 +21,14 @@ export default function useDashboardData() {
   const [error, setError] = useState(null);
 
   // API base URL
-  const API_BASE_URL = "http://localhost:5000";
+  //const API_BASE_URL = "http://localhost:5000";
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
       setError(null);
+
+      console.log('Fetching dashboard data from:', API_BASE_URL);
 
       // Fetch all data in parallel
       const promises = [
@@ -38,23 +41,42 @@ export default function useDashboardData() {
       const [statsData, usersData, activitiesData, chartDataResult] =
         await Promise.allSettled(promises);
 
+      console.log('Dashboard results:', {
+        stats: statsData,
+        users: usersData,
+        activities: activitiesData,
+        chart: chartDataResult
+      });
+
       // Process results
       if (statsData.status === "fulfilled") {
+        console.log('Stats data:', statsData.value);
         setStats(statsData.value);
+      } else {
+        console.error('Stats fetch failed:', statsData.reason);
       }
 
       if (usersData.status === "fulfilled") {
+        console.log('Recent users:', usersData.value);
         setRecentUsers(usersData.value);
+      } else {
+        console.error('Users fetch failed:', usersData.reason);
       }
 
       if (activitiesData.status === "fulfilled") {
+        console.log('Recent activities:', activitiesData.value);
         setRecentActivities(activitiesData.value);
+      } else {
+        console.error('Activities fetch failed:', activitiesData.reason);
       }
 
       if (chartDataResult.status === "fulfilled") {
         setChartData(chartDataResult.value);
+      } else {
+        console.error('Chart data fetch failed:', chartDataResult.reason);
       }
     } catch (error) {
+      console.error('Dashboard fetch error:', error);
       setError("Failed to load dashboard data");
     } finally {
       setLoading(false);
