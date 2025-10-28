@@ -5,8 +5,10 @@ import secrets
 # Determine environment and load appropriate .env file
 env = os.getenv('FLASK_ENV', 'development')
 if env == 'production':
-    load_dotenv('.env.production')
+    # In production, use environment variables only (no .env file)
+    pass
 else:
+    # In development, try to load .env.development
     load_dotenv('.env.development')
 
 class Config:
