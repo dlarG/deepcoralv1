@@ -12,12 +12,23 @@ def create_app():
     # Set debug mode from config
     app.debug = Config.DEBUG
     
-    # Initialize CORS - ONLY ONE CONFIGURATION
-    CORS(app, 
-         supports_credentials=True, 
-         origins=Config.CORS_ORIGINS,
-         allow_headers=['Content-Type', 'X-CSRF-Token', 'Authorization'],
-         methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
+    # Debug: Print CORS configuration
+    print(f"CORS_ORIGINS configured: {Config.CORS_ORIGINS}")
+    print(f"FLASK_ENV: {os.getenv('FLASK_ENV', 'not set')}")
+    
+    # Initialize CORS - try multiple approaches
+    try:
+        # Method 1: Using CORS constructor
+        cors = CORS(app, 
+                   resources={r"/*": {
+                       "origins": Config.CORS_ORIGINS,
+                       "supports_credentials": True,
+                       "allow_headers": ['Content-Type', 'X-CSRF-Token', 'Authorization'],
+                       "methods": ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+                   }})
+        print(f"CORS initialized successfully: {cors}")
+    except Exception as e:
+        print(f"CORS initialization error: {e}")
     
     # REMOVE the after_request function - it's causing duplicates
     
