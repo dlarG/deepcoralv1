@@ -8,5 +8,4 @@ backend/coral_uploads
 backend/coral_uploads/*
 PROTECTED/
 backend/sample_activities.sql
-backend/schema.sql
 export-db.ps1
