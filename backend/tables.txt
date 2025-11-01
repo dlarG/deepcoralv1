@@ -1,0 +1,247 @@
+#First is to create the enum for role_type
+
+CREATE TYPE user_role AS ENUM ('admin', 'guest', 'biologist'); 
+
+
+# Then next is the users table creation
+
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    firstname VARCHAR(100) NOT NULL,
+    middlename VARCHAR(100),
+    lastname VARCHAR(100) NOT NULL,
+    profile_picture TEXT,
+    roletype user_role NOT NULL DEFAULT 'guest',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP,
+	deleted_at TIMESTAMP,
+    bio TEXT,
+    status(ENUM, pending, approved, rejected) DEFAULT pending,
+    last_login TIMESTAMP,
+    phone VARCHAR(20),
+    institution VARCHAR(255)
+);
+
+
+CREATE TABLE IF NOT EXIST coral_information(
+    id Serial PRIMARY KEY,
+    coral_type VARCHAR(200),
+    coral_Subtype,
+    classifcation,
+    scientific_name, 
+    common_name,
+    identification,
+    created_at,
+    updated_at,
+    image
+)
+
+
+
+
+
+CREATE TABLE activities (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    activity_type VARCHAR(50) NOT NULL,
+    activity_description TEXT NOT NULL,
+    metadata JSONB,
+    ip_address INET,
+    user_agent TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for better performance
+CREATE INDEX idx_activities_user_id ON activities(user_id);
+CREATE INDEX idx_activities_type ON activities(activity_type);
+CREATE INDEX idx_activities_created_at ON activities(created_at);
+CREATE INDEX idx_activities_user_type ON activities(user_id, activity_type);
+
+
+
+
+-- Run this once in your database to enable PostGIS
+CREATE EXTENSION IF NOT EXISTS postgis;
+
+
+-- Images table with PostGIS geometry
+CREATE TABLE images (
+    id SERIAL PRIMARY KEY,
+    filename VARCHAR(255) NOT NULL,
+    uploader_id INTEGER REFERENCES users(id),
+    uploaded_at TIMESTAMP DEFAULT NOW(),
+    -- PostGIS geometry instead of separate lat/lng
+    location GEOMETRY(Point, 4326),  -- SRID 4326 = WGS84 (standard lat/lng)
+    -- Administrative location information
+    region VARCHAR(100),           -- Region (e.g., "Region IV-A (CALABARZON)")
+    province VARCHAR(100),         -- Province (e.g., "Batangas")
+    municipality VARCHAR(100),     -- Municipality/City (e.g., "Batangas City")
+    barangay VARCHAR(100),         -- Barangay (e.g., "Poblacion")
+    transect VARCHAR(50),          -- Transect identifier for research purposes
+    site_name VARCHAR(255),        -- Optional site name for better identification
+    quadrat_crop_path TEXT,
+    original_image_path TEXT,
+    -- Critical additions:
+    total_pixels INTEGER,          -- Total pixels in analyzed area
+    analyzed_area_px INTEGER,      -- Pixels actually analyzed (after masking invalid areas)
+    analysis_confidence NUMERIC(3,2), -- How confident the ML model was
+    updated_at TIMESTAMP,
+    processing_status VARCHAR(20) DEFAULT 'pending', -- pending, processing, completed, failed
+    -- Spatial index for performance
+    CONSTRAINT enforce_srid_location CHECK (ST_SRID(location) = 4326)
+);
+
+-- Coral lifeforms reference table (unchanged, but good as is)
+CREATE TABLE coral_lifeforms (
+    id SERIAL PRIMARY KEY,
+    class_name VARCHAR(100) NOT NULL UNIQUE,
+    scientific_name VARCHAR(255),
+    category VARCHAR(50), -- hard_coral, soft_coral, algae, etc.
+    color_hex VARCHAR(7), -- For consistent visualization
+    description TEXT
+);
+
+-- Enhanced segmentation results
+CREATE TABLE segmentation_results (
+    id SERIAL PRIMARY KEY,
+    image_id INTEGER REFERENCES images(id) ON DELETE CASCADE,
+    class_id INTEGER REFERENCES coral_lifeforms(id),
+    instance_count INTEGER DEFAULT 0,
+    area_px INTEGER NOT NULL,           -- Raw pixel count for this class
+    coverage_percent NUMERIC(5,2),      -- (area_px / total_analyzed_area) * 100
+    avg_confidence NUMERIC(3,2),        -- Average confidence for detections
+    mask_path TEXT,                     -- Path to mask file
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Individual coral instance data
+CREATE TABLE coral_instances (
+    id SERIAL PRIMARY KEY,
+    segmentation_id INTEGER REFERENCES segmentation_results(id),
+    instance_number INTEGER,           -- Instance 1, 2, 3... within same class
+    area_px INTEGER,                   -- Pixel area of this specific instance
+    confidence NUMERIC(3,2),           -- Detection confidence
+    bbox_coordinates JSONB             -- Bounding box coordinates if needed
+);
+
+
+
+-- Critical for performance with geographic queries
+CREATE INDEX idx_images_location ON images USING GIST (location);
+CREATE INDEX idx_images_uploaded_at ON images (uploaded_at);
+-- Indexes for new location columns
+CREATE INDEX idx_images_region ON images (region);
+CREATE INDEX idx_images_province ON images (province);
+CREATE INDEX idx_images_municipality ON images (municipality);
+CREATE INDEX idx_images_barangay ON images (barangay);
+CREATE INDEX idx_images_transect ON images (transect);
+-- Composite indexes for location queries
+CREATE INDEX idx_images_full_location ON images (region, province, municipality, barangay);
+CREATE INDEX idx_segmentation_results_image_id ON segmentation_results (image_id);
+CREATE INDEX idx_segmentation_results_class_id ON segmentation_results (class_id);
+
+
+
+CREATE INDEX idx_users_status ON users(status);
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS institution VARCHAR(255);
+
+
+
+-- Add more specific activity types for better categorization
+-- You can add these as you implement different features
+CREATE TYPE activity_category AS ENUM (
+    'authentication',    -- login, logout, registration
+    'user_management',   -- user creation, updates, approvals
+    'coral_data',       -- coral info CRUD operations
+    'image_analysis',   -- image uploads, analysis
+    'system_admin',     -- system configuration changes
+    'reports'           -- report generation and exports
+);
+
+-- Add category to activities table
+ALTER TABLE activities ADD COLUMN IF NOT EXISTS category activity_category;
+
+-- Add indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_activities_category ON activities(category);
+CREATE INDEX IF NOT EXISTS idx_activities_user_created ON activities(user_id, created_at);
+
+-- Add the missing columns to your activities table
+ALTER TABLE activities ADD COLUMN IF NOT EXISTS category VARCHAR(50);
+
+-- Create the enum for better categorization
+CREATE TYPE activity_category AS ENUM (
+    'authentication',    -- login, logout, registration
+    'user_management',   -- user creation, updates, approvals
+    'coral_data',       -- coral info CRUD operations
+    'image_analysis',   -- image uploads, analysis
+    'system_admin',     -- system configuration changes
+    'reports'           -- report generation and exports
+);
+
+-- Update the category column to use the enum
+ALTER TABLE activities ALTER COLUMN category TYPE activity_category USING category::activity_category;
+
+-- Add indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_activities_category ON activities(category);
+CREATE INDEX IF NOT EXISTS idx_activities_user_created ON activities(user_id, created_at);
+
+-- Add upload_status column if it doesn't exist
+ALTER TABLE images ADD COLUMN IF NOT EXISTS upload_status VARCHAR(20) DEFAULT 'pending' 
+CHECK (upload_status IN ('pending', 'approved', 'rejected'));
+
+-- Add index for better performance
+CREATE INDEX IF NOT EXISTS idx_images_upload_status ON images(upload_status);
+CREATE INDEX IF NOT EXISTS idx_images_uploader_status ON images(uploader_id, upload_status);
+
+-- Add manual_override column to images table if it doesn't exist
+ALTER TABLE images ADD COLUMN IF NOT EXISTS manual_override BOOLEAN DEFAULT FALSE;
+
+-- Add index for better performance
+CREATE INDEX IF NOT EXISTS idx_images_manual_override ON images(manual_override);
+CREATE INDEX IF NOT EXISTS idx_images_processing_status ON images(processing_status);
+
+-- Philippine Administrative Divisions reference table
+-- This will store the hierarchical data for Philippines regions, provinces, municipalities, and barangays
+CREATE TABLE philippine_locations (
+    id SERIAL PRIMARY KEY,
+    region_code VARCHAR(20),
+    region_name VARCHAR(100) NOT NULL,
+    province_code VARCHAR(20),
+    province_name VARCHAR(100),
+    municipality_code VARCHAR(20),
+    municipality_name VARCHAR(100),
+    barangay_code VARCHAR(20),
+    barangay_name VARCHAR(100),
+    location_type VARCHAR(20) NOT NULL, -- 'region', 'province', 'municipality', 'barangay'
+    created_at TIMESTAMP DEFAULT NOW(),
+    -- Ensure proper hierarchy
+    CONSTRAINT chk_location_type CHECK (location_type IN ('region', 'province', 'municipality', 'barangay'))
+);
+
+-- Indexes for efficient cascading queries
+CREATE INDEX idx_phil_locations_type ON philippine_locations (location_type);
+CREATE INDEX idx_phil_locations_region ON philippine_locations (region_code, region_name);
+CREATE INDEX idx_phil_locations_province ON philippine_locations (region_code, province_code, province_name);
+CREATE INDEX idx_phil_locations_municipality ON philippine_locations (province_code, municipality_code, municipality_name);
+CREATE INDEX idx_phil_locations_barangay ON philippine_locations (municipality_code, barangay_code, barangay_name);
+
+-- Critical for performance with geographic queries
+
+
+CREATE INDEX IF NOT EXISTS idx_images_municipality ON images (municipality);
+CREATE INDEX IF NOT EXISTS idx_images_barangay ON images (barangay);
+CREATE INDEX IF NOT EXISTS idx_images_municipality_barangay ON images (municipality, barangay);
+
+
+ALTER TABLE IF EXISTS public.images
+    ADD COLUMN transect integer;
+
+ALTER TABLE segmentation_results ADD COLUMN IF NOT EXISTS overlay_path TEXT;
+
+-- Update the mask_path to be the same as overlay_path for existing records
+UPDATE segmentation_results SET overlay_path = mask_path WHERE overlay_path IS NULL;

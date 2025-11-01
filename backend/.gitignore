@@ -1,0 +1,6 @@
+.env
+__pycache__/
+*.pyc
+backend/models/segmentation/version2/coral_unet_best.pth
+backend/models/classification/version1/resnet50_best.pth
+models/segmentation/version2/coral_unet_best.pth
