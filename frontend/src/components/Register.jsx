@@ -11,6 +11,7 @@ import {
   FiEyeOff,
   FiCheck,
   FiX,
+  FiMail,
 } from "react-icons/fi";
 import ReCAPTCHA from "react-google-recaptcha";
 import Logo from "./Logo";
@@ -26,6 +27,7 @@ function Register() {
     confirmPassword: "",
     firstname: "",
     lastname: "",
+    email: "",
   });
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -173,6 +175,12 @@ function Register() {
       return;
     }
 
+    if (!form.email) {
+      setMessage("Email is required");
+      setIsLoading(false);
+      return;
+    }
+
     try {
       axios.post(
         "http://localhost:5000/register",
@@ -181,6 +189,7 @@ function Register() {
           password: form.password,
           firstname: form.firstname,
           lastname: form.lastname,
+          email: form.email,
           captcha: captchaValue,
         },
         {
@@ -198,6 +207,7 @@ function Register() {
         confirmPassword: "",
         firstname: "",
         lastname: "",
+        email: "",
       });
 
       setTimeout(() => navigate("/login"), 2000);
@@ -345,6 +355,20 @@ function Register() {
                 name="username"
                 placeholder="Choose a username"
                 value={form.username}
+                onChange={handleChange}
+                required
+              />
+            </div>
+
+            <div className="input-group">
+              <div className="input-icon">
+                <FiMail />
+              </div>
+              <input
+                type="email"
+                name="email"
+                placeholder="Enter your email address"
+                value={form.email}
                 onChange={handleChange}
                 required
               />

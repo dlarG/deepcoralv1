@@ -37,9 +37,8 @@ def get_all_users():
     
     try:
         with conn.cursor() as cur:
-            # Add profile_image to the SELECT query
             cur.execute("""
-                SELECT id, username, firstname, lastname, roletype, profile_image, created_at, status 
+                SELECT id, username, firstname, lastname, roletype, profile_image, created_at, status, last_login 
                 FROM users 
                 WHERE users.id != %s AND status = 'approved' 
                 ORDER BY created_at DESC
@@ -54,9 +53,9 @@ def get_all_users():
                     'firstname': user[2],
                     'lastname': user[3],
                     'roletype': user[4],
-                    'profile_image': user[5],  # Add this field
-                    'created_at': user[6],      # Add this field for sorting
-                    'status': user[7]           # Add status field
+                    'profile_image': user[5],  
+                    'created_at': user[6],     
+                    'status': user[7]          
                 })
             
             return jsonify({"users": users_list}), 200
@@ -620,7 +619,7 @@ def get_user_profile(user_id):
         with conn.cursor() as cur:
             cur.execute("""
                 SELECT id, username, firstname, lastname, roletype, 
-                       bio, profile_image, created_at, updated_at 
+                       bio, profile_image, created_at, updated_at, last_login 
                 FROM users WHERE id = %s
             """, (user_id,))
             user = cur.fetchone()
@@ -638,7 +637,8 @@ def get_user_profile(user_id):
                     'bio': user[5],
                     'profile_image': user[6],
                     'created_at': user[7],
-                    'updated_at': user[8]
+                    'updated_at': user[8],
+                    'last_login': user[9]
                 }
             }), 200
     except Exception as e:
@@ -845,6 +845,116 @@ def get_users_report():
             }), 200
             
     except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+@admin_bp.route('/admin/users/<int:user_id>/activities', methods=['GET'])
+@admin_required
+@login_required
+def get_user_activities(user_id):
+    """Get activities for a specific user"""
+    page = int(request.args.get('page', 1))
+    per_page = int(request.args.get('per_page', 20))
+    activity_type = request.args.get('activity_type')
+    category = request.args.get('category')
+    
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({"error": "Database connection failed"}), 500
+    
+    try:
+        with conn.cursor() as cur:
+            # Check if user exists
+            cur.execute("SELECT id, username, firstname, lastname FROM users WHERE id = %s", (user_id,))
+            user = cur.fetchone()
+            
+            if not user:
+                return jsonify({"error": "User not found"}), 404
+            
+            # Build dynamic query
+            base_query = """
+                FROM activities a
+                WHERE a.user_id = %s
+            """
+            params = [user_id]
+            
+            if activity_type and activity_type != 'all':
+                base_query += " AND a.activity_type = %s"
+                params.append(activity_type)
+                
+            if category and category != 'all':
+                base_query += " AND a.category = %s"
+                params.append(category)
+            
+            # Get total count
+            count_query = "SELECT COUNT(*) " + base_query
+            cur.execute(count_query, params)
+            total_count = cur.fetchone()[0]
+            
+            # Get paginated data
+            data_query = """
+                SELECT a.id, a.activity_type, a.activity_description, a.created_at,
+                       a.category, a.ip_address, a.metadata
+                """ + base_query + """
+                ORDER BY a.created_at DESC 
+                LIMIT %s OFFSET %s
+            """
+            
+            offset = (page - 1) * per_page
+            cur.execute(data_query, params + [per_page, offset])
+            activities = cur.fetchall()
+            
+            # Get activity summary for this user
+            summary_query = """
+                SELECT 
+                    COUNT(*) as total_activities,
+                    COUNT(DISTINCT a.activity_type) as unique_activity_types,
+                    COUNT(DISTINCT a.category) as unique_categories,
+                    MAX(a.created_at) as last_activity
+                FROM activities a
+                WHERE a.user_id = %s
+            """
+            
+            cur.execute(summary_query, [user_id])
+            stats = cur.fetchone()
+            
+            activities_data = []
+            for activity in activities:
+                activities_data.append({
+                    'id': activity[0],
+                    'activity_type': activity[1],
+                    'activity_description': activity[2],
+                    'created_at': activity[3].isoformat() if activity[3] else None,
+                    'category': activity[4],
+                    'ip_address': str(activity[5]) if activity[5] else "N/A",
+                    'metadata': activity[6] if activity[6] else {}
+                })
+            
+            return jsonify({
+                "activities": activities_data,
+                "user_info": {
+                    "id": user[0],
+                    "username": user[1],
+                    "fullname": f"{user[2]} {user[3]}"
+                },
+                "pagination": {
+                    "current_page": page,
+                    "per_page": per_page,
+                    "total_count": total_count,
+                    "total_pages": (total_count + per_page - 1) // per_page
+                },
+                "summary": {
+                    'total_activities': stats[0] or 0,
+                    'unique_activity_types': stats[1] or 0,
+                    'unique_categories': stats[2] or 0,
+                    'last_activity': stats[3].isoformat() if stats[3] else None
+                }
+            }), 200
+            
+    except Exception as e:
+        print(f"Error in user activities: {str(e)}")
         return jsonify({"error": str(e)}), 500
     finally:
         if conn:

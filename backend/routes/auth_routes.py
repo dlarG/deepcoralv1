@@ -19,23 +19,33 @@ def register_user():
     secret = Config.RECAPTCHA_SECRET
     if not data:
         return jsonify({"error": "No data provided"}), 400
+    
     username = data.get('username')
     password = data.get('password')
     firstname = data.get('firstname')
     lastname = data.get('lastname')
-    roletype = 'guest'  # Default role type
+    email = data.get('email')  # Add this
+    roletype = 'guest'
     status = 'pending'
     captcha_response = data.get('captcha')
     
     # Validate reCAPTCHA
     if not captcha_response:
         return jsonify({"error": "Captcha verification failed"}), 400
+    
     # Validate password strength
     if len(password) < 8:
         return jsonify({"error": "Password must be at least 8 characters"}), 400
     
-    if not all([username, password, firstname, lastname]):
-        return jsonify({"error": "Missing all fields are required"}), 400
+    # Update validation to include email
+    if not all([username, password, firstname, lastname, email]):
+        return jsonify({"error": "All fields are required"}), 400
+    
+    # Validate email format
+    import re
+    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    if not re.match(email_pattern, email):
+        return jsonify({"error": "Please enter a valid email address"}), 400
     
     # Verify reCAPTCHA
     captcha_verify_url = "https://www.google.com/recaptcha/api/siteverify"
@@ -57,47 +67,111 @@ def register_user():
     try:
         cur = conn.cursor()
         password_hashed = generate_password_hash(password)
+        
+        # Check for existing username
         cur.execute("SELECT * FROM users WHERE username = %s", (username,))
         if cur.fetchone():
             return jsonify({"error": "Username already exists"}), 400
         
+        # Check for existing email
+        cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+        if cur.fetchone():
+            return jsonify({"error": "Email address already registered"}), 400
+        
+        # Insert new user with email
         cur.execute(
-            "INSERT INTO users (username, password, firstname, lastname, roletype, status) VALUES (%s, %s, %s, %s, %s, %s)",
-            (username, password_hashed, firstname, lastname, roletype, status)
+            "INSERT INTO users (username, password, firstname, lastname, email, roletype, status) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id",
+            (username, password_hashed, firstname, lastname, email, roletype, status)
         )
+        
+        new_user_id = cur.fetchone()[0]
         conn.commit()
 
+        # Log user registration
         log_user_registration(username)
         log_system_action(
-            user_id=None,  # No user_id yet
+            user_id=None,
             action='user_registration_attempt',
             description=f"New user registration: {firstname} {lastname} (@{username})",
             details={
                 'username': username,
                 'firstname': firstname,
                 'lastname': lastname,
+                'email': email,
                 'roletype': roletype,
                 'status': status,
                 'ip_address': request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR'))
             }
         )
 
-        return jsonify({"message": "User registered successfully"}), 201
+        # Send email notification to admins
+        try:
+            from utils.email_service import email_service
+            from utils.admin_utils import get_admin_emails
+            
+            admin_emails = get_admin_emails()
+            
+            # If no admin emails in database, use fallback from environment
+            if not admin_emails:
+                fallback_email = current_app.config.get('ADMIN_NOTIFICATION_EMAIL')
+                if fallback_email:
+                    admin_emails = [fallback_email]
+            
+            if admin_emails:
+                user_data = {
+                    'firstname': firstname,
+                    'lastname': lastname,
+                    'username': username,
+                    'email': email,
+                    'roletype': roletype,
+                    'ip_address': request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR'))
+                }
+                
+                email_sent = email_service.send_new_user_registration_notification(user_data, admin_emails)
+                
+                log_system_action(
+                    user_id=new_user_id,
+                    action='admin_notification_sent' if email_sent else 'admin_notification_failed',
+                    description=f"Admin notification email {'sent' if email_sent else 'failed'} for new user registration",
+                    details={
+                        'admin_emails': admin_emails,
+                        'user_data': user_data,
+                        'email_sent': email_sent
+                    }
+                )
+            else:
+                log_system_action(
+                    user_id=new_user_id,
+                    action='admin_notification_skipped',
+                    description="No admin emails configured for notification",
+                    details={'reason': 'no_admin_emails'}
+                )
+                
+        except Exception as email_error:
+            log_system_action(
+                user_id=new_user_id,
+                action='admin_notification_error',
+                description=f"Error sending admin notification email",
+                details={'error': str(email_error)}
+            )
+            current_app.logger.error(f"Email notification error: {str(email_error)}")
+            # Don't fail the registration if email fails
+
+        return jsonify({"message": "User registered successfully! Please wait for admin approval."}), 201
+        
     except Exception as e:
         conn.rollback()
         log_system_action(
             user_id=None,
             action='registration_failed',
             description=f"Registration failed for username: {username}",
-            details={'error': str(e), 'username': username}
+            details={'error': str(e), 'username': username, 'email': email}
         )
         return jsonify({"error": str(e)}), 500
     finally:
         if 'cur' in locals():
             cur.close()
-        # if conn:
-            conn.close()
-
+        conn.close()
 
 @auth_bp.route('/logout', methods=['POST', 'OPTIONS'])
 @cross_origin(origins=['http://localhost:3000'], supports_credentials=True)

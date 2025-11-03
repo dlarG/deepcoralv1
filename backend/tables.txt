@@ -23,7 +23,9 @@ CREATE TABLE IF NOT EXISTS users (
     phone VARCHAR(20),
     institution VARCHAR(255)
 );
-
+ALTER TABLE IF EXISTS public.users
+    ADD COLUMN email character varying(100);
+    
 
 CREATE TABLE IF NOT EXIST coral_information(
     id Serial PRIMARY KEY,
