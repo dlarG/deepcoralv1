@@ -19,17 +19,82 @@ import {
   FiUsers,
   FiImage,
   FiSettings,
+  FiFilter,
+  FiChevronDown,
+  FiRefreshCw,
+  FiSearch,
+  FiEye,
+  FiMonitor,
+  FiDatabase,
+  FiUpload,
+  FiLogIn,
+  FiLogOut,
 } from "react-icons/fi";
 import { decryptId } from "../../../utils/encryption";
+import "../styles/userProfileStyles.css";
 
 function UserProfile({ darkMode }) {
   const { userId: encodedUserId } = useParams();
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
+  const [activities, setActivities] = useState([]);
+  const [activitiesSummary, setActivitiesSummary] = useState({});
   const [loading, setLoading] = useState(true);
+  const [activitiesLoading, setActivitiesLoading] = useState(false);
   const [error, setError] = useState(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+
+  const [activityFilters, setActivityFilters] = useState({
+    activity_type: "all",
+    category: "all",
+    page: 1,
+    per_page: 15,
+  });
+  const [activityPagination, setActivityPagination] = useState({});
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  const getActivityIcon = (activityType, category) => {
+    switch (category) {
+      case "authentication":
+        return activityType.includes("login") ? (
+          <FiLogIn size={16} />
+        ) : (
+          <FiLogOut size={16} />
+        );
+      case "user_management":
+        return <FiUsers size={16} />;
+      case "coral_data":
+        return <FiDatabase size={16} />;
+      case "image_analysis":
+        return <FiUpload size={16} />;
+      case "system_admin":
+        return <FiSettings size={16} />;
+      case "reports":
+        return <FiDownload size={16} />;
+      default:
+        return <FiActivity size={16} />;
+    }
+  };
+
+  const getActivityColor = (category) => {
+    switch (category) {
+      case "authentication":
+        return "#10b981"; // green
+      case "user_management":
+        return "#3b82f6"; // blue
+      case "coral_data":
+        return "#8b5cf6"; // purple
+      case "image_analysis":
+        return "#f59e0b"; // amber
+      case "system_admin":
+        return "#ef4444"; // red
+      case "reports":
+        return "#06b6d4"; // cyan
+      default:
+        return "#6b7280"; // gray
+    }
+  };
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -47,6 +112,9 @@ function UserProfile({ darkMode }) {
           { withCredentials: true }
         );
         setUser(response.data.user);
+
+        // Fetch activities after user is loaded
+        await fetchUserActivities(decryptedId);
       } catch (err) {
         console.error("Error fetching user:", err);
         setError(err.response?.data?.error || "Failed to fetch user details");
@@ -62,6 +130,73 @@ function UserProfile({ darkMode }) {
       setLoading(false);
     }
   }, [encodedUserId]);
+
+  const fetchUserActivities = async (userId) => {
+    setActivitiesLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: activityFilters.page.toString(),
+        per_page: activityFilters.per_page.toString(),
+        ...(activityFilters.activity_type !== "all" && {
+          activity_type: activityFilters.activity_type,
+        }),
+        ...(activityFilters.category !== "all" && {
+          category: activityFilters.category,
+        }),
+      });
+
+      const response = await axios.get(
+        `http://${process.env.REACT_APP_API_URL}/admin/users/${userId}/activities?${params}`,
+        { withCredentials: true }
+      );
+
+      setActivities(response.data.activities);
+      setActivitiesSummary(response.data.summary);
+      setActivityPagination(response.data.pagination);
+    } catch (err) {
+      console.error("Error fetching user activities:", err);
+    } finally {
+      setActivitiesLoading(false);
+    }
+  };
+
+  // Handle activity filter changes
+  const handleFilterChange = (key, value) => {
+    const newFilters = { ...activityFilters, [key]: value, page: 1 };
+    setActivityFilters(newFilters);
+
+    if (user) {
+      const decodedEncryptedId = decodeURIComponent(encodedUserId);
+      const decryptedId = decryptId(decodedEncryptedId);
+      if (decryptedId) {
+        fetchUserActivities(decryptedId);
+      }
+    }
+  };
+
+  // Handle pagination
+  const handlePageChange = (newPage) => {
+    setActivityFilters((prev) => ({ ...prev, page: newPage }));
+
+    if (user) {
+      const decodedEncryptedId = decodeURIComponent(encodedUserId);
+      const decryptedId = decryptId(decodedEncryptedId);
+      if (decryptedId) {
+        fetchUserActivities(decryptedId);
+      }
+    }
+  };
+
+  // Refresh activities
+  const refreshActivities = () => {
+    if (user) {
+      const decodedEncryptedId = decodeURIComponent(encodedUserId);
+      const decryptedId = decryptId(decodedEncryptedId);
+      if (decryptedId) {
+        fetchUserActivities(decryptedId);
+      }
+    }
+  };
 
   const handleGoBack = () => {
     navigate("/admin-dashboard", {
@@ -223,475 +358,6 @@ function UserProfile({ darkMode }) {
             </div>
           </div>
         </div>
-
-        <style jsx>{`
-          .profile-loading {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 80vh;
-            padding: 2rem;
-          }
-
-          .loading-content {
-            text-align: center;
-            max-width: 500px;
-            width: 100%;
-          }
-
-          .loading-spinner-container {
-            position: relative;
-            width: 120px;
-            height: 120px;
-            margin: 0 auto 3rem;
-          }
-
-          .pulse-rings {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-          }
-
-          .pulse-ring {
-            position: absolute;
-            border: 2px solid #3b82f6;
-            border-radius: 50%;
-            opacity: 0;
-            animation: pulse 2s infinite;
-          }
-
-          .ring-1 {
-            width: 120px;
-            height: 120px;
-            margin: -60px 0 0 -60px;
-            animation-delay: 0s;
-          }
-
-          .ring-2 {
-            width: 90px;
-            height: 90px;
-            margin: -45px 0 0 -45px;
-            border-color: #10b981;
-            animation-delay: 0.7s;
-          }
-
-          .ring-3 {
-            width: 60px;
-            height: 60px;
-            margin: -30px 0 0 -30px;
-            border-color: #f59e0b;
-            animation-delay: 1.4s;
-          }
-
-          .dark .ring-1 {
-            border-color: #60a5fa;
-          }
-
-          .dark .ring-2 {
-            border-color: #34d399;
-          }
-
-          .dark .ring-3 {
-            border-color: #fbbf24;
-          }
-
-          @keyframes pulse {
-            0% {
-              transform: scale(0.3);
-              opacity: 1;
-            }
-            50% {
-              opacity: 0.8;
-            }
-            100% {
-              transform: scale(1);
-              opacity: 0;
-            }
-          }
-
-          .center-avatar {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 10;
-          }
-
-          .avatar-placeholder {
-            width: 48px;
-            height: 48px;
-            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
-            animation: float 3s ease-in-out infinite;
-          }
-
-          @keyframes float {
-            0%,
-            100% {
-              transform: translateY(0px);
-            }
-            50% {
-              transform: translateY(-10px);
-            }
-          }
-
-          .loading-text h3 {
-            font-size: 1.5rem;
-            font-weight: 700;
-            margin: 0 0 1rem 0;
-            color: #1f2937;
-            animation: fadeInUp 0.8s ease-out;
-          }
-
-          .dark .loading-text h3 {
-            color: #f9fafb;
-          }
-
-          .loading-dots {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            font-size: 1rem;
-            color: #6b7280;
-            animation: fadeInUp 1s ease-out;
-          }
-
-          .dark .loading-dots {
-            color: #9ca3af;
-          }
-
-          .dots-animation {
-            display: flex;
-          }
-
-          .dot {
-            animation: dotPulse 1.5s infinite;
-            opacity: 0;
-          }
-
-          .dot:nth-child(1) {
-            animation-delay: 0s;
-          }
-
-          .dot:nth-child(2) {
-            animation-delay: 0.2s;
-          }
-
-          .dot:nth-child(3) {
-            animation-delay: 0.4s;
-          }
-
-          @keyframes dotPulse {
-            0%,
-            60%,
-            100% {
-              opacity: 0;
-            }
-            30% {
-              opacity: 1;
-            }
-          }
-
-          @keyframes fadeInUp {
-            from {
-              opacity: 0;
-              transform: translateY(20px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-
-          .loading-progress {
-            margin: 3rem 0;
-            animation: fadeInUp 1.2s ease-out;
-          }
-
-          .progress-steps {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 1.5rem;
-            position: relative;
-          }
-
-          .progress-steps::before {
-            content: "";
-            position: absolute;
-            top: 50%;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: rgba(0, 0, 0, 0.1);
-            transform: translateY(-50%);
-            z-index: 1;
-          }
-
-          .dark .progress-steps::before {
-            background: rgba(255, 255, 255, 0.1);
-          }
-
-          .step {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.5rem;
-            position: relative;
-            z-index: 2;
-          }
-
-          .step-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(107, 114, 128, 0.1);
-            border: 2px solid rgba(107, 114, 128, 0.3);
-            color: #6b7280;
-            transition: all 0.3s ease;
-          }
-
-          .step.active .step-icon {
-            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-            border-color: #3b82f6;
-            color: white;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-          }
-
-          .step.loading .step-icon {
-            background: linear-gradient(135deg, #10b981, #059669);
-            border-color: #10b981;
-            color: white;
-            animation: pulse-icon 1.5s infinite;
-          }
-
-          @keyframes pulse-icon {
-            0%,
-            100% {
-              transform: scale(1);
-              box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-            }
-            50% {
-              transform: scale(1.1);
-              box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
-            }
-          }
-
-          .step span {
-            font-size: 0.75rem;
-            font-weight: 500;
-            color: #6b7280;
-            white-space: nowrap;
-          }
-
-          .dark .step span {
-            color: #9ca3af;
-          }
-
-          .step.active span,
-          .step.loading span {
-            color: #1f2937;
-            font-weight: 600;
-          }
-
-          .dark .step.active span,
-          .dark .step.loading span {
-            color: #f9fafb;
-          }
-
-          .progress-bar {
-            height: 4px;
-            background: rgba(0, 0, 0, 0.1);
-            border-radius: 2px;
-            overflow: hidden;
-            margin-top: 1rem;
-          }
-
-          .dark .progress-bar {
-            background: rgba(255, 255, 255, 0.1);
-          }
-
-          .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #3b82f6, #10b981, #f59e0b);
-            border-radius: 2px;
-            animation: progressLoad 3s infinite;
-          }
-
-          @keyframes progressLoad {
-            0% {
-              width: 0%;
-              transform: translateX(-100%);
-            }
-            50% {
-              width: 100%;
-              transform: translateX(0%);
-            }
-            100% {
-              width: 100%;
-              transform: translateX(100%);
-            }
-          }
-
-          .skeleton-preview {
-            margin-top: 2rem;
-            animation: fadeInUp 1.4s ease-out;
-          }
-
-          .skeleton-card {
-            background: white;
-            border-radius: 1rem;
-            padding: 1.5rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            border: 1px solid rgba(0, 0, 0, 0.05);
-          }
-
-          .dark .skeleton-card {
-            background: #1e293b;
-            border-color: rgba(255, 255, 255, 0.1);
-          }
-
-          .skeleton-header {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-          }
-
-          .skeleton-avatar {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: linear-gradient(
-              90deg,
-              #f3f4f6 25%,
-              #e5e7eb 50%,
-              #f3f4f6 75%
-            );
-            background-size: 200% 100%;
-            animation: shimmer 2s infinite;
-          }
-
-          .dark .skeleton-avatar {
-            background: linear-gradient(
-              90deg,
-              #374151 25%,
-              #4b5563 50%,
-              #374151 75%
-            );
-            background-size: 200% 100%;
-          }
-
-          .skeleton-text {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-          }
-
-          .skeleton-line {
-            height: 14px;
-            border-radius: 7px;
-            background: linear-gradient(
-              90deg,
-              #f3f4f6 25%,
-              #e5e7eb 50%,
-              #f3f4f6 75%
-            );
-            background-size: 200% 100%;
-            animation: shimmer 2s infinite;
-          }
-
-          .dark .skeleton-line {
-            background: linear-gradient(
-              90deg,
-              #374151 25%,
-              #4b5563 50%,
-              #374151 75%
-            );
-            background-size: 200% 100%;
-          }
-
-          .skeleton-line.long {
-            width: 70%;
-          }
-
-          .skeleton-line.short {
-            width: 40%;
-          }
-
-          @keyframes shimmer {
-            0% {
-              background-position: -200% 0;
-            }
-            100% {
-              background-position: 200% 0;
-            }
-          }
-
-          /* Responsive Design */
-          @media (max-width: 768px) {
-            .loading-spinner-container {
-              width: 80px;
-              height: 80px;
-              margin-bottom: 2rem;
-            }
-
-            .ring-1 {
-              width: 80px;
-              height: 80px;
-              margin: -40px 0 0 -40px;
-            }
-
-            .ring-2 {
-              width: 60px;
-              height: 60px;
-              margin: -30px 0 0 -30px;
-            }
-
-            .ring-3 {
-              width: 40px;
-              height: 40px;
-              margin: -20px 0 0 -20px;
-            }
-
-            .avatar-placeholder {
-              width: 32px;
-              height: 32px;
-            }
-
-            .loading-text h3 {
-              font-size: 1.25rem;
-            }
-
-            .progress-steps {
-              flex-direction: column;
-              gap: 1rem;
-              align-items: center;
-            }
-
-            .progress-steps::before {
-              display: none;
-            }
-
-            .step {
-              flex-direction: row;
-              gap: 1rem;
-            }
-
-            .step span {
-              white-space: normal;
-            }
-          }
-        `}</style>
       </div>
     );
 
@@ -760,38 +426,23 @@ function UserProfile({ darkMode }) {
 
       {/* Profile Hero Section */}
       <div className="profile-hero">
-        <div className="hero-background">
-          <div className="pattern-overlay"></div>
-        </div>
+        <div className="hero-background"></div>
 
-        <div className="hero-content">
-          <div className="profile-avatar-section">
-            <div className="avatar-wrapper">
-              <div className="avatar-container">
-                {user.profile_image ? (
-                  <img
-                    src={`/profile_uploads/${user.profile_image}`}
-                    alt={`${user.firstname} ${user.lastname}`}
-                    onLoad={() => setImageLoaded(true)}
-                    onError={(e) => {
-                      e.target.style.display = "none";
-                      setImageLoaded(false);
-                    }}
-                    style={{ display: imageLoaded ? "block" : "none" }}
-                  />
-                ) : null}
-                <div
-                  className="avatar-initials"
-                  style={{
-                    display:
-                      user.profile_image && imageLoaded ? "none" : "flex",
-                    backgroundColor: getRoleColor(user.roletype),
+        <div className="profile-hero-content">
+          <div className="avatar-wrapper">
+            <div className="avatar-container">
+              {user.profile_image ? (
+                <img
+                  src={`/profile_uploads/${user.profile_image}`}
+                  alt={`${user.firstname} ${user.lastname}`}
+                  onLoad={() => setImageLoaded(true)}
+                  onError={(e) => {
+                    e.target.style.display = "none";
+                    setImageLoaded(false);
                   }}
-                >
-                  {user.firstname?.charAt(0)?.toUpperCase()}
-                  {user.lastname?.charAt(0)?.toUpperCase()}
-                </div>
-              </div>
+                  style={{ display: imageLoaded ? "block" : "none" }}
+                />
+              ) : null}
             </div>
           </div>
 
@@ -803,9 +454,9 @@ function UserProfile({ darkMode }) {
               <p className="user-handle">@{user.username}</p>
             </div>
 
-            <div className="user-role">
+            <div className="profile-user-role">
               <div
-                className="role-badge"
+                className="profile-role-badge"
                 style={{ backgroundColor: getRoleColor(user.roletype) }}
               >
                 <FiShield size={14} />
@@ -816,8 +467,8 @@ function UserProfile({ darkMode }) {
               </div>
             </div>
 
-            <div className="user-meta">
-              <div className="meta-item">
+            <div className="profile-user-meta">
+              <div className="profile-meta-item">
                 <FiCalendar size={16} />
                 <span>
                   Joined{" "}
@@ -827,31 +478,33 @@ function UserProfile({ darkMode }) {
                   })}
                 </span>
               </div>
-              <div className="meta-item">
+              <div className="profile-meta-item">
                 <FiActivity size={16} />
                 <span>
-                  Last seen {getTimeAgo(user.updated_at || user.created_at)}
+                  Last seen{" "}
+                  {getTimeAgo(
+                    user.last_login || user.updated_at || user.created_at
+                  )}
                 </span>
               </div>
             </div>
           </div>
 
           <div className="profile-stats">
-            <div className="stat-card">
-              <div className="stat-icon">
+            <div className="profile-stat-card">
+              <div className="profile-stat-icon">
                 <FiUsers size={20} />
               </div>
-              <div className="stat-info">
+              <div className="profile-stat-info">
                 <h3>Active</h3>
                 <p>Status</p>
               </div>
             </div>
-
-            <div className="stat-card">
-              <div className="stat-icon">
+            <div className="profile-stat-card">
+              <div className="profile-stat-icon">
                 <FiStar size={20} />
               </div>
-              <div className="stat-info">
+              <div className="profile-stat-info">
                 <h3>Verified</h3>
                 <p>Account</p>
               </div>
@@ -864,21 +517,21 @@ function UserProfile({ darkMode }) {
       <div className="profile-content">
         <div className="content-grid">
           {/* Personal Information Card */}
-          <div className="info-card">
-            <div className="card-header">
+          <div className="profile-info-card" style={{ gridArea: "personal" }}>
+            <div className="profile-card-header">
               <div className="header-icon personal">
                 <FiUser size={20} />
               </div>
-              <div className="header-content">
+              <div className="profile-header-content">
                 <h2>Personal Information</h2>
                 <p>Basic account details and information</p>
               </div>
             </div>
 
-            <div className="card-body">
+            <div className="profile-card-body">
               <div className="info-grid">
-                <div className="info-item">
-                  <div className="info-label">
+                <div className="profile-info-item">
+                  <div className="profile-info-label">
                     <FiUser size={16} />
                     <span>Full Name</span>
                   </div>
@@ -889,8 +542,8 @@ function UserProfile({ darkMode }) {
                   </div>
                 </div>
 
-                <div className="info-item">
-                  <div className="info-label">
+                <div className="profile-info-item">
+                  <div className="profile-info-label">
                     <FiMail size={16} />
                     <span>Username</span>
                   </div>
@@ -899,8 +552,8 @@ function UserProfile({ darkMode }) {
                   </div>
                 </div>
 
-                <div className="info-item">
-                  <div className="info-label">
+                <div className="profile-info-item">
+                  <div className="profile-info-label">
                     <FiShield size={16} />
                     <span>Role</span>
                   </div>
@@ -918,8 +571,8 @@ function UserProfile({ darkMode }) {
                   </div>
                 </div>
 
-                <div className="info-item">
-                  <div className="info-label">
+                <div className="profile-info-item">
+                  <div className="profile-info-label">
                     <FiImage size={16} />
                     <span>Profile Picture</span>
                   </div>
@@ -948,18 +601,17 @@ function UserProfile({ darkMode }) {
           </div>
 
           {/* Account Timeline Card */}
-          <div className="info-card">
-            <div className="card-header">
+          <div className="profile-info-card" style={{ gridArea: "timeline" }}>
+            <div className="profile-card-header">
               <div className="header-icon timeline">
                 <FiClock size={20} />
               </div>
-              <div className="header-content">
+              <div className="profile-header-content">
                 <h2>Account Timeline</h2>
                 <p>Important account events and milestones</p>
               </div>
             </div>
-
-            <div className="card-body">
+            <div className="profile-card-body">
               <div className="timeline">
                 <div className="timeline-item">
                   <div className="timeline-marker created">
@@ -1024,766 +676,287 @@ function UserProfile({ darkMode }) {
               </div>
             </div>
           </div>
+        </div>
+        <div
+          className="info-card activity-logs-card"
+          style={{ gridArea: "activities" }}
+        >
+          <div className="profile-card-header">
+            <div className="header-icon activities">
+              <FiActivity size={20} />
+            </div>
+            <div className="profile-header-content">
+              <h2>Activity Logs</h2>
+              <p>Recent activities and actions by this user</p>
+            </div>
+            <div className="profile-header-actions">
+              <button
+                onClick={() => setFiltersOpen(!filtersOpen)}
+                className={`filter-toggle ${filtersOpen ? "active" : ""}`}
+              >
+                <FiFilter size={16} />
+              </button>
+              <button
+                onClick={refreshActivities}
+                className="profile-refresh-btn"
+                disabled={activitiesLoading}
+              >
+                <FiRefreshCw
+                  size={16}
+                  className={activitiesLoading ? "spinning" : ""}
+                />
+              </button>
+            </div>
+          </div>
 
-          {/* Quick Actions Card */}
-          <div className="info-card actions-card">
-            <div className="card-header">
-              <div className="header-icon actions">
-                <FiSettings size={20} />
+          {/* Activity Summary */}
+          <div className="activity-summary">
+            <div className="profile-summary-stats">
+              <div className="profile-summary-stat">
+                <span className="profile-stat-value">
+                  {activitiesSummary.total_activities || 0}
+                </span>
+                <span className="profile-stat-label">Total Activities</span>
               </div>
-              <div className="header-content">
-                <h2>Quick Actions</h2>
-                <p>Common administrative tasks</p>
+              <div className="profile-summary-stat">
+                <span className="profile-stat-value">
+                  {activitiesSummary.unique_activity_types || 0}
+                </span>
+                <span className="profile-stat-label">Activity Types</span>
+              </div>
+              <div className="profile-summary-stat">
+                <span className="profile-stat-value">
+                  {activitiesSummary.unique_categories || 0}
+                </span>
+                <span className="profile-stat-label">Categories</span>
+              </div>
+              {activitiesSummary.last_activity && (
+                <div className="profile-summary-stat">
+                  <span className="profile-stat-value">
+                    {getTimeAgo(activitiesSummary.last_activity)}
+                  </span>
+                  <span className="profile-stat-label">Last Activity</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Activity Filters */}
+          {filtersOpen && (
+            <div className="activity-filters">
+              <div className="filter-row">
+                <div className="filter-group">
+                  <label>Category:</label>
+                  <select
+                    value={activityFilters.category}
+                    onChange={(e) =>
+                      handleFilterChange("category", e.target.value)
+                    }
+                  >
+                    <option value="all">All Categories</option>
+                    <option value="authentication">Authentication</option>
+                    <option value="user_management">User Management</option>
+                    <option value="coral_data">Coral Data</option>
+                    <option value="image_analysis">Image Analysis</option>
+                    <option value="system_admin">System Admin</option>
+                    <option value="reports">Reports</option>
+                  </select>
+                </div>
+                <div className="filter-group">
+                  <label>Activity Type:</label>
+                  <select
+                    value={activityFilters.activity_type}
+                    onChange={(e) =>
+                      handleFilterChange("activity_type", e.target.value)
+                    }
+                  >
+                    <option value="all">All Types</option>
+                    <option value="login">Login</option>
+                    <option value="logout">Logout</option>
+                    <option value="image_upload">Image Upload</option>
+                    <option value="coral_analysis">Coral Analysis</option>
+                    <option value="user_created">User Created</option>
+                    <option value="user_updated">User Updated</option>
+                  </select>
+                </div>
               </div>
             </div>
+          )}
 
-            <div className="card-body">
-              <div className="actions-grid">
-                <button onClick={handleEditUser} className="action-btn primary">
-                  <div className="action-icon">
-                    <FiEdit2 size={20} />
-                  </div>
-                  <div className="action-content">
-                    <h3>Edit Profile</h3>
-                    <p>Modify user details</p>
-                  </div>
-                </button>
+          {/* Activity List */}
+          <div className="card-body">
+            <div className="activities-container">
+              {activitiesLoading ? (
+                <div className="activities-loading">
+                  <div className="loading-spinner"></div>
+                  <p>Loading activities...</p>
+                </div>
+              ) : activities.length === 0 ? (
+                <div className="no-activities">
+                  <FiActivity size={48} />
+                  <h4>No Activities Found</h4>
+                  <p>No activities match the current filters.</p>
+                </div>
+              ) : (
+                <div className="activities-list">
+                  {activities.map((activity) => (
+                    <div key={activity.id} className="activity-item">
+                      <div className="activity-left">
+                        <div
+                          className="activity-icon"
+                          style={{
+                            backgroundColor:
+                              getActivityColor(activity.category) + "20",
+                          }}
+                        >
+                          <span
+                            style={{
+                              color: getActivityColor(activity.category),
+                            }}
+                          >
+                            {getActivityIcon(
+                              activity.activity_type,
+                              activity.category
+                            )}
+                          </span>
+                        </div>
 
-                <button className="action-btn neutral">
-                  <div className="action-icon">
-                    <FiDownload size={20} />
-                  </div>
-                  <div className="action-content">
-                    <h3>Export Data</h3>
-                    <p>Download user info</p>
-                  </div>
-                </button>
+                        <div className="activity-content">
+                          <div className="activity-header">
+                            <h4 className="activity-title">
+                              {activity.activity_description}
+                            </h4>
+                            <span
+                              className="activity-category"
+                              style={{
+                                backgroundColor:
+                                  getActivityColor(activity.category) + "15",
+                                color: getActivityColor(activity.category),
+                              }}
+                            >
+                              {activity.category?.replace("_", " ")}
+                            </span>
+                          </div>
 
-                <button
-                  onClick={handleDeleteUser}
-                  className="action-btn danger"
-                >
-                  <div className="action-icon">
-                    <FiTrash2 size={20} />
-                  </div>
-                  <div className="action-content">
-                    <h3>Delete User</h3>
-                    <p>Remove permanently</p>
-                  </div>
-                </button>
-              </div>
+                          <div className="activity-meta">
+                            <span className="activity-type">
+                              {activity.activity_type}
+                            </span>
+                            <span className="activity-separator">•</span>
+                            <span className="activity-ip">
+                              IP: {activity.ip_address}
+                            </span>
+                            {activity.metadata &&
+                              Object.keys(activity.metadata).length > 0 && (
+                                <>
+                                  <span className="activity-separator">•</span>
+                                  <span className="activity-metadata">
+                                    {Object.keys(activity.metadata).length}{" "}
+                                    metadata
+                                  </span>
+                                </>
+                              )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="activity-right">
+                        <span className="activity-time">
+                          {getTimeAgo(activity.created_at)}
+                        </span>
+                        <span className="activity-date">
+                          {new Date(activity.created_at).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Pagination */}
+              {activityPagination.total_pages > 1 && (
+                <div className="activities-pagination">
+                  <button
+                    onClick={() =>
+                      handlePageChange(activityPagination.current_page - 1)
+                    }
+                    disabled={activityPagination.current_page === 1}
+                    className="pagination-btn"
+                  >
+                    Previous
+                  </button>
+
+                  <span className="pagination-info">
+                    Page {activityPagination.current_page} of{" "}
+                    {activityPagination.total_pages}(
+                    {activityPagination.total_count} total)
+                  </span>
+
+                  <button
+                    onClick={() =>
+                      handlePageChange(activityPagination.current_page + 1)
+                    }
+                    disabled={
+                      activityPagination.current_page ===
+                      activityPagination.total_pages
+                    }
+                    className="pagination-btn"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Actions Card */}
+        <div className="info-card actions-card" style={{ gridArea: "actions" }}>
+          <div className="card-header">
+            <div className="header-icon actions">
+              <FiSettings size={20} />
+            </div>
+            <div className="header-content">
+              <h2>Quick Actions</h2>
+              <p>Common administrative tasks</p>
+            </div>
+          </div>
+
+          <div className="card-body">
+            <div className="actions-grid">
+              <button onClick={handleEditUser} className="action-btn primary">
+                <div className="action-icon">
+                  <FiEdit2 size={20} />
+                </div>
+                <div className="action-content">
+                  <h3>Edit Profile</h3>
+                  <p>Modify user details</p>
+                </div>
+              </button>
+
+              <button className="action-btn neutral">
+                <div className="action-icon">
+                  <FiDownload size={20} />
+                </div>
+                <div className="action-content">
+                  <h3>Export Data</h3>
+                  <p>Download user info</p>
+                </div>
+              </button>
+
+              <button onClick={handleDeleteUser} className="action-btn danger">
+                <div className="action-icon">
+                  <FiTrash2 size={20} />
+                </div>
+                <div className="action-content">
+                  <h3>Delete User</h3>
+                  <p>Remove permanently</p>
+                </div>
+              </button>
             </div>
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        .user-profile-container {
-          min-height: 100vh;
-          background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-          transition: all 0.3s ease;
-        }
-
-        .user-profile-container.dark {
-          background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-        }
-
-        .profile-header-nav {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 1.5rem 2rem;
-          background: rgba(255, 255, 255, 0.8);
-          backdrop-filter: blur(10px);
-          border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-          position: sticky;
-          top: 0;
-          z-index: 100;
-        }
-
-        .dark .profile-header-nav {
-          background: rgba(15, 23, 42, 0.8);
-          border-bottom-color: rgba(255, 255, 255, 0.1);
-        }
-
-        .nav-back-btn {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.75rem 1rem;
-          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-          color: white;
-          border: none;
-          border-radius: 0.5rem;
-          font-weight: 600;
-          transition: all 0.3s ease;
-          cursor: pointer;
-        }
-
-        .nav-back-btn:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-        }
-
-        .actions-dropdown {
-          position: relative;
-        }
-
-        .actions-trigger {
-          padding: 0.75rem;
-          background: rgba(107, 114, 128, 0.1);
-          border: none;
-          border-radius: 0.5rem;
-          color: inherit;
-          cursor: pointer;
-          transition: all 0.3s ease;
-        }
-
-        .actions-trigger:hover {
-          background: rgba(107, 114, 128, 0.2);
-        }
-
-        .dropdown-menu {
-          position: absolute;
-          top: 100%;
-          right: 0;
-          margin-top: 0.5rem;
-          min-width: 180px;
-          background: white;
-          border-radius: 0.75rem;
-          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
-            0 10px 10px -5px rgba(0, 0, 0, 0.04);
-          border: 1px solid rgba(0, 0, 0, 0.1);
-          overflow: hidden;
-          z-index: 50;
-        }
-
-        .dark .dropdown-menu {
-          background: #1e293b;
-          border-color: rgba(255, 255, 255, 0.1);
-        }
-
-        .dropdown-item {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-          width: 100%;
-          padding: 0.75rem 1rem;
-          background: none;
-          border: none;
-          text-align: left;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          color: inherit;
-        }
-
-        .dropdown-item:hover {
-          background: rgba(107, 114, 128, 0.1);
-        }
-
-        .dropdown-item.delete:hover {
-          background: rgba(220, 38, 38, 0.1);
-          color: #dc2626;
-        }
-
-        .dropdown-divider {
-          height: 1px;
-          background: rgba(0, 0, 0, 0.1);
-          margin: 0.25rem 0;
-        }
-
-        .dark .dropdown-divider {
-          background: rgba(255, 255, 255, 0.1);
-        }
-
-        .profile-hero {
-          position: relative;
-          padding: 3rem 2rem;
-          overflow: hidden;
-        }
-
-        .hero-background {
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-
-        .pattern-overlay {
-          position: absolute;
-          inset: 0;
-          background-image: radial-gradient(
-            circle at 1px 1px,
-            rgba(255, 255, 255, 0.15) 1px,
-            transparent 0
-          );
-          background-size: 20px 20px;
-        }
-
-        .hero-content {
-          position: relative;
-          z-index: 10;
-          display: grid;
-          grid-template-columns: auto 1fr auto;
-          gap: 2rem;
-          align-items: center;
-          max-width: 1200px;
-          margin: 0 auto;
-        }
-
-        .avatar-wrapper {
-          position: relative;
-        }
-
-        .avatar-container {
-          position: relative;
-          width: 120px;
-          height: 120px;
-          border-radius: 50%;
-          overflow: hidden;
-          border: 4px solid white;
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-        }
-
-        .avatar-container img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-        }
-
-        .avatar-initials {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 100%;
-          height: 100%;
-          font-size: 2rem;
-          font-weight: bold;
-          color: white;
-          text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-        }
-
-        .avatar-status {
-          position: absolute;
-          bottom: 8px;
-          right: 8px;
-          background: white;
-          border-radius: 50%;
-          padding: 3px;
-        }
-
-        .avatar-actions {
-          position: absolute;
-          top: -10px;
-          right: -10px;
-        }
-
-        .avatar-action-btn {
-          width: 36px;
-          height: 36px;
-          border-radius: 50%;
-          background: white;
-          border: none;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-          transition: all 0.3s ease;
-        }
-
-        .avatar-action-btn:hover {
-          transform: scale(1.1);
-        }
-
-        .profile-info {
-          color: white;
-        }
-
-        .user-name {
-          font-size: 2.5rem;
-          font-weight: 700;
-          margin: 0 0 0.5rem 0;
-          text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-        }
-
-        .user-handle {
-          font-size: 1.1rem;
-          opacity: 0.9;
-          margin: 0 0 1rem 0;
-        }
-
-        .role-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.5rem 1rem;
-          border-radius: 2rem;
-          color: white;
-          font-weight: 600;
-          font-size: 0.875rem;
-          margin-bottom: 1rem;
-        }
-
-        .user-meta {
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }
-
-        .meta-item {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          opacity: 0.9;
-        }
-
-        .profile-stats {
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-        }
-
-        .stat-card {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          padding: 1rem;
-          background: rgba(255, 255, 255, 0.15);
-          border-radius: 0.75rem;
-          backdrop-filter: blur(10px);
-          min-width: 140px;
-        }
-
-        .stat-icon {
-          color: white;
-          opacity: 0.9;
-        }
-
-        .stat-info h3 {
-          color: white;
-          margin: 0;
-          font-weight: 600;
-        }
-
-        .stat-info p {
-          color: white;
-          opacity: 0.8;
-          margin: 0;
-          font-size: 0.875rem;
-        }
-
-        .profile-content {
-          padding: 2rem;
-          max-width: 1200px;
-          margin: 0 auto;
-        }
-
-        .content-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 2rem;
-        }
-
-        .content-grid .actions-card {
-          grid-column: 1 / -1;
-        }
-
-        .info-card {
-          background: white;
-          border-radius: 1rem;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-          border: 1px solid rgba(0, 0, 0, 0.05);
-          overflow: hidden;
-          transition: all 0.3s ease;
-        }
-
-        .info-card:hover {
-          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        }
-
-        .dark .info-card {
-          background: #1e293b;
-          border-color: rgba(255, 255, 255, 0.1);
-        }
-
-        .card-header {
-          display: flex;
-          align-items: flex-start;
-          gap: 1rem;
-          padding: 1.5rem;
-          border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-        }
-
-        .dark .card-header {
-          border-bottom-color: rgba(255, 255, 255, 0.1);
-        }
-
-        .header-icon {
-          width: 40px;
-          height: 40px;
-          border-radius: 0.5rem;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-        }
-
-        .header-icon.personal {
-          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-        }
-
-        .header-icon.timeline {
-          background: linear-gradient(135deg, #10b981, #059669);
-        }
-
-        .header-icon.actions {
-          background: linear-gradient(135deg, #8b5cf6, #7c3aed);
-        }
-
-        .header-content h2 {
-          margin: 0 0 0.25rem 0;
-          font-size: 1.25rem;
-          font-weight: 700;
-        }
-
-        .header-content p {
-          margin: 0;
-          opacity: 0.7;
-          font-size: 0.875rem;
-        }
-
-        .card-body {
-          padding: 1.5rem;
-        }
-
-        .info-grid {
-          display: grid;
-          gap: 1.5rem;
-        }
-
-        .info-item {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 1rem;
-          background: rgba(107, 114, 128, 0.05);
-          border-radius: 0.5rem;
-          transition: all 0.3s ease;
-        }
-
-        .info-item:hover {
-          background: rgba(107, 114, 128, 0.1);
-        }
-
-        .info-label {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          font-weight: 500;
-          opacity: 0.8;
-        }
-
-        .info-value strong {
-          font-weight: 600;
-        }
-
-        .info-value code {
-          background: rgba(107, 114, 128, 0.1);
-          padding: 0.25rem 0.5rem;
-          border-radius: 0.25rem;
-          font-family: "Monaco", "Menlo", monospace;
-          font-size: 0.875rem;
-        }
-
-        .role-chip {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.25rem;
-          padding: 0.25rem 0.75rem;
-          border-radius: 1rem;
-          font-size: 0.875rem;
-          font-weight: 600;
-        }
-
-        .status-chip {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.25rem;
-          padding: 0.25rem 0.75rem;
-          border-radius: 1rem;
-          font-size: 0.875rem;
-          font-weight: 500;
-        }
-
-        .status-chip.success {
-          background: rgba(16, 185, 129, 0.15);
-          color: #059669;
-        }
-
-        .status-chip.neutral {
-          background: rgba(107, 114, 128, 0.15);
-          color: #6b7280;
-        }
-
-        .timeline {
-          display: flex;
-          flex-direction: column;
-          gap: 1.5rem;
-        }
-
-        .timeline-item {
-          display: flex;
-          gap: 1rem;
-          align-items: flex-start;
-        }
-
-        .timeline-marker {
-          width: 32px;
-          height: 32px;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-          flex-shrink: 0;
-        }
-
-        .timeline-marker.created {
-          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-        }
-
-        .timeline-marker.updated {
-          background: linear-gradient(135deg, #10b981, #059669);
-        }
-
-        .timeline-marker.current {
-          background: linear-gradient(135deg, #f59e0b, #d97706);
-        }
-
-        .timeline-content h4 {
-          margin: 0 0 0.5rem 0;
-          font-weight: 600;
-        }
-
-        .timeline-date {
-          margin: 0;
-          font-weight: 500;
-        }
-
-        .timeline-time {
-          margin: 0;
-          opacity: 0.7;
-          font-size: 0.875rem;
-        }
-
-        .actions-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 1rem;
-        }
-
-        .action-btn {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          padding: 1.5rem;
-          border: 1px solid rgba(0, 0, 0, 0.1);
-          border-radius: 0.75rem;
-          background: white;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          text-align: left;
-        }
-
-        .dark .action-btn {
-          background: #334155;
-          border-color: rgba(255, 255, 255, 0.1);
-        }
-
-        .action-btn:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-
-        .action-btn.primary {
-          border-color: #3b82f6;
-          background: linear-gradient(
-            135deg,
-            rgba(59, 130, 246, 0.05),
-            rgba(29, 78, 216, 0.05)
-          );
-        }
-
-        .action-btn.primary:hover {
-          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
-        }
-
-        .action-btn.danger {
-          border-color: #dc2626;
-          background: linear-gradient(
-            135deg,
-            rgba(220, 38, 38, 0.05),
-            rgba(185, 28, 28, 0.05)
-          );
-        }
-
-        .action-btn.danger:hover {
-          box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);
-        }
-
-        .action-icon {
-          width: 40px;
-          height: 40px;
-          border-radius: 0.5rem;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-          flex-shrink: 0;
-        }
-
-        .action-btn.primary .action-icon {
-          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-        }
-
-        .action-btn.neutral .action-icon {
-          background: linear-gradient(135deg, #6b7280, #4b5563);
-        }
-
-        .action-btn.danger .action-icon {
-          background: linear-gradient(135deg, #dc2626, #b91c1c);
-        }
-
-        .action-content h3 {
-          margin: 0 0 0.25rem 0;
-          font-weight: 600;
-        }
-
-        .action-content p {
-          margin: 0;
-          opacity: 0.7;
-          font-size: 0.875rem;
-        }
-
-        .profile-loading,
-        .profile-error {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          min-height: 60vh;
-        }
-
-        .loading-content,
-        .error-content {
-          text-align: center;
-          max-width: 400px;
-        }
-
-        .loading-spinner {
-          position: relative;
-          width: 60px;
-          height: 60px;
-          margin: 0 auto 2rem;
-        }
-
-        .spinner-ring {
-          position: absolute;
-          width: 60px;
-          height: 60px;
-          border: 3px solid transparent;
-          border-top-color: #3b82f6;
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-        }
-
-        .spinner-ring:nth-child(2) {
-          width: 45px;
-          height: 45px;
-          top: 7.5px;
-          left: 7.5px;
-          border-top-color: #10b981;
-          animation-duration: 0.8s;
-          animation-direction: reverse;
-        }
-
-        .spinner-ring:nth-child(3) {
-          width: 30px;
-          height: 30px;
-          top: 15px;
-          left: 15px;
-          border-top-color: #f59e0b;
-          animation-duration: 1.2s;
-        }
-
-        @keyframes spin {
-          to {
-            transform: rotate(360deg);
-          }
-        }
-
-        .error-icon {
-          width: 60px;
-          height: 60px;
-          border-radius: 50%;
-          background: linear-gradient(135deg, #dc2626, #b91c1c);
-          color: white;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          margin: 0 auto 2rem;
-        }
-
-        .btn-primary {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.75rem 1.5rem;
-          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-          color: white;
-          border: none;
-          border-radius: 0.5rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.3s ease;
-        }
-
-        .btn-primary:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-        }
-
-        @media (max-width: 768px) {
-          .hero-content {
-            grid-template-columns: 1fr;
-            text-align: center;
-            gap: 2rem;
-          }
-
-          .content-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .profile-header-nav {
-            padding: 1rem;
-          }
-
-          .profile-hero {
-            padding: 2rem 1rem;
-          }
-
-          .profile-content {
-            padding: 1rem;
-          }
-
-          .user-name {
-            font-size: 2rem;
-          }
-
-          .actions-grid {
-            grid-template-columns: 1fr;
-          }
-        }
-      `}</style>
     </div>
   );
 }
