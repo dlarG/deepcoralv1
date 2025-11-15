@@ -569,3 +569,260 @@ def get_user_profile(user_id):
             conn.close()
 
 
+# @biologist_bp.route('/biologist/dashboard/stats', methods=['GET', 'OPTIONS'])
+# @cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
+# @biologist_required
+# @login_required
+# def get_dashboard_stats():
+#     """Get dashboard statistics for biologist"""
+#     if request.method == 'OPTIONS':
+#         return jsonify({}), 200
+    
+#     try:
+#         conn = get_db_connection()
+#         if conn is None:
+#             return jsonify({'error': 'Database connection failed'}), 500
+
+#         with conn.cursor() as cur:
+#             # Get coral lifeform distribution
+#             cur.execute("""
+#                 SELECT 
+#                     cl.class_name,
+#                     cl.color_hex,
+#                     COUNT(sr.id) as detection_count,
+#                     SUM(sr.area_px) as total_area_px,
+#                     AVG(sr.coverage_percent) as avg_coverage,
+#                     COUNT(DISTINCT sr.image_id) as image_count
+#                 FROM coral_lifeforms cl
+#                 LEFT JOIN segmentation_results sr ON cl.id = sr.class_id
+#                 LEFT JOIN images i ON sr.image_id = i.id
+#                 WHERE (i.upload_status = 'approved' OR sr.id IS NULL)
+#                 GROUP BY cl.id, cl.class_name, cl.color_hex
+#                 HAVING COUNT(sr.id) > 0
+#                 ORDER BY detection_count DESC
+#                 LIMIT 10
+#             """)
+            
+#             coral_distribution = []
+#             total_detections = 0
+            
+#             rows = cur.fetchall()
+#             print(f"Query returned {len(rows)} rows")  # Debug line
+            
+#             for row in rows:
+#                 print(f"Row data: {row}")  # Debug line
+#                 # Fixed: row[2] is detection_count (index 2), not row[1]
+#                 detection_count = row[2] if row[2] is not None else 0
+#                 total_detections += detection_count
+                
+#                 coral_distribution.append({
+#                     'class_name': row[0],
+#                     'color_hex': row[1] or '#6B7280',
+#                     'detection_count': detection_count,
+#                     'total_area_px': row[3] if row[3] is not None else 0,
+#                     'avg_coverage': float(row[4]) if row[4] is not None else 0.0,
+#                     'image_count': row[5] if row[5] is not None else 0
+#                 })
+            
+#             # Calculate percentages
+#             for item in coral_distribution:
+#                 if total_detections > 0:
+#                     item['percentage'] = (item['detection_count'] / total_detections) * 100
+#                 else:
+#                     item['percentage'] = 0
+            
+#             # Get recent analysis statistics
+#             cur.execute("""
+#                 SELECT 
+#                     COUNT(DISTINCT i.id) as total_images,
+#                     COUNT(DISTINCT sr.id) as total_detections,
+#                     AVG(COALESCE(i.analysis_confidence, 0)) as avg_confidence,
+#                     COUNT(DISTINCT i.uploader_id) as active_users
+#                 FROM images i
+#                 LEFT JOIN segmentation_results sr ON i.id = sr.image_id
+#                 WHERE i.uploaded_at >= NOW() - INTERVAL '30 days'
+#                 AND (i.upload_status = 'approved' OR i.upload_status IS NULL)
+#             """)
+            
+#             stats_row = cur.fetchone()
+#             print(f"Stats row: {stats_row}")  # Debug line
+            
+#             recent_stats = {
+#                 'total_images': stats_row[0] if stats_row[0] is not None else 0,
+#                 'total_detections': stats_row[1] if stats_row[1] is not None else 0,
+#                 'avg_confidence': float(stats_row[2]) if stats_row[2] is not None else 0.0,
+#                 'active_users': stats_row[3] if stats_row[3] is not None else 0
+#             }
+            
+#             print(f"Coral distribution: {len(coral_distribution)} items")  # Debug line
+#             print(f"Recent stats: {recent_stats}")  # Debug line
+            
+#             return jsonify({
+#                 'coral_distribution': coral_distribution,
+#                 'recent_stats': recent_stats,
+#                 'success': True
+#             }), 200
+
+#     except Exception as e:
+#         print(f"Error fetching dashboard stats: {e}")
+#         import traceback
+#         traceback.print_exc()  # This will show the full error trace
+#         return jsonify({'error': str(e)}), 500
+#     finally:
+#         if conn:
+#             conn.close()
+
+@biologist_bp.route('/biologist/dashboard/stats', methods=['GET', 'OPTIONS'])
+@cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
+@biologist_required
+@login_required
+def get_dashboard_stats():
+    """Get dashboard statistics for biologist"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    try:
+        conn = get_db_connection()
+        if conn is None:
+            return jsonify({'error': 'Database connection failed'}), 500
+
+        current_user_id = session.get('user_id')
+        
+        with conn.cursor() as cur:
+            # Get GENERAL coral lifeform distribution (all users) for the dashboard card
+            cur.execute("""
+                SELECT 
+                    cl.class_name,
+                    cl.color_hex,
+                    COUNT(sr.id) as detection_count,
+                    SUM(sr.area_px) as total_area_px,
+                    AVG(sr.coverage_percent) as avg_coverage,
+                    COUNT(DISTINCT sr.image_id) as image_count
+                FROM coral_lifeforms cl
+                LEFT JOIN segmentation_results sr ON cl.id = sr.class_id
+                LEFT JOIN images i ON sr.image_id = i.id
+                WHERE (i.upload_status = 'approved' OR i.upload_status IS NULL)
+                GROUP BY cl.id, cl.class_name, cl.color_hex
+                HAVING COUNT(sr.id) > 0
+                ORDER BY detection_count DESC
+                LIMIT 10
+            """)
+            
+            coral_distribution = []
+            total_detections = 0
+            
+            rows = cur.fetchall()
+            print(f"General coral distribution query returned {len(rows)} rows")
+            
+            for row in rows:
+                print(f"Row data: {row}")
+                detection_count = int(row[2]) if row[2] is not None else 0
+                total_detections += detection_count
+                
+                coral_distribution.append({
+                    'class_name': row[0],
+                    'color_hex': row[1] or '#6B7280',
+                    'detection_count': detection_count,
+                    'total_area_px': int(row[3]) if row[3] is not None else 0,
+                    'avg_coverage': float(row[4]) if row[4] is not None else 0.0,
+                    'image_count': int(row[5]) if row[5] is not None else 0
+                })
+            
+            # Calculate percentages for general distribution
+            for item in coral_distribution:
+                if total_detections > 0:
+                    item['percentage'] = (item['detection_count'] / total_detections) * 100
+                else:
+                    item['percentage'] = 0
+            
+            # Get PERSONAL analysis statistics for current biologist only (for stat cards)
+            cur.execute("""
+                SELECT 
+                    COUNT(DISTINCT i.id) as total_images,
+                    COUNT(DISTINCT sr.id) as total_detections,
+                    AVG(COALESCE(i.analysis_confidence, 0)) * 100 as avg_confidence
+                FROM images i
+                LEFT JOIN segmentation_results sr ON i.id = sr.image_id
+                WHERE i.uploader_id = %s
+                AND i.uploaded_at >= NOW() - INTERVAL '30 days'
+                AND (i.upload_status = 'approved' OR i.upload_status IS NULL)
+            """, (current_user_id,))
+            
+            personal_stats_row = cur.fetchone()
+            print(f"Personal stats row: {personal_stats_row}")
+            
+            # Get contributing researchers data (all active researchers)
+            cur.execute("""
+                SELECT 
+                    u.id,
+                    u.firstname,
+                    u.lastname,
+                    u.username,
+                    u.profile_image,
+                    u.institution,
+                    COUNT(DISTINCT i.id) as images_contributed,
+                    COUNT(DISTINCT sr.id) as detections_contributed,
+                    MAX(i.uploaded_at) as last_contribution
+                FROM users u
+                LEFT JOIN images i ON u.id = i.uploader_id
+                LEFT JOIN segmentation_results sr ON i.id = sr.image_id
+                WHERE u.roletype IN ('biologist', 'admin')
+                AND u.status = 'approved'
+                AND i.uploaded_at >= NOW() - INTERVAL '30 days'
+                GROUP BY u.id, u.firstname, u.lastname, u.username, u.profile_image, u.institution
+                HAVING COUNT(DISTINCT i.id) > 0
+                ORDER BY images_contributed DESC
+            """)
+            
+            contributing_researchers = []
+            total_contributions = 0
+            
+            for researcher in cur.fetchall():
+                contribution_count = int(researcher[6]) if researcher[6] else 0
+                total_contributions += contribution_count
+                
+                contributing_researchers.append({
+                    'id': researcher[0],
+                    'name': f"{researcher[1]} {researcher[2]}",
+                    'username': researcher[3],
+                    'profile_image': researcher[4],
+                    'institution': researcher[5] or 'Not specified',
+                    'images_contributed': contribution_count,
+                    'detections_contributed': int(researcher[7]) if researcher[7] else 0,
+                    'last_contribution': researcher[8].isoformat() if researcher[8] else None
+                })
+            
+            # Calculate contribution percentages
+            for researcher in contributing_researchers:
+                if total_contributions > 0:
+                    researcher['contribution_percentage'] = (researcher['images_contributed'] / total_contributions) * 100
+                else:
+                    researcher['contribution_percentage'] = 0
+            
+            # Personal stats for the stat cards
+            recent_stats = {
+                'total_images': int(personal_stats_row[0]) if personal_stats_row[0] is not None else 0,
+                'total_detections': int(personal_stats_row[1]) if personal_stats_row[1] is not None else 0,
+                'avg_confidence': float(personal_stats_row[2]) if personal_stats_row[2] is not None else 0.0,
+                'active_users': len(contributing_researchers)
+            }
+            
+            print(f"General coral distribution: {len(coral_distribution)} items")
+            print(f"Personal stats: {recent_stats}")
+            print(f"Contributing researchers: {len(contributing_researchers)}")
+            
+            return jsonify({
+                'coral_distribution': coral_distribution,  # General distribution for dashboard card
+                'recent_stats': recent_stats,              # Personal stats for stat cards
+                'contributing_researchers': contributing_researchers,
+                'success': True
+            }), 200
+
+    except Exception as e:
+        print(f"Error fetching dashboard stats: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()

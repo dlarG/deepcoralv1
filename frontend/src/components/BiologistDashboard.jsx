@@ -59,25 +59,36 @@ function BiologistDashboard() {
       </div>
     );
   }
+  const handleNavigate = (tabName) => {
+    setActiveTab(tabName);
+  };
 
   const renderContent = () => {
     switch (activeTab) {
       case "Dashboard":
-        return <Dashboard user={user} darkMode={darkMode} />;
+        return (
+          <Dashboard
+            user={user}
+            darkMode={darkMode}
+            onNavigate={handleNavigate}
+          />
+        );
       case "User":
         return <UserManagement />;
       case "Image Analysis":
         return <ImageUpload user={user} darkMode={darkMode} />;
       case "Coral Database":
         return <CoralDatabase user={user} darkMode={darkMode} />;
-      //   case "Reports":
-      //     return <Reports user={user} darkMode={darkMode} />;
-      //   case "Research Tools":
-      //     return <ResearchTools user={user} darkMode={darkMode} />;
       case "Profile":
         return <ProfileManagement user={user} darkMode={darkMode} />;
       default:
-        return <Dashboard user={user} darkMode={darkMode} />;
+        return (
+          <Dashboard
+            user={user}
+            darkMode={darkMode}
+            onNavigate={handleNavigate}
+          />
+        );
     }
   };
 
