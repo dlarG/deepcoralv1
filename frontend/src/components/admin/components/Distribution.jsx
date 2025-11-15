@@ -317,7 +317,7 @@ function Distribution() {
                   setSearchTerm(e.target.value);
                   setCurrentPage(1); // Reset to first page when searching
                 }}
-                className="search-input"
+                className="distribution-search-input"
               />
             </div>
             <div className="table-info">

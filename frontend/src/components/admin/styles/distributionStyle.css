@@ -3204,7 +3204,7 @@ body.modal-open {
   color: var(--dark-text-secondary);
 }
 
-.search-input {
+.distribution-search-input {
   border: none;
   outline: none;
   background: transparent;
