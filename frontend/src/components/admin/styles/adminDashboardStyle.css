@@ -473,14 +473,14 @@
 }
 
 .user-avatar img,
-.avatar-placeholder {
+.avatar-placeholders {
   width: 100%;
   height: 100%;
   border-radius: 50%;
   object-fit: cover;
 }
 
-.avatar-placeholder {
+.avatar-placeholders {
   background: var(--color-primary);
   color: white;
   display: flex;
@@ -562,13 +562,17 @@
 }
 
 /* Recent Activities */
-.activities-list {
+.activities-lisst {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
 }
 
-.activity-item {
+.dark-mode .activities-lisst {
+  background: var(--dark-bg-secondary);
+}
+
+.activity-items {
   display: flex;
   gap: 0.75rem;
   padding: 0.75rem;
@@ -576,7 +580,7 @@
   transition: background-color 0.3s ease;
 }
 
-.activity-item:hover {
+.activity-items:hover {
   background: var(--bg-secondary);
 }
 

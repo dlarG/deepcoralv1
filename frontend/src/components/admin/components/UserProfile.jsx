@@ -401,19 +401,22 @@ function UserProfile({ darkMode }) {
               <FiMoreVertical size={20} />
             </button>
             {dropdownOpen && (
-              <div className="dropdown-menu">
-                <button onClick={handleEditUser} className="dropdown-item edit">
+              <div className="userprofile-dropdown-menu">
+                <button
+                  onClick={handleEditUser}
+                  className="userprofile-dropdown-item edit"
+                >
                   <FiEdit2 size={16} />
                   <span>Edit Profile</span>
                 </button>
-                <button className="dropdown-item export">
+                <button className="userprofile-dropdown-item export">
                   <FiDownload size={16} />
                   <span>Export Data</span>
                 </button>
-                <div className="dropdown-divider"></div>
+                <div className="userprofile-dropdown-divider"></div>
                 <button
                   onClick={handleDeleteUser}
-                  className="dropdown-item delete"
+                  className="userprofile-dropdown-item delete"
                 >
                   <FiTrash2 size={16} />
                   <span>Delete User</span>

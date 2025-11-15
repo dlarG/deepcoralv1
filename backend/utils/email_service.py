@@ -286,6 +286,435 @@ class EmailService:
         """
         
         return html_template
+    
+    def send_user_approval_notification(self, user_data):
+        """Send notification to user about account approval"""
+        subject = f"Welcome to {self.company_name} - Your Account Has Been Approved! 🎉"
+        html_content = self._get_user_approval_template(user_data)
+        return self.send_email([user_data['email']], subject, html_content)
+
+    def send_user_rejection_notification(self, user_data, rejection_reason=None):
+        """Send notification to user about account rejection"""
+        subject = f"Update on Your {self.company_name} Application"
+        html_content = self._get_user_rejection_template(user_data, rejection_reason)
+        return self.send_email([user_data['email']], subject, html_content)
+
+    def _get_user_approval_template(self, user_data):
+        """Generate HTML template for user approval notification"""
+        approval_time = datetime.now().strftime("%B %d, %Y at %I:%M %p")
+        
+        html_template = f"""
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Account Approved - Welcome to {self.company_name}</title>
+            <style>
+                body {{
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    line-height: 1.6;
+                    color: #333;
+                    max-width: 600px;
+                    margin: 0 auto;
+                    padding: 20px;
+                    background-color: #f8f9fa;
+                }}
+                .email-container {{
+                    background: white;
+                    border-radius: 12px;
+                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                    overflow: hidden;
+                }}
+                .header {{
+                    background: linear-gradient(135deg, #10b981, #059669);
+                    color: white;
+                    padding: 40px 30px;
+                    text-align: center;
+                }}
+                .header h1 {{
+                    margin: 0;
+                    font-size: 28px;
+                    font-weight: 700;
+                }}
+                .success-icon {{
+                    font-size: 48px;
+                    margin-bottom: 15px;
+                    display: block;
+                }}
+                .content {{
+                    padding: 40px 30px;
+                }}
+                .welcome-message {{
+                    background: linear-gradient(135deg, #ecfdf5, #f0fdf4);
+                    border-radius: 12px;
+                    padding: 25px;
+                    margin: 25px 0;
+                    border-left: 5px solid #10b981;
+                    text-align: center;
+                }}
+                .user-details {{
+                    background: #f8fafc;
+                    border-radius: 8px;
+                    padding: 20px;
+                    margin: 20px 0;
+                }}
+                .detail-row {{
+                    display: flex;
+                    justify-content: space-between;
+                    padding: 8px 0;
+                    border-bottom: 1px solid #e5e7eb;
+                }}
+                .detail-row:last-child {{
+                    border-bottom: none;
+                }}
+                .label {{
+                    font-weight: 600;
+                    color: #374151;
+                }}
+                .value {{
+                    color: #6b7280;
+                    font-weight: 500;
+                }}
+                .action-button {{
+                    display: inline-block;
+                    background: linear-gradient(135deg, #10b981, #059669);
+                    color: white;
+                    text-decoration: none;
+                    padding: 15px 30px;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    font-size: 16px;
+                    text-align: center;
+                    margin: 20px auto;
+                    display: block;
+                    max-width: 250px;
+                    transition: all 0.3s ease;
+                }}
+                .action-button:hover {{
+                    transform: translateY(-2px);
+                    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+                }}
+                .feature-list {{
+                    background: #f0f9ff;
+                    border-radius: 8px;
+                    padding: 20px;
+                    margin: 25px 0;
+                }}
+                .feature-item {{
+                    display: flex;
+                    align-items: center;
+                    margin: 10px 0;
+                    color: #374151;
+                }}
+                .feature-icon {{
+                    color: #10b981;
+                    margin-right: 12px;
+                    font-weight: bold;
+                }}
+                .footer {{
+                    background: #f3f4f6;
+                    padding: 25px;
+                    text-align: center;
+                    color: #6b7280;
+                    font-size: 14px;
+                }}
+                .social-links {{
+                    margin: 15px 0;
+                }}
+                .social-link {{
+                    display: inline-block;
+                    margin: 0 10px;
+                    color: #059669;
+                    text-decoration: none;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="email-container">
+                <div class="header">
+                    <span class="success-icon">🎉</span>
+                    <h1>Welcome to {self.company_name}!</h1>
+                    <p style="margin: 10px 0 0 0; opacity: 0.9; font-size: 18px;">Your account has been approved!</p>
+                </div>
+                
+                <div class="content">
+                    <div class="welcome-message">
+                        <h2 style="color: #059669; margin-top: 0;">🌊 Congratulations, {user_data.get('firstname', '')}!</h2>
+                        <p style="font-size: 16px; margin-bottom: 0;">
+                            Your application to join {self.company_name} has been <strong>approved</strong>! 
+                            You now have access to our coral reef conservation platform.
+                        </p>
+                    </div>
+                    
+                    <h3 style="color: #374151;">📋 Your Account Details</h3>
+                    <div class="user-details">
+                        <div class="detail-row">
+                            <span class="label">Full Name:</span>
+                            <span class="value">{user_data.get('firstname', '')} {user_data.get('lastname', '')}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">Username:</span>
+                            <span class="value">@{user_data.get('username', '')}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">Email:</span>
+                            <span class="value">{user_data.get('email', '')}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">Approved On:</span>
+                            <span class="value">{approval_time}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">Status:</span>
+                            <span class="value" style="color: #10b981; font-weight: 700;">✅ Active</span>
+                        </div>
+                    </div>
+                    
+                    <a href="{self.company_website}/login" class="action-button">
+                        🚀 Login to Your Account
+                    </a>
+                    
+                    <div class="feature-list">
+                        <h3 style="color: #0369a1; margin-top: 0;">🐠 What You Can Do Now:</h3>
+                        <div class="feature-item">
+                            <span class="feature-icon">📸</span>
+                            Upload and analyze coral reef images
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">🌐</span>
+                            Collaborate with marine conservation community
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">📚</span>
+                            Access comprehensive coral database
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">🗺️</span>
+                            Map and track coral reef locations
+                        </div>
+                    </div>
+                    
+                    <div style="background: #fffbeb; border: 1px solid #f59e0b; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                        <h4 style="color: #92400e; margin-top: 0;">🔐 Getting Started</h4>
+                        <p style="color: #92400e; margin-bottom: 0;">
+                            You can now log in using your username (<strong>@{user_data.get('username', '')}</strong>) 
+                            and the password you created during registration.
+                        </p>
+                    </div>
+                    
+                    <p style="text-align: center; color: #6b7280; font-size: 14px; margin-top: 30px;">
+                        Thank you for joining our mission to protect and preserve coral reefs worldwide! 🪸
+                    </p>
+                </div>
+                
+                <div class="footer">
+                    <p><strong>{self.company_name}</strong> - Marine Conservation Technology</p>
+                    <div class="social-links">
+                        <a href="{self.company_website}" class="social-link">🌐 Website</a>
+                        <a href="mailto:{self.support_email}" class="social-link">📧 Support</a>
+                    </div>
+                    <p>
+                        Need help getting started? Contact us at 
+                        <a href="mailto:{self.support_email}" style="color: #059669;">{self.support_email}</a>
+                    </p>
+                    <p style="margin-top: 15px; font-size: 12px; opacity: 0.7;">
+                        © {datetime.now().year} {self.company_name}. All rights reserved.
+                        <br>
+                        This email confirms your account approval.
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        return html_template
+
+    def _get_user_rejection_template(self, user_data, rejection_reason=None):
+        """Generate HTML template for user rejection notification"""
+        rejection_time = datetime.now().strftime("%B %d, %Y at %I:%M %p")
+        
+        html_template = f"""
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Application Update - {self.company_name}</title>
+            <style>
+                body {{
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    line-height: 1.6;
+                    color: #333;
+                    max-width: 600px;
+                    margin: 0 auto;
+                    padding: 20px;
+                    background-color: #f8f9fa;
+                }}
+                .email-container {{
+                    background: white;
+                    border-radius: 12px;
+                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                    overflow: hidden;
+                }}
+                .header {{
+                    background: linear-gradient(135deg, #ef4444, #dc2626);
+                    color: white;
+                    padding: 40px 30px;
+                    text-align: center;
+                }}
+                .header h1 {{
+                    margin: 0;
+                    font-size: 24px;
+                    font-weight: 600;
+                }}
+                .content {{
+                    padding: 40px 30px;
+                }}
+                .message-box {{
+                    background: #fef2f2;
+                    border: 1px solid #fecaca;
+                    border-radius: 8px;
+                    padding: 20px;
+                    margin: 20px 0;
+                    border-left: 4px solid #ef4444;
+                }}
+                .user-details {{
+                    background: #f8fafc;
+                    border-radius: 8px;
+                    padding: 20px;
+                    margin: 20px 0;
+                }}
+                .detail-row {{
+                    display: flex;
+                    justify-content: space-between;
+                    padding: 8px 0;
+                    border-bottom: 1px solid #e5e7eb;
+                }}
+                .detail-row:last-child {{
+                    border-bottom: none;
+                }}
+                .label {{
+                    font-weight: 600;
+                    color: #374151;
+                }}
+                .value {{
+                    color: #6b7280;
+                }}
+                .reapply-section {{
+                    background: #f0f9ff;
+                    border-radius: 8px;
+                    padding: 20px;
+                    margin: 25px 0;
+                    text-align: center;
+                }}
+                .reapply-button {{
+                    display: inline-block;
+                    background: linear-gradient(135deg, #0ea5e9, #0284c7);
+                    color: white;
+                    text-decoration: none;
+                    padding: 12px 24px;
+                    border-radius: 6px;
+                    font-weight: 600;
+                    margin-top: 15px;
+                }}
+                .footer {{
+                    background: #f3f4f6;
+                    padding: 25px;
+                    text-align: center;
+                    color: #6b7280;
+                    font-size: 14px;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="email-container">
+                <div class="header">
+                    <h1>Application Status Update</h1>
+                    <p style="margin: 10px 0 0 0; opacity: 0.9;">Regarding your {self.company_name} application</p>
+                </div>
+                
+                <div class="content">
+                    <h2 style="color: #374151;">Hello {user_data.get('firstname', '')},</h2>
+                    
+                    <p>Thank you for your interest in joining {self.company_name}, our coral reef conservation platform.</p>
+                    
+                    <div class="message-box">
+                        <h3 style="color: #dc2626; margin-top: 0;">Application Status: Not Approved</h3>
+                        <p style="margin-bottom: 0;">
+                            After careful review, we are unable to approve your application at this time.
+                            {f"<br><br><strong>Reason:</strong> {rejection_reason}" if rejection_reason else ""}
+                        </p>
+                    </div>
+                    
+                    <h3>📋 Application Details</h3>
+                    <div class="user-details">
+                        <div class="detail-row">
+                            <span class="label">Full Name:</span>
+                            <span class="value">{user_data.get('firstname', '')} {user_data.get('lastname', '')}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">Username:</span>
+                            <span class="value">@{user_data.get('username', '')}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">Email:</span>
+                            <span class="value">{user_data.get('email', '')}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">Applied Role:</span>
+                            <span class="value">{user_data.get('roletype', 'guest').title()}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">Reviewed On:</span>
+                            <span class="value">{rejection_time}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="reapply-section">
+                        <h3 style="color: #0284c7; margin-top: 0;">🔄 Future Applications</h3>
+                        <p>
+                            You're welcome to reapply in the future. Please ensure that you meet all 
+                            requirements and provide accurate information.
+                        </p>
+                        <a href="{self.company_website}/register" class="reapply-button">
+                            Apply Again
+                        </a>
+                    </div>
+                    
+                    <div style="background: #fffbeb; border: 1px solid #f59e0b; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                        <h4 style="color: #92400e; margin-top: 0;">📞 Questions?</h4>
+                        <p style="color: #92400e; margin-bottom: 0;">
+                            If you have questions about this decision or need clarification, 
+                            please contact our support team at 
+                            <a href="mailto:{self.support_email}" style="color: #92400e;">
+                                {self.support_email}
+                            </a>
+                        </p>
+                    </div>
+                    
+                    <p style="color: #6b7280;">
+                        Thank you for your understanding and continued interest in marine conservation.
+                    </p>
+                </div>
+                
+                <div class="footer">
+                    <p><strong>{self.company_name}</strong> - Marine Conservation Technology</p>
+                    <p>
+                        For questions, contact us at 
+                        <a href="mailto:{self.support_email}" style="color: #0ea5e9;">{self.support_email}</a>
+                        <br>
+                        Visit: <a href="{self.company_website}" style="color: #0ea5e9;">{self.company_website}</a>
+                    </p>
+                    <p style="margin-top: 15px; font-size: 12px; opacity: 0.7;">
+                        © {datetime.now().year} {self.company_name}. All rights reserved.
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        return html_template
 
 # Create a global instance
 email_service = EmailService()

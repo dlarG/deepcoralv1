@@ -276,7 +276,7 @@ function TopNavigation({
               )}
               <div className="avatar-status-indicator"></div>
             </div>
-            <div className="profile-info">
+            <div className="profile-infos">
               <span className="profile-name">
                 {user?.firstname} {user?.lastname}
               </span>

@@ -8,6 +8,7 @@ import os
 import uuid
 import warnings
 import json
+import psycopg2
 from pathlib import Path
 from db import get_db_connection
 from datetime import datetime
@@ -103,7 +104,7 @@ if PYTORCH_AVAILABLE:
         
         # Load segmentation model (11 classes - your existing model)
         BASE_DIR = Path(__file__).parent.parent
-        MODEL_PATH = BASE_DIR.parent / "backend" / "models" / "segmentation" / "version2" / "coral_unet_best.pth"
+        MODEL_PATH = BASE_DIR.parent / "backend" / "models" / "segmentation" / "version3" / "coral_unet_best.pth"
         
         print(f"🔄 Loading segmentation model from: {MODEL_PATH}")
         print(f"📁 Model exists: {MODEL_PATH.exists()}")
@@ -138,7 +139,7 @@ if PYTORCH_AVAILABLE:
                 
                 # Define transforms for model
                 segmentation_transform = A.Compose([
-                    A.Resize(256, 256),
+                    A.Resize(640, 640),
                     A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                     ToTensorV2()
                 ])
@@ -171,17 +172,21 @@ CORAL_CLASSES = {
     # Note: removed 'submassive' and 'soft-coral' to match your 8 coral classes + background
 }
 
-# Color map for visualization
+def hex_to_rgb(hex_color):
+    """Convert hex color to RGB tuple"""
+    hex_color = hex_color.lstrip('#')
+    return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+
 COLOR_MAP = {
-    0: [0, 0, 0],       # Background - Black
-    1: [255, 0, 0],     # Acropora-branching - Red
-    2: [0, 255, 0],     # Acropora-tabulate - Green
-    3: [0, 0, 255],     # Digitate - Blue
-    4: [255, 255, 0],   # Encrusting - Yellow
-    5: [255, 0, 255],   # Foliose - Magenta
-    6: [0, 255, 255],   # Massive - Cyan
-    7: [255, 165, 0],   # Mushroom - Orange
-    8: [128, 0, 128]    # Non-acropora-branching - Purple
+    0: [0, 0, 0],           # Background - Black (#000000)
+    1: [255, 107, 107],     # Acropora-branching - #FF6B6B  
+    2: [255, 209, 102],     # Acropora-tabulate - #FFD166
+    3: [76, 205, 196],      # Encrusting - #4ECDC4
+    4: [17, 138, 178],      # Foliose - #118AB2 (was yellow, now blue)
+    5: [7, 59, 76],         # Massive - #073B4C
+    6: [239, 71, 111],      # Mushroom - #EF476F
+    7: [114, 9, 183],       # Non-acropora-branching - #7209B7
+    8: [247, 37, 133]       # Submassive - #F72585
 }
 
 UPLOAD_FOLDER = "../backend/coral_uploads"
@@ -200,7 +205,7 @@ def predict_segmentation(image):
         raise Exception("Segmentation model not available")
     
     transform = A.Compose([
-        A.Resize(256, 256),
+        A.Resize(640, 640),
         A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ToTensorV2()
     ])
@@ -363,7 +368,7 @@ def serve_crop(filename):
 def serve_mask(filename):
     return send_from_directory(MASKS_FOLDER, filename)
 
-def preprocess_for_segmentation(image_path, target_size=(256, 256)):
+def preprocess_for_segmentation(image_path, target_size=(640, 640)):
     """Preprocess image for segmentation model"""
     transform = A.Compose([
         A.Resize(target_size[0], target_size[1]),
@@ -487,30 +492,22 @@ def get_user_id_from_session():
         return 1
 
 def segment_coral_lifeforms(image_path):
-    """Segment coral lifeforms and calculate coverage - UPDATED to return overlay"""
+    """Segment coral lifeforms and calculate coverage - FIXED version"""
     if segmentation_model is None:
         print("❌ Segmentation model not available")
-        return [], {}, None, 0
+        return [], {}, None, None, 0
     
     try:
-        # Preprocess image
-        input_tensor, original_size = preprocess_for_segmentation(image_path)
+        # Load and preprocess image like mini-system
+        image = cv2.imread(image_path)
+        if image is None:
+            raise ValueError(f"Could not load image from {image_path}")
         
-        # Load original image for overlay creation
-        original_image = cv2.imread(image_path)
-        original_image = cv2.cvtColor(original_image, cv2.COLOR_BGR2RGB)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        original_size = image.shape[:2]
         
-        # Run segmentation
-        with torch.no_grad():
-            output = segmentation_model(input_tensor)
-            predictions = torch.argmax(output, dim=1).squeeze().cpu().numpy()
-        
-        # Resize predictions to original size
-        predictions_resized = cv2.resize(
-            predictions.astype(np.uint8), 
-            original_size, 
-            interpolation=cv2.INTER_NEAREST
-        )
+        # Use the fixed predict_segmentation function
+        predictions_resized = predict_segmentation(image)
         
         # Calculate coverage statistics
         total_pixels = predictions_resized.size
@@ -535,17 +532,18 @@ def segment_coral_lifeforms(image_path):
                 # Create individual class mask
                 class_mask = (predictions_resized == class_id).astype(np.uint8) * 255
                 class_masks[class_id] = class_mask
+
+        # Create overlay and mask using consistent functions
+        overlay_image = create_overlay(image, predictions_resized, alpha=0.5)
+        mask_image = create_colored_mask(predictions_resized)
         
-        # Create overlay instead of visualization mask
-        overlay_image = create_segmentation_overlay(original_image, predictions_resized, alpha=0.5)
-        
-        return coverage_data, class_masks, overlay_image, total_pixels
+        return coverage_data, class_masks, overlay_image, mask_image, total_pixels
         
     except Exception as e:
         print(f"Segmentation error: {str(e)}")
         import traceback
         traceback.print_exc()
-        return [], {}, None, 0
+        return [], {}, None, None, 0
 
 def create_visualization_mask(predictions):
     """Create colored visualization mask"""
@@ -865,7 +863,7 @@ def detect_and_crop_custom():
                 cropped.save(crop_path, quality=95)
 
                 # Segment and create overlay
-                coverage_data, class_masks, overlay_image, total_pixels = segment_coral_lifeforms(crop_path)
+                coverage_data, class_masks, overlay_image, mask_image, total_pixels = segment_coral_lifeforms(crop_path)
                 
                 # Save overlay instead of visualization mask
                 overlay_filename = f"overlay_{crop_filename}"
@@ -874,10 +872,17 @@ def detect_and_crop_custom():
                     overlay_bgr = cv2.cvtColor(overlay_image, cv2.COLOR_RGB2BGR)
                     cv2.imwrite(overlay_path, overlay_bgr)
 
+                # Save mask
+                mask_filename = f"mask_{crop_filename}"
+                mask_path = os.path.join(MASKS_FOLDER, mask_filename)
+                if mask_image is not None:
+                    Image.fromarray(mask_image).save(mask_path, quality=95)
+
                 # Add to segmentation results
                 segmentation_results.append({
                     'crop_url': f"crops/{crop_filename}",
                     'overlay_url': f"masks/{overlay_filename}",
+                    'mask_url': f"masks/{mask_filename}",
                     'coverage_data': coverage_data,
                     'total_pixels': total_pixels,
                     'detection_label': detection['label'],
@@ -1453,11 +1458,21 @@ def batch_analyze_images():
                 if img is not None:
                     height, width = img.shape[:2]
                     
-                    # Create a mock detection result for the entire image
+                    # Create a mock detection result for the entire image with smaller margin
                     class MockBox:
                         def __init__(self, width, height):
-                            self.xyxy = [[0, 0, width, height]]  # Full image coordinates
-                            self.conf = 0.5  # Default confidence for manual override
+                            # Use smaller margins for manual override to get more of the image
+                            margin_x = width * 0.05   # 5% margin
+                            margin_y = height * 0.05  # 5% margin
+                            
+                            self.xyxy = [[
+                                margin_x, 
+                                margin_y, 
+                                width - margin_x, 
+                                height - margin_y
+                            ]]
+                            self.conf = 0.7  # Higher confidence for manual override
+                            self.cls = None  # No class for manual override
                             
                     mock_detection = MockBox(width, height)
                     valid_detections.append(mock_detection)
@@ -1470,7 +1485,8 @@ def batch_analyze_images():
                             'filename': file.filename,
                             'file_index': file_index,
                             'image_dimensions': f"{width}x{height}",
-                            'override_reason': 'User manually included despite no quadrat detection'
+                            'override_reason': 'User manually included despite no quadrat detection',
+                            'crop_area': f"{width - margin_x*2}x{height - margin_y*2}"
                         }
                     )
             
@@ -1510,16 +1526,24 @@ def batch_analyze_images():
                     crop_path = os.path.join(OUTPUT_FOLDER, crop_filename)
                     cropped.save(crop_path, quality=95)
 
-                    # Segment the cropped image and get overlay
-                    coverage_data, class_masks, overlay_image, total_pixels = segment_coral_lifeforms(crop_path)
+                    # FIXED: Segment the cropped image and get both overlay and mask
+                    coverage_data, class_masks, overlay_image, mask_image, total_pixels = segment_coral_lifeforms(crop_path)
                     
-                    # Save overlay image instead of visualization mask
+                    # Save overlay image
                     overlay_filename = f"overlay_{crop_filename}"
                     overlay_path = os.path.join(MASKS_FOLDER, overlay_filename)
                     if overlay_image is not None:
                         # Convert RGB to BGR for OpenCV saving
                         overlay_bgr = cv2.cvtColor(overlay_image, cv2.COLOR_RGB2BGR)
                         cv2.imwrite(overlay_path, overlay_bgr)
+
+                    # Save mask image
+                    mask_filename = f"mask_{crop_filename}"
+                    mask_path = os.path.join(MASKS_FOLDER, mask_filename)
+                    if mask_image is not None:
+                        # Save mask as well
+                        mask_bgr = cv2.cvtColor(mask_image, cv2.COLOR_RGB2BGR)
+                        cv2.imwrite(mask_path, mask_bgr)
 
                     # Save to database with proper error handling
                     analysis_confidence = float(box.conf) if hasattr(box, 'conf') else 0.5  # Default for manual overrides
@@ -1574,8 +1598,9 @@ def batch_analyze_images():
 
                     image_crops.append({
                         'crop_url': f"crops/{crop_filename}",
-                        'overlay_url': f"masks/{overlay_filename}",  # FIXED: Use overlay_url consistently
-                        'visualization_url': f"masks/{overlay_filename}",  # ADDED: For backward compatibility
+                        'overlay_url': f"masks/{overlay_filename}",  # For overlay
+                        'mask_url': f"masks/{mask_filename}",        # For mask
+                        'visualization_url': f"masks/{overlay_filename}",  # For backward compatibility
                         'coverage_data': coverage_data,
                         'total_pixels': total_pixels,
                         'detection_label': label,

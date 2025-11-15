@@ -248,7 +248,6 @@ function Distribution() {
     openImageViewer,
     handleDeleteImage,
     renderCoralDistributionChart,
-    renderCategoriesPieChart,
     renderTrendChart,
   }) => {
     const [searchTerm, setSearchTerm] = useState("");
@@ -343,12 +342,7 @@ function Distribution() {
                   >
                     Location Name {getSortIcon("location_id")}
                   </th>
-                  <th
-                    onClick={() => handleSort("latitude")}
-                    className="sortable"
-                  >
-                    Coordinates {getSortIcon("latitude")}
-                  </th>
+
                   <th
                     onClick={() => handleSort("image_count")}
                     className="sortable"
@@ -728,12 +722,8 @@ function Distribution() {
                     </div>
                   ) : (
                     <div className="charts-container-horizontal">
-                      <div className="chart-wrapper">
+                      <div className="chart-wrapper full-width">
                         {renderCoralDistributionChart()}
-                      </div>
-
-                      <div className="chart-wrapper">
-                        {renderCategoriesPieChart()}
                       </div>
 
                       <div className="chart-wrapper full-width">
@@ -1135,7 +1125,7 @@ function Distribution() {
         },
         title: {
           display: true,
-          text: `Trends - ${getScopeDisplayText()}${
+          text: `Coral Trends in - ${getScopeDisplayText()}${
             activeTransect !== "all" ? ` (Transect ${activeTransect})` : ""
           }`,
           font: {
@@ -1157,88 +1147,6 @@ function Distribution() {
     };
 
     return <Line data={data} options={options} />;
-  };
-
-  const renderCategoriesPieChart = () => {
-    if (
-      !locationAnalytics?.coral_analytics ||
-      locationAnalytics.coral_analytics.length === 0
-    ) {
-      return (
-        <div className="no-data-message">
-          <FiPieChart size={48} />
-          <h3>No Category Data Available</h3>
-          <p>No coral category data found for the selected filters.</p>
-        </div>
-      );
-    }
-
-    // Group by category
-    const categoryData = locationAnalytics.coral_analytics.reduce(
-      (acc, coral) => {
-        const category = coral.category || "Unknown";
-        if (!acc[category]) {
-          acc[category] = {
-            total_coverage: 0,
-            count: 0,
-            colors: [],
-          };
-        }
-        acc[category].total_coverage += coral.avg_coverage_percent || 0;
-        acc[category].count += 1;
-        acc[category].colors.push(coral.color_hex || "#64748b");
-        return acc;
-      },
-      {}
-    );
-
-    const categories = Object.keys(categoryData);
-    const values = categories.map(
-      (cat) => categoryData[cat].total_coverage / categoryData[cat].count
-    );
-    const colors = categories.map((cat) => categoryData[cat].colors[0]);
-
-    const data = {
-      labels: categories,
-      datasets: [
-        {
-          label: "Average Coverage %",
-          data: values,
-          backgroundColor: colors,
-          borderColor: colors.map((color) => color + "dd"),
-          borderWidth: 2,
-        },
-      ],
-    };
-
-    const options = {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: "right",
-        },
-        title: {
-          display: true,
-          text: `Categories - ${getScopeDisplayText()}${
-            activeTransect !== "all" ? ` (Transect ${activeTransect})` : ""
-          }`,
-          font: {
-            size: 16,
-            weight: "bold",
-          },
-        },
-        tooltip: {
-          callbacks: {
-            label: function (context) {
-              return `${context.label}: ${context.parsed.toFixed(2)}%`;
-            },
-          },
-        },
-      },
-    };
-
-    return <Pie data={data} options={options} />;
   };
 
   const MapControls = () => {
@@ -1705,10 +1613,6 @@ function Distribution() {
                             {renderCoralDistributionChart()}
                           </div>
 
-                          <div className="chart-wrapper">
-                            {renderCategoriesPieChart()}
-                          </div>
-
                           <div className="chart-wrapper full-width">
                             {renderTrendChart()}
                           </div>
@@ -1734,7 +1638,6 @@ function Distribution() {
             openImageViewer={openImageViewer}
             handleDeleteImage={handleDeleteImage}
             renderCoralDistributionChart={renderCoralDistributionChart}
-            renderCategoriesPieChart={renderCategoriesPieChart}
             renderTrendChart={renderTrendChart}
             getLocationDisplayName={getLocationDisplayName}
           />

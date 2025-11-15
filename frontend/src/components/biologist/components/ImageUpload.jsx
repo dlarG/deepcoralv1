@@ -1,21 +1,49 @@
 import React, { useState, useRef } from "react";
+import { useAuth } from "../../../context/AuthContext";
 import {
   FiUpload,
   FiSettings,
   FiDownload,
-  FiEye,
   FiLoader,
   FiX,
-  FiCheck,
   FiFolder,
   FiGrid,
   FiList,
   FiFile,
   FiTrash2,
+  FiBarChart2,
+  FiPieChart,
+  FiSave,
+  FiMap,
+  FiAlertTriangle,
+  FiCheckCircle,
+  FiEye,
+  FiEyeOff,
 } from "react-icons/fi";
+import {
+  Chart as ChartJS,
+  ArcElement,
+  Tooltip,
+  Legend,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+} from "chart.js";
+import { Pie, Bar } from "react-chartjs-2";
+// Import LocationSelector from admin components
+import LocationSelector from "../../admin/components/LocationSelector";
 import "../styles/uploadImage.css";
 
-function UploadImage() {
+ChartJS.register(
+  ArcElement,
+  Tooltip,
+  Legend,
+  CategoryScale,
+  LinearScale,
+  BarElement
+);
+
+function ImageUpload() {
   const [images, setImages] = useState([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [crops, setCrops] = useState([]);
@@ -25,8 +53,147 @@ function UploadImage() {
   const [dragActive, setDragActive] = useState(false);
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
   const [viewMode, setViewMode] = useState("grid");
+  const [activeTab, setActiveTab] = useState("crops");
+  const [batchResults, setBatchResults] = useState(null);
+  const [showBatchChart, setShowBatchChart] = useState(false);
+  const [showInvalidImages, setShowInvalidImages] = useState(true);
+  const [confirmRemove, setConfirmRemove] = useState(null);
+  const { user } = useAuth();
+
+  // GIS and validation states (same as admin)
+  const [showLocationSelector, setShowLocationSelector] = useState(false);
+  const [processedImagesForSaving, setProcessedImagesForSaving] = useState([]);
+  const [rejectedImages, setRejectedImages] = useState([]);
+  const [showSaveButton, setShowSaveButton] = useState(false);
+  const [savedToDatabase, setSavedToDatabase] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState(null);
   const fileInputRef = useRef(null);
   const folderInputRef = useRef(null);
+
+  const [manuallyIncluded, setManuallyIncluded] = useState(new Set());
+  const [showManualOverrideModal, setShowManualOverrideModal] = useState(false);
+  const [imageToOverride, setImageToOverride] = useState(null);
+  const [analysisInProgress, setAnalysisInProgress] = useState(false);
+
+  // Copy all the functions from AddImage.jsx
+  const processCrops = async (file, intensity) => {
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+      formData.append("intensity", intensity);
+
+      const csrfResponse = await fetch(
+        `http://${process.env.REACT_APP_API_URL}/csrf-token`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
+      const csrfData = await csrfResponse.json();
+      formData.append("csrf_token", csrfData.csrf_token);
+
+      const response = await fetch(
+        `http://${process.env.REACT_APP_API_URL}/detect_custom`,
+        {
+          method: "POST",
+          body: formData,
+          credentials: "include",
+          headers: {
+            "X-CSRF-Token": csrfData.csrf_token,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+
+        // Update current image with segmentation data
+        setImages((prev) =>
+          prev.map((img, idx) => {
+            if (idx === currentImageIndex) {
+              return {
+                ...img,
+                crops: data.crops || [],
+                processed: true,
+                status: "processed",
+                segmentationData: {
+                  crops: data.segmentation_data || [],
+                  total_crops: data.segmentation_data
+                    ? data.segmentation_data.length
+                    : 0,
+                  filename: img.file.name,
+                },
+              };
+            }
+            return img;
+          })
+        );
+
+        setCrops(data.crops || []);
+        return data.crops || [];
+      } else {
+        throw new Error(`HTTP ${response.status}`);
+      }
+    } catch (error) {
+      console.error("Error processing crops:", error);
+      throw error;
+    }
+  };
+
+  const handleManualInclude = (imageIndex) => {
+    const image = images[imageIndex];
+    setImageToOverride({ index: imageIndex, image });
+    setShowManualOverrideModal(true);
+  };
+
+  const confirmManualInclude = () => {
+    if (imageToOverride) {
+      const newManuallyIncluded = new Set(manuallyIncluded);
+      newManuallyIncluded.add(imageToOverride.index);
+      setManuallyIncluded(newManuallyIncluded);
+
+      // Update the image status to manually_included
+      setImages((prev) =>
+        prev.map((img, idx) => {
+          if (idx === imageToOverride.index) {
+            return {
+              ...img,
+              status: "manually_included",
+              manualOverride: true,
+              originalRejectionReason: img.rejectionReason,
+              rejectionReason: null,
+            };
+          }
+          return img;
+        })
+      );
+
+      setShowManualOverrideModal(false);
+      setImageToOverride(null);
+    }
+  };
+
+  const handleRemoveManualInclude = (imageIndex) => {
+    const newManuallyIncluded = new Set(manuallyIncluded);
+    newManuallyIncluded.delete(imageIndex);
+    setManuallyIncluded(newManuallyIncluded);
+
+    // Revert the image back to invalid status
+    setImages((prev) =>
+      prev.map((img, idx) =>
+        idx === imageIndex
+          ? {
+              ...img,
+              status: "invalid",
+              manualOverride: false,
+              rejectionReason:
+                img.originalRejectionReason || "No coral quadrats detected",
+              originalRejectionReason: null,
+            }
+          : img
+      )
+    );
+  };
 
   const handleUpload = (e) => {
     const files = Array.from(e.target.files);
@@ -70,6 +237,9 @@ function UploadImage() {
       preview: URL.createObjectURL(file),
       crops: [],
       processed: false,
+      status: "pending",
+      quadratsDetected: 0,
+      rejectionReason: null,
     }));
 
     setImages((prev) => [...prev, ...newImages]);
@@ -77,6 +247,8 @@ function UploadImage() {
       setCurrentImageIndex(0);
     }
     setCrops([]);
+    setShowSaveButton(false);
+    setSavedToDatabase(false);
   };
 
   const handleDrag = (e) => {
@@ -100,15 +272,131 @@ function UploadImage() {
     }
   };
 
-  const handleSubmit = async () => {
-    if (images.length === 0) {
-      alert("Please select images first!");
+  const clearImages = () => {
+    images.forEach((image) => URL.revokeObjectURL(image.preview));
+    setImages([]);
+    setCurrentImageIndex(0);
+    setCrops([]);
+    setRejectedImages([]);
+    setManuallyIncluded(new Set());
+    setShowSaveButton(false);
+    setSavedToDatabase(false);
+    setBatchResults(null);
+    setShowBatchChart(false);
+  };
+
+  const removeImage = (index, skipConfirmation = false) => {
+    const imageToRemove = images[index];
+
+    if (!skipConfirmation && imageToRemove.processed) {
+      setConfirmRemove(index);
       return;
     }
 
-    setLoading(true);
+    const newImages = [...images];
+    URL.revokeObjectURL(newImages[index].preview);
+    newImages.splice(index, 1);
 
+    setImages(newImages);
+
+    if (imageToRemove.status === "invalid") {
+      setRejectedImages((prev) =>
+        prev.filter((rejImg) => rejImg.file.name !== imageToRemove.file.name)
+      );
+    }
+
+    if (currentImageIndex >= newImages.length) {
+      setCurrentImageIndex(Math.max(0, newImages.length - 1));
+    }
+
+    if (newImages.length === 0) {
+      setCrops([]);
+      setShowSaveButton(false);
+      setSavedToDatabase(false);
+    } else if (index === currentImageIndex) {
+      setCrops(newImages[currentImageIndex]?.crops || []);
+    }
+
+    setConfirmRemove(null);
+
+    if (imageToRemove.processed) {
+      setProcessedImagesForSaving((prev) =>
+        prev.filter((img) => img.file.name !== imageToRemove.file.name)
+      );
+    }
+  };
+
+  const removeAllInvalidImages = () => {
+    const invalidCount = images.filter(
+      (img) => img.status === "invalid"
+    ).length;
+
+    if (invalidCount === 0) return;
+
+    if (
+      window.confirm(
+        `Are you sure you want to remove all ${invalidCount} invalid images?`
+      )
+    ) {
+      const validImages = images.filter((img) => img.status !== "invalid");
+
+      images
+        .filter((img) => img.status === "invalid")
+        .forEach((img) => {
+          URL.revokeObjectURL(img.preview);
+        });
+
+      setImages(validImages);
+      setRejectedImages([]);
+      setCurrentImageIndex(0);
+
+      if (validImages.length === 0) {
+        setCrops([]);
+        setShowSaveButton(false);
+        setSavedToDatabase(false);
+      } else {
+        setCrops(validImages[0]?.crops || []);
+      }
+    }
+  };
+
+  const downloadCrop = (cropUrl, index) => {
+    const link = document.createElement("a");
+    link.href = `http://${process.env.REACT_APP_API_URL}/${cropUrl}`;
+    link.download = `crop_${index + 1}_${images[currentImageIndex].file.name}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const downloadSegmentationMask = (maskUrl, index) => {
+    const link = document.createElement("a");
+    link.href = `http://${process.env.REACT_APP_API_URL}/${maskUrl}`;
+    link.download = `segmentation_${index + 1}_${
+      images[currentImageIndex].file.name
+    }`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const downloadSegmentationOverlay = (overlayUrl, index) => {
+    const link = document.createElement("a");
+    link.href = `http://${process.env.REACT_APP_API_URL}/${overlayUrl}`;
+    link.download = `coral_overlay_${index + 1}_${
+      images[currentImageIndex].file.name
+    }`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const validateImageForQuadrats = async (imageFile) => {
     try {
+      const formData = new FormData();
+      formData.append("image", imageFile);
+      formData.append("intensity", "conservative");
+
       const csrfResponse = await fetch(
         `http://${process.env.REACT_APP_API_URL}/csrf-token`,
         {
@@ -116,15 +404,10 @@ function UploadImage() {
           credentials: "include",
         }
       );
-
       const csrfData = await csrfResponse.json();
-
-      const formData = new FormData();
-      formData.append("image", images[currentImageIndex].file);
-      formData.append("intensity", cropIntensity);
       formData.append("csrf_token", csrfData.csrf_token);
 
-      const res = await fetch(
+      const response = await fetch(
         `http://${process.env.REACT_APP_API_URL}/detect_custom`,
         {
           method: "POST",
@@ -136,146 +419,121 @@ function UploadImage() {
         }
       );
 
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
+      if (response.ok) {
+        const data = await response.json();
 
-      const data = await res.json();
-      setCrops(data.crops);
-
-      setImages((prev) =>
-        prev.map((img, idx) =>
-          idx === currentImageIndex
-            ? { ...img, crops: data.crops, processed: true }
-            : img
-        )
-      );
-    } catch (error) {
-      console.error("Error:", error);
-      alert("Failed to process image: " + error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleBatchSubmit = async () => {
-    if (images.length === 0) {
-      alert("Please select images first!");
-      return;
-    }
-
-    setBatchLoading(true);
-    setBatchProgress({ current: 0, total: images.length });
-
-    try {
-      const csrfResponse = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/csrf-token`,
-        {
-          method: "GET",
-          credentials: "include",
-        }
-      );
-
-      if (!csrfResponse.ok) {
-        throw new Error("Failed to get CSRF token");
-      }
-
-      const csrfData = await csrfResponse.json();
-      const updatedImages = [...images];
-
-      for (let i = 0; i < images.length; i++) {
-        if (images[i].processed) continue;
-
-        setBatchProgress({ current: i + 1, total: images.length });
-
-        const formData = new FormData();
-        formData.append("image", images[i].file);
-        formData.append("intensity", cropIntensity);
-        formData.append("csrf_token", csrfData.csrf_token);
-
-        try {
-          const res = await fetch(
-            `http://${process.env.REACT_APP_API_URL}/detect_custom`,
-            {
-              method: "POST",
-              body: formData,
-              credentials: "include",
-              headers: {
-                "X-CSRF-Token": csrfData.csrf_token,
-              },
-            }
-          );
-
-          if (!res.ok) {
-            const errorData = await res.json().catch(() => ({}));
-            throw new Error(
-              errorData.error || `HTTP error! status: ${res.status}`
-            );
-          }
-
-          const data = await res.json();
-          updatedImages[i] = {
-            ...updatedImages[i],
-            crops: data.crops,
-            processed: true,
+        if (data.crops && data.crops.length > 0) {
+          return {
+            valid: true,
+            quadratCount: data.crops.length,
+            confidence: data.highest_confidence,
+            totalDetections: data.total_detections,
+            validDetections: data.valid_detections,
           };
-          setImages(updatedImages);
-
-          if (i === currentImageIndex) {
-            setCrops(data.crops);
-          }
-        } catch (error) {
-          console.error(`Error processing image ${i}:`, error);
-          updatedImages[i] = {
-            ...updatedImages[i],
-            error: error.message,
-            processed: false,
+        } else {
+          return {
+            valid: false,
+            quadratCount: 0,
+            reason: "No coral quadrats detected in this image",
+            confidenceThreshold: data.confidence_threshold,
+            totalDetections: data.total_detections || 0,
           };
-          setImages(updatedImages);
-          continue;
         }
+      } else if (response.status === 400) {
+        const errorData = await response.json().catch(() => ({}));
+
+        let reason =
+          errorData.error || "No coral quadrats detected in this image";
+
+        if (
+          errorData.confidence_threshold &&
+          errorData.quadrat_detections_low_confidence > 0
+        ) {
+          reason += ` (confidence threshold: ${(
+            errorData.confidence_threshold * 100
+          ).toFixed(0)}%)`;
+        }
+
+        if (errorData.other_detections > 0) {
+          reason += `. Found ${errorData.other_detections} other object(s).`;
+        }
+
+        return {
+          valid: false,
+          quadratCount: 0,
+          reason: reason,
+          confidenceThreshold: errorData.confidence_threshold,
+          totalDetections: errorData.total_detections || 0,
+        };
+      } else {
+        const errorText = await response.text().catch(() => "Unknown error");
+        return {
+          valid: false,
+          quadratCount: 0,
+          reason: `Server error: ${response.status} - ${errorText}`,
+        };
       }
     } catch (error) {
-      console.error("Batch processing error:", error);
-      alert("Batch processing failed: " + error.message);
-    } finally {
-      setBatchLoading(false);
-      setBatchProgress({ current: 0, total: 0 });
+      console.error("Validation network error:", error);
+      return {
+        valid: false,
+        quadratCount: 0,
+        reason: "Network error during validation: " + error.message,
+      };
     }
   };
 
-  const clearImages = () => {
-    images.forEach((image) => URL.revokeObjectURL(image.preview));
-    setImages([]);
-    setCurrentImageIndex(0);
-    setCrops([]);
-  };
+  const validateAllImages = async () => {
+    setLoading(true);
+    const updatedImages = [...images];
+    const rejected = [];
 
-  const removeImage = (index) => {
-    const newImages = [...images];
-    URL.revokeObjectURL(newImages[index].preview);
-    newImages.splice(index, 1);
+    let validCount = 0;
+    let invalidCount = 0;
 
-    setImages(newImages);
+    for (let i = 0; i < images.length; i++) {
+      if (images[i].processed) continue;
 
-    if (currentImageIndex >= newImages.length) {
-      setCurrentImageIndex(Math.max(0, newImages.length - 1));
+      updatedImages[i].status = "validating";
+      setImages([...updatedImages]);
+
+      const validation = await validateImageForQuadrats(images[i].file);
+
+      if (validation.valid) {
+        updatedImages[i].status = "valid";
+        updatedImages[i].quadratsDetected = validation.quadratCount;
+        updatedImages[i].confidence = validation.confidence;
+        updatedImages[i].detectionDetails = {
+          totalDetections: validation.totalDetections,
+          validDetections: validation.validDetections,
+        };
+        validCount++;
+      } else {
+        updatedImages[i].status = "invalid";
+        updatedImages[i].rejectionReason = validation.reason;
+        updatedImages[i].confidenceThreshold = validation.confidenceThreshold;
+        updatedImages[i].detectionDetails = {
+          totalDetections: validation.totalDetections,
+        };
+        rejected.push({
+          ...images[i],
+          rejectionReason: validation.reason,
+        });
+        invalidCount++;
+      }
+
+      setImages([...updatedImages]);
     }
 
-    if (newImages.length === 0) {
-      setCrops([]);
-    } else if (index === currentImageIndex) {
-      setCrops(newImages[currentImageIndex]?.crops || []);
-    }
-  };
+    setRejectedImages(rejected);
+    setLoading(false);
 
-  const downloadCrop = (cropUrl, index) => {
-    const link = document.createElement("a");
-    link.href = `http://${process.env.REACT_APP_API_URL}/${cropUrl}`;
-    link.download = `crop_${index + 1}_${images[currentImageIndex].file.name}`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const validationSummary =
+      `Validation complete:\n` +
+      `${validCount} images valid with quadrats\n` +
+      `${invalidCount} images rejected\n\n` +
+      `Confidence threshold: 87% minimum`;
+    alert(validationSummary);
   };
 
   const downloadBatchCrops = () => {
@@ -299,15 +557,1004 @@ function UploadImage() {
     });
   };
 
+  const handleBatchAnalyze = async () => {
+    if (images.length === 0) {
+      alert("Please select images first!");
+      return;
+    }
+
+    if (analysisInProgress) {
+      alert("Analysis already in progress!");
+      return;
+    }
+
+    const validImages = images.filter(
+      (img) =>
+        img.status === "valid" ||
+        img.status === "processed" ||
+        img.status === "manually_included" ||
+        (img.status === "pending" && img.processed !== false)
+    );
+
+    const manuallyIncludedIndices = [];
+    validImages.forEach((img, index) => {
+      const originalIndex = images.findIndex(
+        (originalImg) => originalImg === img
+      );
+      if (img.status === "manually_included") {
+        manuallyIncludedIndices.push(originalIndex);
+      }
+    });
+
+    const invalidCount = images.filter(
+      (img) => img.status === "invalid"
+    ).length;
+
+    const manuallyIncludedCount = images.filter(
+      (img) => img.status === "manually_included"
+    ).length;
+
+    if (validImages.length === 0) {
+      alert(
+        "No valid images to process. Please validate your images first or manually include some images."
+      );
+      return;
+    }
+
+    let confirmMessage = `Found ${
+      validImages.length - manuallyIncludedCount
+    } valid image(s)`;
+
+    if (manuallyIncludedCount > 0) {
+      confirmMessage += ` and ${manuallyIncludedCount} manually included image(s)`;
+    }
+
+    if (invalidCount > 0) {
+      confirmMessage += `. ${invalidCount} invalid image(s) will be skipped.`;
+    }
+
+    confirmMessage += ` Proceed with analyzing ${validImages.length} total image(s)?`;
+
+    if (invalidCount > 0 || manuallyIncludedCount > 0) {
+      const proceed = window.confirm(confirmMessage);
+      if (!proceed) return;
+    }
+
+    setAnalysisInProgress(true);
+    setBatchLoading(true);
+    setShowBatchChart(false);
+    setBatchProgress({ current: 0, total: validImages.length });
+
+    try {
+      const csrfResponse = await fetch(
+        `http://${process.env.REACT_APP_API_URL}/csrf-token`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
+      const csrfData = await csrfResponse.json();
+
+      const formData = new FormData();
+      validImages.forEach((image) => {
+        formData.append("images", image.file);
+      });
+      formData.append("csrf_token", csrfData.csrf_token);
+      formData.append("intensity", cropIntensity);
+      formData.append(
+        "manually_included",
+        JSON.stringify(manuallyIncludedIndices)
+      );
+
+      const res = await fetch(
+        `http://${process.env.REACT_APP_API_URL}/batch_analyze`,
+        {
+          method: "POST",
+          body: formData,
+          credentials: "include",
+          headers: {
+            "X-CSRF-Token": csrfData.csrf_token,
+          },
+        }
+      );
+
+      const contentType = res.headers.get("content-type") || "";
+      const resBody = contentType.includes("application/json")
+        ? await res.json()
+        : await res.text();
+
+      if (!res.ok) {
+        console.error("batch_analyze failed:", res.status, resBody);
+        alert(
+          "Batch analyze failed: " +
+            (resBody?.error || JSON.stringify(resBody) || res.status)
+        );
+        return;
+      }
+
+      const data = resBody;
+
+      setBatchResults(data);
+      setShowBatchChart(true);
+      setActiveTab("batch-analysis");
+      setShowSaveButton(true);
+
+      const processedImagesWithData = validImages.map((image) => {
+        const result = data.results.find((r) => r.filename === image.file.name);
+        if (result && result.crops) {
+          return {
+            ...image,
+            crops: result.crops.map((crop) => crop.crop_url),
+            processed: true,
+            status: "processed",
+            segmentationData: {
+              crops: result.crops.map((crop) => ({
+                ...crop,
+                overlay_url: crop.overlay_url || crop.visualization_url,
+                visualization_url: crop.overlay_url || crop.visualization_url,
+                mask_url: crop.mask_url,
+                manually_included: crop.manually_included || false,
+              })),
+              total_crops: result.crops.length,
+              filename: result.filename,
+              manually_included: result.manually_included || false,
+            },
+          };
+        }
+        return image;
+      });
+
+      setProcessedImagesForSaving(processedImagesWithData);
+
+      const updatedImages = images.map((image) => {
+        const result = data.results.find((r) => r.filename === image.file.name);
+        if (result && result.crops) {
+          return {
+            ...image,
+            crops: result.crops.map((crop) => crop.crop_url),
+            processed: true,
+            status: "processed",
+            segmentationData: {
+              crops: result.crops.map((crop) => ({
+                ...crop,
+                overlay_url: crop.overlay_url || crop.visualization_url,
+                visualization_url: crop.overlay_url || crop.visualization_url,
+                mask_url: crop.mask_url,
+                manually_included: crop.manually_included || false,
+              })),
+              total_crops: result.crops.length,
+              filename: result.filename,
+              manually_included: result.manually_included || false,
+            },
+          };
+        }
+        return image;
+      });
+
+      setImages(updatedImages);
+
+      let successMessage = `Analysis completed successfully!\n`;
+      successMessage += `${data.batch_statistics.total_images_processed} images processed\n`;
+      successMessage += `${data.batch_statistics.total_crops} total crops generated\n`;
+
+      if (data.batch_statistics.manually_included_count > 0) {
+        successMessage += `${data.batch_statistics.manually_included_count} manually overridden images included\n`;
+      }
+
+      if (data.batch_statistics.total_images_rejected > 0) {
+        successMessage += `${data.batch_statistics.total_images_rejected} images rejected`;
+      }
+
+      alert(successMessage);
+    } catch (error) {
+      console.error("Batch analysis error:", error);
+      alert("Batch analysis failed: " + error.message);
+    } finally {
+      setBatchLoading(false);
+      setAnalysisInProgress(false);
+      setBatchProgress({ current: 0, total: 0 });
+    }
+  };
+
+  const handleSaveToDatabase = () => {
+    if (!showSaveButton) {
+      alert("No processed data to save. Please analyze images first.");
+      return;
+    }
+
+    setShowLocationSelector(true);
+  };
+
+  const handleLocationSaved = (location, saveResult) => {
+    setSavedToDatabase(true);
+    setShowSaveButton(false);
+    console.log("Location saved:", location, saveResult);
+  };
+
+  // Copy all the render functions from AddImage.jsx with same logic
+  const renderImageGallery = () => {
+    const validImagesCount = images.filter(
+      (img) => img.status === "valid" || img.status === "processed"
+    ).length;
+    const invalidImagesCount = images.filter(
+      (img) => img.status === "invalid"
+    ).length;
+    const pendingImagesCount = images.filter(
+      (img) => img.status === "pending"
+    ).length;
+    const manuallyIncludedCount = images.filter(
+      (img) => img.status === "manually_included"
+    ).length;
+
+    const displayImages = showInvalidImages
+      ? images
+      : images.filter((img) => img.status !== "invalid");
+
+    return (
+      <div className="gallery-section">
+        <div className="gallery-header">
+          <div className="gallery-title">
+            <FiGrid size={20} />
+            <span>Image Gallery ({displayImages.length})</span>
+          </div>
+
+          <div className="gallery-header-actions">
+            <div className="view-toggle">
+              <button
+                className={`view-toggle-btn ${
+                  viewMode === "grid" ? "active" : ""
+                }`}
+                onClick={() => setViewMode("grid")}
+                title="Grid view"
+              >
+                <FiGrid size={16} />
+              </button>
+              <button
+                className={`view-toggle-btn ${
+                  viewMode === "list" ? "active" : ""
+                }`}
+                onClick={() => setViewMode("list")}
+                title="List view"
+              >
+                <FiList size={16} />
+              </button>
+            </div>
+
+            <div className="gallery-filter-actions">
+              {invalidImagesCount > 0 && (
+                <button
+                  className={`filter-btn ${showInvalidImages ? "active" : ""}`}
+                  onClick={() => setShowInvalidImages(!showInvalidImages)}
+                  title={
+                    showInvalidImages
+                      ? "Hide invalid images"
+                      : "Show invalid images"
+                  }
+                >
+                  {showInvalidImages ? (
+                    <FiEye size={14} />
+                  ) : (
+                    <FiEyeOff size={14} />
+                  )}
+                  <span>{showInvalidImages ? "Hide" : "Show"} Invalid</span>
+                </button>
+              )}
+
+              {invalidImagesCount > 0 && (
+                <button
+                  onClick={removeAllInvalidImages}
+                  className="action-button danger-outline"
+                  title={`Remove all ${invalidImagesCount} invalid images`}
+                >
+                  <FiTrash2 size={14} />
+                  <span>Remove Invalid ({invalidImagesCount})</span>
+                </button>
+              )}
+            </div>
+
+            <div className="gallery-actions">
+              <button onClick={clearImages} className="action-button clear">
+                <FiTrash2 size={14} />
+                <span className="action-text">Clear All</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="image-status-summary">
+          <div className="status-item valid">
+            <span className="status-count">{validImagesCount}</span>
+            <span className="status-label">Valid</span>
+          </div>
+
+          <div className="status-item manually-included">
+            <span className="status-count">{manuallyIncludedCount}</span>
+            <span className="status-label">Manually Included</span>
+          </div>
+
+          <div className="status-item invalid">
+            <span className="status-count">{invalidImagesCount}</span>
+            <span className="status-label">Invalid</span>
+          </div>
+
+          <div className="status-item pending">
+            <span className="status-count">{pendingImagesCount}</span>
+            <span className="status-label">Pending</span>
+          </div>
+
+          {validImagesCount + manuallyIncludedCount > 0 &&
+            invalidImagesCount > 0 && (
+              <div className="analysis-info">
+                <FiAlertTriangle size={14} />
+                <span>
+                  {validImagesCount + manuallyIncludedCount} images ready for
+                  analysis
+                  {manuallyIncludedCount > 0 &&
+                    ` (${manuallyIncludedCount} manually included)`}
+                </span>
+              </div>
+            )}
+        </div>
+
+        <div className={`image-gallery ${viewMode}`}>
+          {displayImages.map((image, index) => {
+            const originalIndex = images.findIndex((img) => img === image);
+            const isManuallyIncluded = manuallyIncluded.has(originalIndex);
+
+            return (
+              <div
+                key={originalIndex}
+                className={`gallery-item ${
+                  originalIndex === currentImageIndex ? "active" : ""
+                } ${image.status} ${image.processed ? "processed" : ""} ${
+                  isManuallyIncluded ? "manually-included" : ""
+                }`}
+                onClick={() => {
+                  setCurrentImageIndex(originalIndex);
+                  const currentCrops = image.crops || [];
+                  setCrops(currentCrops);
+                }}
+              >
+                <div className="item-thumbnail">
+                  <img src={image.preview} alt={`Thumbnail ${originalIndex}`} />
+
+                  <div className="thumbnail-overlay">
+                    <div className={`status-indicator ${image.status}`}>
+                      {image.status === "valid" && <FiCheckCircle size={12} />}
+                      {image.status === "invalid" && <FiX size={12} />}
+                      {image.status === "manually_included" && (
+                        <FiCheckCircle size={12} />
+                      )}
+                      {image.status === "validating" && (
+                        <FiLoader size={12} className="spinning" />
+                      )}
+                      {image.status === "processed" && (
+                        <FiCheckCircle size={12} />
+                      )}
+                    </div>
+
+                    {image.status === "invalid" && (
+                      <button
+                        className="manual-include-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleManualInclude(originalIndex);
+                        }}
+                        title="Manually include this image in analysis"
+                      >
+                        <FiCheckCircle size={12} />
+                      </button>
+                    )}
+
+                    {image.status === "manually_included" && (
+                      <button
+                        className="remove-manual-include-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveManualInclude(originalIndex);
+                        }}
+                        title="Remove manual inclusion"
+                      >
+                        <FiX size={12} />
+                      </button>
+                    )}
+
+                    <button
+                      className={`remove-btn ${image.status}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeImage(originalIndex);
+                      }}
+                      title={`Remove ${image.status} image`}
+                    >
+                      <FiTrash2 size={12} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="item-info">
+                  <span className="filename" title={image.file.name}>
+                    {image.file.name}
+                  </span>
+                  <div className="item-status">
+                    {image.status === "valid" && (
+                      <span className="quadrat-count valid">
+                        ✓ {image.quadratsDetected} quadrat
+                        {image.quadratsDetected !== 1 ? "s" : ""} detected
+                      </span>
+                    )}
+                    {image.status === "invalid" && (
+                      <div className="invalid-status">
+                        <span
+                          className="error-text"
+                          title={image.rejectionReason}
+                        >
+                          ✗ No quadrats detected
+                        </span>
+                        <button
+                          className="manual-include-text-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleManualInclude(originalIndex);
+                          }}
+                        >
+                          Click to include anyway
+                        </button>
+                      </div>
+                    )}
+                    {image.status === "manually_included" && (
+                      <div className="manually-included-status">
+                        <span className="manually-included-text">
+                          ✓ Manually included for analysis
+                        </span>
+                        <span
+                          className="original-reason"
+                          title={image.originalRejectionReason}
+                        >
+                          (Originally: No quadrats detected)
+                        </span>
+                      </div>
+                    )}
+                    {image.status === "processed" &&
+                      image.crops?.length > 0 && (
+                        <span className="crop-count processed">
+                          ✓ {image.crops.length} crop
+                          {image.crops.length > 1 ? "s" : ""} processed
+                        </span>
+                      )}
+                    {image.status === "validating" && (
+                      <span className="validating-text">
+                        <FiLoader size={12} className="spinning" />
+                        Validating...
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {validImagesCount + manuallyIncludedCount > 0 && (
+          <div className="analysis-readiness">
+            <div className="readiness-content">
+              <FiCheckCircle size={16} className="ready-icon" />
+              <span className="ready-text">
+                {validImagesCount + manuallyIncludedCount} image
+                {validImagesCount + manuallyIncludedCount > 1 ? "s" : ""} ready
+                for batch analysis
+              </span>
+              {manuallyIncludedCount > 0 && (
+                <span className="manual-text">
+                  ({manuallyIncludedCount} manually included)
+                </span>
+              )}
+              {invalidImagesCount > 0 && (
+                <span className="skip-text">
+                  ({invalidImagesCount} invalid image
+                  {invalidImagesCount > 1 ? "s" : ""} will be skipped)
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderConfirmationModal = () => {
+    if (confirmRemove === null) return null;
+
+    const imageToRemove = images[confirmRemove];
+
+    return (
+      <div className="confirmation-overlay">
+        <div className="confirmation-modal">
+          <div className="confirmation-header">
+            <h3>Confirm Removal</h3>
+            <button
+              className="close-btn"
+              onClick={() => setConfirmRemove(null)}
+            >
+              <FiX size={16} />
+            </button>
+          </div>
+
+          <div className="confirmation-content">
+            <div className="confirmation-image">
+              <img src={imageToRemove.preview} alt="File to remove" />
+            </div>
+
+            <div className="confirmation-details">
+              <p>
+                <strong>File:</strong> {imageToRemove.file.name}
+              </p>
+              <p>
+                <strong>Status:</strong> {imageToRemove.status}
+              </p>
+              {imageToRemove.processed && (
+                <p className="warning-text">
+                  <FiAlertTriangle size={14} />
+                  This image has been processed. Removing it will also remove
+                  its analysis results.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="confirmation-actions">
+            <button
+              className="btn-cancel"
+              onClick={() => setConfirmRemove(null)}
+            >
+              Cancel
+            </button>
+            <button
+              className="btn-confirm"
+              onClick={() => removeImage(confirmRemove, true)}
+            >
+              Remove Image
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderBatchAnalysisChart = () => {
+    if (!batchResults || !batchResults.batch_statistics) {
+      return (
+        <div className="no-results">No batch analysis results available</div>
+      );
+    }
+
+    const coverageData = batchResults.batch_statistics.coverage_summary;
+
+    if (!coverageData || coverageData.length === 0) {
+      return <div className="no-results">No coral coverage data found</div>;
+    }
+
+    const pieData = {
+      labels: coverageData.map((coral) => coral.class_name),
+      datasets: [
+        {
+          data: coverageData.map((coral) => coral.coverage_percent),
+          backgroundColor: coverageData.map((coral) => coral.color),
+          borderColor: coverageData.map((coral) => coral.color),
+          borderWidth: 2,
+        },
+      ],
+    };
+
+    const barData = {
+      labels: coverageData.map((coral) => coral.class_name),
+      datasets: [
+        {
+          label: "Coverage Percentage",
+          data: coverageData.map((coral) => coral.coverage_percent),
+          backgroundColor: coverageData.map((coral) => coral.color),
+          borderColor: coverageData.map((coral) => coral.color),
+          borderWidth: 1,
+        },
+      ],
+    };
+
+    const chartOptions = {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: "bottom",
+        },
+        tooltip: {
+          callbacks: {
+            label: function (context) {
+              const coral = coverageData[context.dataIndex];
+              return `${coral.class_name}: ${
+                coral.coverage_percent
+              }% (${coral.total_pixels.toLocaleString()} pixels)`;
+            },
+          },
+        },
+      },
+    };
+
+    const barOptions = {
+      ...chartOptions,
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: Math.max(...coverageData.map((c) => c.coverage_percent)) * 1.1,
+          ticks: {
+            callback: function (value) {
+              return value + "%";
+            },
+          },
+        },
+      },
+    };
+
+    return (
+      <div className="batch-analysis-results">
+        <div className="batch-header">
+          <h3 className="up-title">Batch Analysis Results</h3>
+          <div className="upload-batch-stats">
+            <div className="upload-stat-card">
+              <span className="upload-stat-number">
+                {batchResults.batch_statistics.total_images_processed}
+              </span>
+              <span className="upload-stat-label">Images Analyzed</span>
+            </div>
+            <div className="upload-stat-card">
+              <span className="upload-stat-number">
+                {batchResults.batch_statistics.total_crops}
+              </span>
+              <span className="upload-stat-label">Quadrats Detected</span>
+            </div>
+            <div className="upload-stat-card">
+              <span className="upload-stat-number">
+                {Math.round(
+                  batchResults.batch_statistics.coverage_summary.reduce(
+                    (sum, coral) => sum + coral.coverage_percent,
+                    0
+                  )
+                )}
+                %
+              </span>
+              <span className="upload-stat-label">Total Coverage</span>
+            </div>
+          </div>
+
+          {showSaveButton && !savedToDatabase && (
+            <div className="save-section">
+              <button className="save-to-db-btn" onClick={handleSaveToDatabase}>
+                <FiSave size={16} />
+                <FiMap size={16} />
+                Save to Database with Location
+              </button>
+            </div>
+          )}
+
+          {savedToDatabase && (
+            <div className="saved-indicator">
+              <FiCheckCircle size={16} />
+              <span>Successfully saved to database with location!</span>
+            </div>
+          )}
+        </div>
+
+        <div className="charts-container">
+          <div className="chart-section">
+            <h4>Coverage Distribution - Pie Chart</h4>
+            <div className="chart-wrapper">
+              <Pie data={pieData} options={chartOptions} />
+            </div>
+          </div>
+
+          <div className="chart-section">
+            <h4>Coverage Distribution - Bar Chart</h4>
+            <div className="chart-wrapper">
+              <Bar data={barData} options={barOptions} />
+            </div>
+          </div>
+        </div>
+
+        <div className="coverage-details">
+          <h4>Detailed Coverage Results</h4>
+          <div className="coverage-table">
+            <div className="table-header">
+              <span>Coral Type</span>
+              <span>Category</span>
+              <span>Coverage %</span>
+              <span>Pixel Count</span>
+            </div>
+            {coverageData
+              .sort((a, b) => b.coverage_percent - a.coverage_percent)
+              .map((coral, index) => (
+                <div key={index} className="table-row">
+                  <div className="coral-name">
+                    <div
+                      className="color-indicator"
+                      style={{ backgroundColor: coral.color }}
+                    ></div>
+                    {coral.class_name}
+                  </div>
+                  <span className="category">{coral.category}</span>
+                  <span className="percentage">{coral.coverage_percent}%</span>
+                  <span className="pixels">
+                    {coral.total_pixels.toLocaleString()}
+                  </span>
+                </div>
+              ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderAnalysisResults = () => {
+    const currentImage = images[currentImageIndex];
+    if (!currentImage?.segmentationData?.crops) {
+      return (
+        <div className="upload-analysis-results">
+          <p>No analysis data available for this image.</p>
+        </div>
+      );
+    }
+
+    const segmentationData = currentImage.segmentationData;
+    const isManuallyIncluded =
+      segmentationData.manually_included ||
+      currentImage.status === "manually_included";
+
+    return (
+      <div className="upload-analysis-results">
+        <div className="analysis-header">
+          <h3 className="up-title">Coral Analysis Results</h3>
+          <div className="analysis-stats">
+            <span className="uploaded-num">
+              {segmentationData.total_crops} quadrats analyzed
+            </span>
+            <span className="method-tag">
+              {cropIntensity.charAt(0).toUpperCase() + cropIntensity.slice(1)}
+            </span>
+            {isManuallyIncluded && (
+              <span className="manual-override-badge">
+                ⚠️ Manually Included
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="quadrats-analysis">
+          {segmentationData.crops.map((cropData, cropIndex) => (
+            <div key={cropIndex} className="quadrat-analysis-card">
+              <div className="quadrat-header">
+                <h4>
+                  Quadrat {cropIndex + 1} - {cropData.detection_label}
+                  {cropData.manually_included && (
+                    <span className="manual-override-indicator">
+                      {" "}
+                      (Manual Override)
+                    </span>
+                  )}
+                </h4>
+                <div className="quadrat-actions">
+                  <button
+                    className="download-btn small"
+                    onClick={() => downloadCrop(cropData.crop_url, cropIndex)}
+                  >
+                    <FiDownload size={12} />
+                    Crop
+                  </button>
+                  <button
+                    className="download-btn small"
+                    onClick={() =>
+                      downloadSegmentationOverlay(
+                        cropData.overlay_url || cropData.visualization_url,
+                        cropIndex
+                      )
+                    }
+                  >
+                    <FiDownload size={12} />
+                    Overlay
+                  </button>
+                  {cropData.mask_url && (
+                    <button
+                      className="download-btn small"
+                      onClick={() =>
+                        downloadSegmentationMask(cropData.mask_url, cropIndex)
+                      }
+                    >
+                      <FiDownload size={12} />
+                      Mask
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="quadrat-content">
+                <div className="quadrat-visuals">
+                  <div className="visual-item">
+                    <img
+                      src={`http://${process.env.REACT_APP_API_URL}/${cropData.crop_url}`}
+                      alt={`Crop ${cropIndex + 1}`}
+                      className="analysis-image"
+                    />
+                    <span className="visual-label">Original Crop</span>
+                  </div>
+                  <div className="visual-item">
+                    <img
+                      src={`http://${process.env.REACT_APP_API_URL}/${
+                        cropData.overlay_url || cropData.visualization_url
+                      }`}
+                      alt={`Segmentation Overlay ${cropIndex + 1}`}
+                      className="analysis-image"
+                    />
+                    <span className="visual-label">Coral Overlay</span>
+                  </div>
+                  {cropData.mask_url && (
+                    <div className="visual-item">
+                      <img
+                        src={`http://${process.env.REACT_APP_API_URL}/${cropData.mask_url}`}
+                        alt={`Segmentation Mask ${cropIndex + 1}`}
+                        className="analysis-image"
+                      />
+                      <span className="visual-label">Coral Mask</span>
+                    </div>
+                  )}
+                </div>
+
+                {cropData.coverage_data &&
+                  cropData.coverage_data.length > 0 && (
+                    <div className="coverage-analysis">
+                      <h5>Coral Coverage</h5>
+                      <div className="coverage-stats">
+                        {cropData.coverage_data.map((coral, coralIndex) => (
+                          <div key={coralIndex} className="coral-stat">
+                            <div
+                              className="coral-color"
+                              style={{ backgroundColor: coral.color }}
+                            ></div>
+                            <div className="coral-info">
+                              <span className="coral-name">
+                                {coral.class_name}
+                              </span>
+                              <span className="coral-category">
+                                {coral.category}
+                              </span>
+                            </div>
+                            <div className="coral-coverage">
+                              <span className="coverage-percent">
+                                {coral.coverage_percent}%
+                              </span>
+                              <span className="pixel-count">
+                                ({coral.pixel_count.toLocaleString()} px)
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="total-coverage">
+                        <strong>Total Coral Coverage: </strong>
+                        {cropData.coverage_data
+                          .reduce(
+                            (sum, coral) => sum + coral.coverage_percent,
+                            0
+                          )
+                          .toFixed(1)}
+                        %
+                      </div>
+                    </div>
+                  )}
+
+                {(!cropData.coverage_data ||
+                  cropData.coverage_data.length === 0) && (
+                  <div className="no-coverage-found">
+                    <p>ℹ️ No coral coverage detected in this quadrat.</p>
+                    {isManuallyIncluded && (
+                      <p className="manual-override-note">
+                        This image was manually included despite no automatic
+                        quadrat detection. The segmentation model may not have
+                        found coral features to classify.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const renderManualOverrideModal = () => {
+    if (!showManualOverrideModal || !imageToOverride) return null;
+
+    return (
+      <div className="confirmation-overlay">
+        <div className="manual-override-modal">
+          <div className="upload-modal-header">
+            <h3>Manual Override Confirmation</h3>
+            <button
+              className="close-btn"
+              onClick={() => setShowManualOverrideModal(false)}
+            >
+              <FiX size={16} />
+            </button>
+          </div>
+
+          <div className="upload-modal-content">
+            <div className="override-image">
+              <img
+                src={imageToOverride.image.preview}
+                alt="Image to override"
+              />
+            </div>
+
+            <div className="override-details">
+              <p className="reason-text">
+                <strong>Reason:</strong> {imageToOverride.image.rejectionReason}
+              </p>
+
+              <div className="warning-box">
+                <FiAlertTriangle size={16} />
+                <div>
+                  <p>
+                    <strong>Manual Override Warning:</strong>
+                  </p>
+                  <p>
+                    The AI model did not detect any coral quadrats in this
+                    image. By manually including it, you're overriding the
+                    automated validation.
+                  </p>
+                  <p>
+                    <strong>This may result in:</strong>
+                  </p>
+                  <ul>
+                    <li>Analysis errors if no quadrats are actually present</li>
+                    <li>Inaccurate segmentation results</li>
+                    <li>Poor quality crops and data</li>
+                  </ul>
+                  <p>
+                    Only proceed if you're confident that coral quadrats exist
+                    in this image.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="modal-actions">
+            <button
+              className="btn-cancel"
+              onClick={() => setShowManualOverrideModal(false)}
+            >
+              Cancel
+            </button>
+            <button
+              className="btn-confirm override"
+              onClick={confirmManualInclude}
+            >
+              <FiCheckCircle size={16} />
+              Include Anyway
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const totalCrops = images.reduce(
     (sum, img) => sum + (img.crops?.length || 0),
     0
   );
 
   return (
-    <>
+    <div className="content-section">
       {images.length === 0 ? (
-        <div className="upload-section">
+        <div className="upload-section-empty">
           <div
             className={`file-upload-area ${dragActive ? "drag-active" : ""}`}
             onDragEnter={handleDrag}
@@ -315,32 +1562,34 @@ function UploadImage() {
             onDragOver={handleDrag}
             onDrop={handleDrop}
           >
-            <div className="upload-icon">
-              <FiUpload size={40} />
-            </div>
+            <div className="upload-content">
+              <div className="upload-icon">
+                <FiUpload size={40} />
+              </div>
 
-            <div className="upload-text">
-              <h3>Drag & drop images or folders here</h3>
-              <p>
-                Support for batch processing • JPG, PNG, WEBP formats • Up to 50
-                images
-              </p>
+              <div className="upload-text">
+                <h3>Drag & drop coral images or folders here</h3>
+                <p>
+                  Images will be validated for coral quadrats • JPG, PNG, WEBP
+                  formats • Up to 50 images
+                </p>
+              </div>
 
               <div className="upload-buttons">
                 <button
-                  className="upload-button"
+                  className="up-button pri"
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <FiFile size={20} />
-                  Select Images
+                  <FiFile size={18} />
+                  <span>Select Images</span>
                 </button>
 
                 <button
-                  className="upload-button folder"
+                  className="upload-button secondary"
                   onClick={() => folderInputRef.current?.click()}
                 >
-                  <FiFolder size={20} />
-                  Select Folder
+                  <FiFolder size={18} />
+                  <span>Select Folder</span>
                 </button>
               </div>
             </div>
@@ -365,11 +1614,11 @@ function UploadImage() {
             />
           </div>
 
-          <div className="controls-section">
+          <div className="controls-section-empty">
             <div className="intensity-control">
               <label className="intensity-label">
-                <FiSettings size={20} />
-                Cropping Intensity:
+                <FiSettings size={18} />
+                <span>Cropping Intensity:</span>
               </label>
               <select
                 value={cropIntensity}
@@ -387,295 +1636,194 @@ function UploadImage() {
           </div>
         </div>
       ) : (
-        <>
-          {/* Controls */}
-          <div className="upload-section">
-            <div className="controls-section">
-              <div className="intensity-control">
-                <label className="intensity-label">
-                  <FiSettings size={20} />
-                  Cropping Intensity:
+        <div className="add-image-content">
+          {/* Top Controls Bar */}
+          <div className="top-controls">
+            <div className="controls-left">
+              <div className="intensity-control-compact">
+                <label className="intensity-label-compact">
+                  <FiSettings size={16} />
+                  <span className="label-text">Intensity:</span>
                 </label>
                 <select
                   value={cropIntensity}
                   onChange={(e) => setCropIntensity(e.target.value)}
-                  className="intensity-select"
+                  className="intensity-select-compact"
                 >
-                  <option value="conservative">
-                    Conservative (5% crop) - Recommended
-                  </option>
-                  <option value="moderate">Moderate (12% crop)</option>
-                  <option value="aggressive">Aggressive (18% crop)</option>
-                  <option value="smart">Smart (Edge Detection)</option>
+                  <option value="conservative">Conservative</option>
+                  <option value="moderate">Moderate</option>
+                  <option value="aggressive">Aggressive</option>
+                  <option value="smart">Smart</option>
                 </select>
               </div>
-
-              <div className="process-buttons">
-                <button
-                  onClick={handleSubmit}
-                  disabled={images.length === 0 || loading || batchLoading}
-                  className="process-button primary"
-                >
-                  {loading ? (
-                    <>
-                      <FiLoader size={20} />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <FiEye size={20} />
-                      Process Current
-                    </>
-                  )}
-                </button>
-
-                <button
-                  onClick={handleBatchSubmit}
-                  disabled={images.length === 0 || batchLoading}
-                  className="process-button secondary"
-                >
-                  {batchLoading ? (
-                    <>
-                      <FiLoader size={20} />
-                      {batchProgress.current}/{batchProgress.total}
-                    </>
-                  ) : (
-                    <>
-                      <FiGrid size={20} />
-                      Process All
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-          {/* <div className="batch-stats">
-                    <div className="stat-card">
-                      <div className="stat-number">{images.length}</div>
-                      <div className="stat-label">Total Images</div>
-                    </div>
-                    <div className="stat-card">
-                      <div className="stat-number">{completedImages}</div>
-                      <div className="stat-label">Processed</div>
-                    </div>
-                    <div className="stat-card">
-                      <div className="stat-number">{totalCrops}</div>
-                      <div className="stat-label">Crops Detected</div>
-                    </div>
-                  </div> */}
-
-          {/* Gallery Controls */}
-          <div className="gallery-controls">
-            <div className="gallery-header">
-              <div className="gallery-title">
-                <FiGrid size={24} />
-                Image Gallery ({images.length})
-              </div>
-
-              <div className="view-toggle">
-                <button
-                  className={`view-toggle-btn ${
-                    viewMode === "grid" ? "active" : ""
-                  }`}
-                  onClick={() => setViewMode("grid")}
-                >
-                  <FiGrid size={18} />
-                </button>
-                <button
-                  className={`view-toggle-btn ${
-                    viewMode === "list" ? "active" : ""
-                  }`}
-                  onClick={() => setViewMode("list")}
-                >
-                  <FiList size={18} />
-                </button>
-              </div>
-
-              <div className="gallery-actions">
-                {totalCrops > 0 && (
-                  <button
-                    onClick={downloadBatchCrops}
-                    className="action-button download-all-button"
-                  >
-                    <FiDownload size={16} />
-                    Download All ({totalCrops})
-                  </button>
-                )}
-                <button
-                  onClick={clearImages}
-                  className="action-button clear-button"
-                >
-                  <FiTrash2 size={16} />
-                  Clear
-                </button>
-              </div>
             </div>
 
-            <div className={`image-gallery ${viewMode}`}>
-              {images.map((image, index) => (
-                <div
-                  key={index}
-                  className={`gallery-item ${
-                    index === currentImageIndex ? "active" : ""
-                  }`}
-                  onClick={() => {
-                    setCurrentImageIndex(index);
-                    setCrops(image.crops || []);
-                  }}
+            <div className="controls-right">
+              <div className="process-buttons-compact">
+                <button
+                  onClick={validateAllImages}
+                  disabled={loading || batchLoading}
+                  className="upload-button secondary"
                 >
-                  <div className="item-thumbnail">
-                    <img src={image.preview} alt={`Thumbnail ${index}`} />
-                    {image.processed && (
-                      <div className="processed-badge">
-                        <FiCheck size={12} />
-                      </div>
-                    )}
-                    <button
-                      className="remove-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeImage(index);
-                      }}
-                    >
-                      <FiX size={12} />
-                    </button>
-                  </div>
-                  <div className="item-info">
-                    <span className="filename">{image.file.name}</span>
-                    {image.crops?.length > 0 && (
-                      <span className="crop-count">
-                        {image.crops.length} crops
+                  <FiCheckCircle size={16} />
+                  <span>Validate All</span>
+                </button>
+
+                <button
+                  onClick={handleBatchAnalyze}
+                  disabled={
+                    images.length === 0 || batchLoading || analysisInProgress
+                  }
+                  className={`process-button analysis compact ${
+                    analysisInProgress ? "disabled" : ""
+                  }`}
+                >
+                  {batchLoading || analysisInProgress ? (
+                    <>
+                      <FiLoader size={16} className="spinning" />
+                      <span className="btn-text">
+                        {analysisInProgress
+                          ? `Analyzing ${batchProgress.current}/${batchProgress.total}`
+                          : "Processing..."}
                       </span>
-                    )}
-                  </div>
-                </div>
-              ))}
+                    </>
+                  ) : (
+                    <>
+                      <FiPieChart size={16} />
+                      <span className="btn-text">Start Analyzing</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Current Image Preview */}
-          {/* {images.length > 0 && (
-                    <div className="current-image-section">
-                      <div className="image-header">
-                        <div className="image-nav">
-                          <button
-                            className="nav-button"
-                            onClick={() =>
-                              setCurrentImageIndex((prev) => {
-                                const newIndex = Math.max(0, prev - 1);
-                                setCrops(images[newIndex]?.crops || []);
-                                return newIndex;
-                              })
-                            }
-                            disabled={currentImageIndex === 0}
-                          >
-                            <FiChevronLeft size={24} />
-                          </button>
-                          <h3 className="current-filename">
-                            {images[currentImageIndex]?.file.name}
-                          </h3>
-                          <button
-                            className="nav-button"
-                            onClick={() =>
-                              setCurrentImageIndex((prev) => {
-                                const newIndex = Math.min(images.length - 1, prev + 1);
-                                setCrops(images[newIndex]?.crops || []);
-                                return newIndex;
-                              })
-                            }
-                            disabled={currentImageIndex === images.length - 1}
-                          >
-                            <FiChevronRight size={24} />
-                          </button>
+          {/* Main Content Area */}
+          <div className="main-content-area">
+            {renderImageGallery()}
+
+            {/* Results Section */}
+            {(crops.length > 0 ||
+              images[currentImageIndex]?.segmentationData ||
+              showBatchChart) && (
+              <div className="results-section">
+                <div className="results-tabs">
+                  <button
+                    className={`tab-button ${
+                      activeTab === "crops" ? "active" : ""
+                    }`}
+                    onClick={() => setActiveTab("crops")}
+                  >
+                    <FiGrid size={16} />
+                    <span>Detected Crops ({crops.length})</span>
+                  </button>
+                  <button
+                    className={`tab-button ${
+                      activeTab === "analysis" ? "active" : ""
+                    }`}
+                    onClick={() => setActiveTab("analysis")}
+                  >
+                    <FiBarChart2 size={16} />
+                    <span>Single Analysis</span>
+                  </button>
+                  {showBatchChart && (
+                    <button
+                      className={`tab-button ${
+                        activeTab === "batch-analysis" ? "active" : ""
+                      }`}
+                      onClick={() => setActiveTab("batch-analysis")}
+                    >
+                      <FiPieChart size={16} />
+                      <span>Batch Analysis</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="tab-content">
+                  {activeTab === "crops" && (
+                    <div className="crops-section">
+                      <div className="crops-header">
+                        <div className="crops-title">
+                          <FiGrid size={20} />
+                          <span>Detected Crops ({crops.length})</span>
                         </div>
-        
-                        <div className="gallery-actions">
-                          {crops.length > 0 && (
-                            <button
-                              onClick={downloadAllCrops}
-                              className="action-button download-all-button"
-                            >
-                              <FiDownload size={16} />
-                              Download Current ({crops.length})
-                            </button>
-                          )}
+                        <div className="method-tag">
+                          {cropIntensity.charAt(0).toUpperCase() +
+                            cropIntensity.slice(1)}
                         </div>
+                        {totalCrops > 0 && (
+                          <button
+                            onClick={downloadBatchCrops}
+                            className="download-all-btn"
+                          >
+                            <FiDownload size={16} />
+                            Download All ({totalCrops})
+                          </button>
+                        )}
                       </div>
-        
-                      <div className="current-image-container">
-                        <img
-                          src={images[currentImageIndex]?.preview}
-                          alt="Current Preview"
-                          className="current-image"
-                        />
-                      </div>
-        
-                      <div className="image-info">
-                        <span>
-                          <strong>{images[currentImageIndex]?.file.name}</strong>
-                        </span>
-                        <span>
-                          {formatFileSize(images[currentImageIndex]?.file.size || 0)}
-                        </span>
+
+                      <div className="crops-grid">
+                        {crops.map((crop, i) => (
+                          <div key={i} className="crop-card">
+                            <div className="crop-image-container">
+                              <img
+                                src={`http://${process.env.REACT_APP_API_URL}/${crop}`}
+                                alt={`Crop ${i + 1}`}
+                                className="crop-image"
+                              />
+                              <div className="crop-overlay">
+                                <button
+                                  className="download-crop-btn"
+                                  onClick={() => downloadCrop(crop, i)}
+                                  title="Download crop"
+                                >
+                                  <FiDownload size={14} />
+                                  <span>Download</span>
+                                </button>
+                              </div>
+                            </div>
+                            <div className="crop-info">
+                              <span className="crop-label">Crop {i + 1}</span>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  )} */}
+                  )}
 
-          {/* Crops Section */}
-          {crops.length > 0 && (
-            <div className="crops-section">
-              <div className="crops-header">
-                <div className="crops-title">
-                  <FiGrid size={24} />
-                  Detected Crops ({crops.length})
-                </div>
-                <div className="method-tag">
-                  {cropIntensity.charAt(0).toUpperCase() +
-                    cropIntensity.slice(1)}
+                  {activeTab === "analysis" && renderAnalysisResults()}
+                  {activeTab === "batch-analysis" && renderBatchAnalysisChart()}
                 </div>
               </div>
-
-              <div className="crops-grid">
-                {crops.map((crop, i) => (
-                  <div key={i} className="crop-card">
-                    <div className="crop-image-container">
-                      <img
-                        src={`http://${process.env.REACT_APP_API_URL}/${crop}`}
-                        alt={`Crop ${i + 1}`}
-                        className="crop-image"
-                      />
-                      <div className="crop-overlay">
-                        <button
-                          className="download-btn"
-                          onClick={() => downloadCrop(crop, i)}
-                          title="Download crop"
-                        >
-                          <FiDownload size={16} />
-                          Download
-                        </button>
-                      </div>
-                    </div>
-                    <div className="crop-info">
-                      <span className="crop-label">Crop {i + 1}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </>
+            )}
+          </div>
+        </div>
       )}
+
+      {/* Location Selector Modal - Using admin component */}
+      {showLocationSelector && (
+        <LocationSelector
+          isOpen={showLocationSelector}
+          onClose={() => setShowLocationSelector(false)}
+          onSave={handleLocationSaved}
+          processedImages={processedImagesForSaving}
+          batchResults={batchResults}
+        />
+      )}
+
+      {renderConfirmationModal()}
+      {renderManualOverrideModal()}
 
       {(loading || batchLoading) && (
         <div className="loading-overlay">
           <div className="loading-content">
             <div className="loading-spinner"></div>
             <div className="loading-text">
-              {batchLoading ? "Processing Batch..." : "Processing Image..."}
+              {batchLoading ? "Analyzing Batch..." : "Processing Image..."}
             </div>
             <div className="loading-subtext">
               {batchLoading
-                ? `${batchProgress.current} of ${batchProgress.total} images processed`
+                ? `Processing ${batchProgress.current} of ${batchProgress.total} images`
                 : "Please wait while we analyze your image"}
             </div>
             <div className="progress-bar-container">
@@ -691,7 +1839,8 @@ function UploadImage() {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
-export default UploadImage;
+
+export default ImageUpload;
