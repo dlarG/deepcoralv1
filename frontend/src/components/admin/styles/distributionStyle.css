@@ -240,11 +240,6 @@
   border-bottom-color: var(--dark-border);
 }
 
-.date-filters {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
 .filter-group.compact {
   display: flex;
   flex-direction: column;
@@ -597,7 +592,7 @@
 
 .date-filters {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: 1.25rem;
   flex-wrap: wrap;
 }
@@ -657,6 +652,7 @@
 }
 
 .apply-filters-btn {
+  margin-top: 1rem;
   display: flex;
   align-items: center;
   gap: 0.75rem;

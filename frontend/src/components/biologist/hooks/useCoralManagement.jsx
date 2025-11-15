@@ -222,7 +222,7 @@ export default function useCoralManagement() {
 
       if (coralModalMode === "add") {
         response = await axios.post(
-          "http://${process.env.REACT_APP_API_URL}/biologist/corals",
+          `http://${process.env.REACT_APP_API_URL}/biologist/corals`,
           formData,
           {
             headers: {

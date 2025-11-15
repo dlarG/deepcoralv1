@@ -195,7 +195,7 @@
 }
 
 /* Profile info */
-.profile-info {
+.profile-infos {
   display: flex;
   flex-direction: column;
   align-items: flex-start;

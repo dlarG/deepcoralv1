@@ -189,7 +189,7 @@ const Dashboard = ({ user, setActiveTab }) => {
                           alt={`${user.firstname} ${user.lastname}`}
                         />
                       ) : (
-                        <div className="avatar-placeholder">
+                        <div className="avatar-placeholders">
                           {user.firstname?.[0]}
                           {user.lastname?.[0]}
                         </div>
@@ -249,9 +249,9 @@ const Dashboard = ({ user, setActiveTab }) => {
           </div>
           <div className="card-content">
             {recentActivities.length > 0 ? (
-              <div className="activities-list">
+              <div className="activities-lisst">
                 {recentActivities.map((activity) => (
-                  <div key={activity.id} className="activity-item">
+                  <div key={activity.id} className="activity-items">
                     <div
                       className={`activity-icon ${activity.activity_type}`}
                       style={{
@@ -269,10 +269,10 @@ const Dashboard = ({ user, setActiveTab }) => {
                         <span className="activity-user">
                           {activity.user_name}
                         </span>
-                        <span className="activity-category">
+                        <span className="activity-categories">
                           {activity.category?.replace("_", " ")}
                         </span>
-                        <span className="activity-time">
+                        <span className="activity-times">
                           {formatTimeAgo(activity.created_at)}
                         </span>
                       </div>

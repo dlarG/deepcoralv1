@@ -52,10 +52,8 @@ function UserManagement() {
       {/* User management header */}
       <div className="user-management-header">
         <div className="header-left">
-          <h2 className="report-title">User Management</h2>
-          <p className="report-subtitle">
-            Manage system users and their permissions
-          </p>
+          <h2>User Management</h2>
+          <p>Manage system users and their permissions</p>
         </div>
         <div className="header-actions-fixed">
           <button
@@ -92,10 +90,9 @@ function UserManagement() {
               />
             </div>
           </div>
-          <br />
 
           <div className="filter-section">
-            <div className="filter-group">
+            <div className="user-filter-group">
               <select
                 value={userFilterRole}
                 onChange={(e) => {
@@ -111,7 +108,7 @@ function UserManagement() {
               </select>
             </div>
 
-            <div className="filter-group">
+            <div className="user-filter-group">
               <select
                 value={userSortBy}
                 onChange={(e) => setUserSortBy(e.target.value)}
@@ -472,7 +469,7 @@ function UserManagement() {
                             )}
                           </div>
                         )}
-                        <div className="password-requirements">
+                        <div className="password-requirementss">
                           <p>Password must contain:</p>
                           <ul>
                             <li>At least 8 characters</li>

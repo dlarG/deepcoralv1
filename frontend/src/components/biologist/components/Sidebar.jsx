@@ -70,9 +70,6 @@ function Sidebar({ activeTab, setActiveTab, sidebarOpen }) {
                     }`}
                     onClick={() => setActiveTab(item.id)}
                   >
-                    {activeTab === item.id && (
-                      <div className="active-indicator" />
-                    )}
                     <div className="nav-icon">
                       <item.icon size={24} />
                     </div>

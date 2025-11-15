@@ -321,7 +321,7 @@ def get_alll_users():
             cur.execute("""
                 SELECT id, username, firstname, lastname, roletype, profile_image, created_at, status 
                 FROM users 
-                WHERE users.id != %s AND status = 'approved' 
+                WHERE users.id != %s AND status = 'approved' AND roletype != 'admin'
                 ORDER BY created_at DESC
             """, (session.get('user_id'),))
             users = cur.fetchall()

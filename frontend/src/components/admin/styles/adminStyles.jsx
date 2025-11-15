@@ -41,10 +41,7 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
         padding-bottom: 1rem;
       }
       
-      .header-left h2 {
-        font-size: 1.5rem;
-        margin-bottom: 0.5rem;
-      }
+      
       
       .content-subtitle {
         font-size: 0.8rem;
@@ -993,9 +990,6 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
     
     /* Extra Small Devices - Below 375px */
     @media (max-width: 375px) {
-      .header-left h2 {
-        font-size: 1.25rem;
-      }
       
       .user-stats {
         grid-template-columns: 1fr;
@@ -1479,13 +1473,6 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
   font-weight: 800;
   font-size: 0.875rem;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-}
-
-.profile-info {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  min-width: 0;
 }
 
 .profile-name {
@@ -2092,30 +2079,13 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
 }
 
 .user-search-section {
-  margin-left: 1.5rem;
   flex-shrink: 0;
-
 }
 
-.user-search-input-container {
-  position: relative;
-  width: 120%;
 
-}
 
-.controls-row {
-  display: flex;
-  align-items: center;
-  gap: 2rem;
-  }
 
-@media (max-width: 720px) {
-  .controls-row {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 1rem;
-  }
-}
+
 
 @media (max-width: 500px) {
   .user-search-section {
@@ -3400,18 +3370,6 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
   gap: 1.25rem;
 }
 
-.filter-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.filter-group label {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: ${darkMode ? "#cbd5e1" : "#374151"};
-  margin-bottom: 0.25rem;
-}
 
 .filter-input,
 .filter-select {
@@ -4417,6 +4375,47 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
   font-size: 0.875rem;
 }
 
+.process-button.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: #6b7280;
+}
+
+.process-button.disabled:hover {
+  background: #6b7280;
+  transform: none;
+}
+
+.manual-override-badge {
+  background: #f59e0b;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.manual-override-indicator {
+  color: #f59e0b;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.manual-override-note {
+  color: #6b7280;
+  font-style: italic;
+  font-size: 0.9rem;
+  margin-top: 8px;
+}
+
+.no-coverage-found {
+  background: #f3f4f6;
+  padding: 15px;
+  border-radius: 6px;
+  text-align: center;
+  color: #6b7280;
+}
+
 .pagination-controls {
   display: flex;
   align-items: center;
@@ -5111,24 +5110,10 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
   background: linear-gradient(135deg, #f8fafc, #e2e8f0);
 }
 
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
 
-.header-left h2 {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #1f2937;
-}
 
-.header-left p {
-  margin: 0;
-  color: #6b7280;
-  font-size: 0.875rem;
-}
+
+
 
 .close-btn {
   background: #f3f4f6;
@@ -5485,10 +5470,7 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
     align-items: flex-start;
   }
   
-  .header-left {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
+  
   
   .search-section {
     flex-direction: column;
@@ -6217,12 +6199,7 @@ override-details p {
   backdrop-filter: blur(10px);
 }
 
-.user-search-input:focus {
-  outline: none;
-  border-color: #0ea5e9;
-  background: ${darkMode ? "rgba(15, 23, 42, 0.95)" : "white"};
-  box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.15);
-  transform: translateY(-1px);
-}
+
+
 
 `;

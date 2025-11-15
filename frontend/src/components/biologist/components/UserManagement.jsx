@@ -52,12 +52,10 @@ function UserManagement() {
       {/* User management header */}
       <div className="user-management-header">
         <div className="header-left">
-          <h2 className="content-title">User Management</h2>
-          <p className="content-subtitle">
-            Manage system users and their permissions
-          </p>
+          <h2>User Management</h2>
+          <p>Manage system users and their permissions</p>
         </div>
-        <div className="header-actions">
+        <div className="header-actions-fixed">
           <button
             className="export-btn"
             onClick={() => alert("Export functionality coming soon!")}
@@ -76,91 +74,90 @@ function UserManagement() {
       </div>
 
       <div className="user-controls">
-        <div className="search-section">
-          <div className="search-input-container">
-            <FiSearch className="search-icon" />
-            <input
-              type="text"
-              placeholder="Search users by name or username..."
-              value={userSearchTerm}
-              onChange={(e) => {
-                setUserSearchTerm(e.target.value);
-                setCurrentPage(1); // Reset to first page when searching
-              }}
-              className="search-input"
-            />
-          </div>
-        </div>
-
-        <div className="filter-section">
-          <div className="filter-group">
-            <label>Filter by Role:</label>
-            <select
-              value={userFilterRole}
-              onChange={(e) => {
-                setUserFilterRole(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="filter-selects"
-            >
-              <option value="all">All Roles</option>
-              <option value="admin">Admin</option>
-              <option value="biologist">Biologist</option>
-              <option value="guest">Guest</option>
-            </select>
+        <div className="controls-row">
+          <div className="user-search-section">
+            <div className="user-search-input-container">
+              <FiSearch className="user-search-icon" />
+              <input
+                type="text"
+                placeholder="Search users by name or username..."
+                value={userSearchTerm}
+                onChange={(e) => {
+                  setUserSearchTerm(e.target.value);
+                  setCurrentPage(1); // Reset to first page when searching
+                }}
+                className="user-search-input"
+              />
+            </div>
           </div>
 
-          <div className="filter-group">
-            <label>Sort by:</label>
-            <select
-              value={userSortBy}
-              onChange={(e) => setUserSortBy(e.target.value)}
-              className="filter-selects"
-            >
-              <option value="created_desc">Newest First</option>
-              <option value="created_asc">Oldest First</option>
-              <option value="name_asc">Name (A-Z)</option>
-              <option value="name_desc">Name (Z-A)</option>
-              <option value="username_asc">Username (A-Z)</option>
-              <option value="username_desc">Username (Z-A)</option>
-              <option value="role_asc">Role (A-Z)</option>
-              <option value="role_desc">Role (Z-A)</option>
-            </select>
+          <div className="filter-section">
+            <div className="user-filter-group">
+              <select
+                value={userFilterRole}
+                onChange={(e) => {
+                  setUserFilterRole(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="filter-selects"
+              >
+                <option value="all">All Roles</option>
+                <option value="biologist">Biologist</option>
+                <option value="guest">Guest</option>
+              </select>
+            </div>
+
+            <div className="user-filter-group">
+              <select
+                value={userSortBy}
+                onChange={(e) => setUserSortBy(e.target.value)}
+                className="filter-selects"
+              >
+                <option value="created_desc">Newest First</option>
+                <option value="created_asc">Oldest First</option>
+                <option value="name_asc">Name (A-Z)</option>
+                <option value="name_desc">Name (Z-A)</option>
+                <option value="username_asc">Username (A-Z)</option>
+                <option value="username_desc">Username (Z-A)</option>
+                <option value="role_asc">Role (A-Z)</option>
+                <option value="role_desc">Role (Z-A)</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
 
       {/* User Stats */}
-      <div className="user-stats">
-        <div className="stat-item">
-          <span className="stat-number">{users.length}</span>
-          <span className="stat-label">Total Users</span>
-        </div>
-        <div className="stat-item">
-          <span className="stat-number">
-            {users.filter((u) => u.roletype === "admin").length}
-          </span>
-          <span className="stat-label">Admins</span>
-        </div>
-        <div className="stat-item">
-          <span className="stat-number">
-            {users.filter((u) => u.roletype === "biologist").length}
-          </span>
-          <span className="stat-label">Biologists</span>
-        </div>
-        <div className="stat-item">
-          <span className="stat-number">
-            {users.filter((u) => u.roletype === "guest").length}
-          </span>
-          <span className="stat-label">Guests</span>
-        </div>
-        <div className="stat-item">
-          <span className="stat-number">{filteredUsers.length}</span>
-          <span className="stat-label">Filtered Results</span>
-        </div>
-      </div>
-
-      {/* Users Table */}
+      {/* <div className="user-stats">
+          <div className="stat-item">
+            <span className="stat-number">{users.length}</span>
+            <span className="stat-label">Total Users</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-number">
+              {users.filter((u) => u.roletype === "admin").length}
+            </span>
+            <span className="stat-label">Admins</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-number">
+              {users.filter((u) => u.roletype === "biologist").length}
+            </span>
+            <span className="stat-label">Biologists</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-number">
+              {users.filter((u) => u.roletype === "guest").length}
+            </span>
+            <span className="stat-label">Guests</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-number">{filteredUsers.length}</span>
+            <span className="stat-label">Filtered Results</span>
+          </div>
+        </div> 
+  
+        {/* Users Table */}
       {loading ? (
         <div className="loading-container">
           <div className="loading-spinner"></div>
@@ -471,7 +468,7 @@ function UserManagement() {
                             )}
                           </div>
                         )}
-                        <div className="password-requirements">
+                        <div className="password-requirementss">
                           <p>Password must contain:</p>
                           <ul>
                             <li>At least 8 characters</li>
@@ -497,6 +494,9 @@ function UserManagement() {
                           <option value="guest">Guest - Limited access</option>
                           <option value="biologist">
                             Biologist - Enhanced permissions
+                          </option>
+                          <option value="admin">
+                            Admin - Full system access
                           </option>
                         </select>
                         {userFormErrors.roletype && (

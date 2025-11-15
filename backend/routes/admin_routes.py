@@ -658,8 +658,8 @@ def approve_user(user_id):
     
     try:
         with conn.cursor() as cur:
-            # Check if user exists and is pending
-            cur.execute("SELECT id, status FROM users WHERE id = %s", (user_id,))
+            # Check if user exists and is pending - GET EMAIL TOO
+            cur.execute("SELECT id, status, firstname, lastname, username, email FROM users WHERE id = %s", (user_id,))
             user = cur.fetchone()
             
             if not user:
@@ -673,17 +673,58 @@ def approve_user(user_id):
                 UPDATE users 
                 SET status = 'approved', updated_at = CURRENT_TIMESTAMP 
                 WHERE id = %s
-                RETURNING id, username, firstname, lastname, roletype, profile_image, created_at, status
+                RETURNING id, username, firstname, lastname, roletype, profile_image, created_at, status, email
             """, (user_id,))
             
             updated_user = cur.fetchone()
             conn.commit()
 
+            # Log the approval
             log_user_management(
                 admin_id=session.get('user_id'),
                 action='approved',
-                target_user=f"{updated_user[1]} ({updated_user[2]} {updated_user[3]})"
+                target_user=f"{updated_user[2]} ({updated_user[3]} {updated_user[4]})"
             )
+            
+            # Send approval email to user
+            try:
+                from utils.email_service import email_service
+                
+                user_data = {
+                    'firstname': updated_user[2],
+                    'lastname': updated_user[3],
+                    'username': updated_user[1],
+                    'email': updated_user[8],  # Email from the query
+                    'roletype': updated_user[4]
+                }
+                
+                email_sent = email_service.send_user_approval_notification(user_data)
+                
+                # Log email activity
+                log_system_action(
+                    user_id=updated_user[0],
+                    action='approval_email_sent' if email_sent else 'approval_email_failed',
+                    description=f"Approval notification email {'sent' if email_sent else 'failed'} to user",
+                    details={
+                        'user_email': updated_user[8],
+                        'email_sent': email_sent
+                    }
+                )
+                
+                if email_sent:
+                    print(f"✅ Approval email sent to {updated_user[8]}")
+                else:
+                    print(f"❌ Failed to send approval email to {updated_user[8]}")
+                    
+            except Exception as email_error:
+                print(f"❌ Error sending approval email: {str(email_error)}")
+                log_system_action(
+                    user_id=updated_user[0],
+                    action='approval_email_error',
+                    description=f"Error sending approval notification email",
+                    details={'error': str(email_error)}
+                )
+                # Don't fail the approval if email fails
             
             return jsonify({
                 "message": "User approved successfully",
@@ -715,8 +756,7 @@ def reject_user(user_id):
     
     try:
         with conn.cursor() as cur:
-            # Check if user exists and is pending
-            cur.execute("SELECT id, status, profile_image FROM users WHERE id = %s", (user_id,))
+            cur.execute("SELECT id, status, profile_image, firstname, lastname, username, email, roletype FROM users WHERE id = %s", (user_id,))
             user = cur.fetchone()
             
             if not user:
@@ -724,6 +764,29 @@ def reject_user(user_id):
             
             if user[1] != 'pending':
                 return jsonify({"error": "User is not pending approval"}), 400
+            
+            user_data = {
+                'firstname': user[3],
+                'lastname': user[4],
+                'username': user[5],
+                'email': user[6],
+                'roletype': user[7]
+            }
+            
+            try:
+                from utils.email_service import email_service
+                
+                rejection_reason = request.get_json().get('reason') if request.get_json() else None
+                email_sent = email_service.send_user_rejection_notification(user_data, rejection_reason)
+                
+                if email_sent:
+                    print(f"✅ Rejection email sent to {user[6]}")
+                else:
+                    print(f"❌ Failed to send rejection email to {user[6]}")
+                    
+            except Exception as email_error:
+                print(f"❌ Error sending rejection email: {str(email_error)}")
+                # Continue with deletion even if email fails
             
             # Delete profile image if exists
             if user[2]:
@@ -740,10 +803,11 @@ def reject_user(user_id):
             deleted_id = cur.fetchone()[0]
             conn.commit()
 
+            # Log the rejection
             log_user_management(
                 admin_id=session.get('user_id'),
                 action='rejected',
-                target_user=f"{user[1]} {user[2]} (@{user[0]})"
+                target_user=f"{user[3]} {user[4]} (@{user[5]})"
             )
             
             return jsonify({
@@ -756,7 +820,6 @@ def reject_user(user_id):
     finally:
         if conn:
             conn.close()
-
 
 #Report Generation Routes
 @admin_bp.route('/admin/reports/users', methods=['GET'])
@@ -2067,7 +2130,6 @@ def get_pending_image_uploads():
 def manage_user_validation():
     """Approve or reject pending users"""
     if request.method == 'OPTIONS':
-        # Handle preflight request
         response = jsonify()
         response.headers.add('Access-Control-Allow-Origin', 'http://localhost:3000')
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-CSRF-Token')
@@ -2079,6 +2141,7 @@ def manage_user_validation():
         data = request.get_json()
         user_ids = data.get('user_ids', [])
         action = data.get('action')  # 'approve' or 'reject'
+        rejection_reason = data.get('reason')  # Optional rejection reason
         
         if not user_ids or action not in ['approve', 'reject']:
             return jsonify({"error": "Invalid request data"}), 400
@@ -2098,8 +2161,17 @@ def manage_user_validation():
                 return jsonify({"error": "Admin access required"}), 403
             
             if action == 'approve':
-                # Update user status to approved
+                # Get user details for email before update
                 placeholders = ','.join(['%s'] * len(user_ids))
+                cur.execute(f"""
+                    SELECT id, firstname, lastname, username, email, roletype
+                    FROM users 
+                    WHERE id IN ({placeholders}) AND status = 'pending'
+                """, user_ids)
+                
+                user_details = cur.fetchall()
+                
+                # Update user status to approved
                 cur.execute(f"""
                     UPDATE users 
                     SET status = 'approved', updated_at = NOW()
@@ -2109,18 +2181,71 @@ def manage_user_validation():
                 affected_rows = cur.rowcount
                 conn.commit()
                 
+                # Send approval emails
+                try:
+                    from utils.email_service import email_service
+                    
+                    for user in user_details:
+                        user_data = {
+                            'firstname': user[1],
+                            'lastname': user[2],
+                            'username': user[3],
+                            'email': user[4],
+                            'roletype': user[5]
+                        }
+                        
+                        email_sent = email_service.send_user_approval_notification(user_data)
+                        
+                        # Log email activity
+                        log_system_action(
+                            user_id=user[0],
+                            action='bulk_approval_email_sent' if email_sent else 'bulk_approval_email_failed',
+                            description=f"Bulk approval notification email {'sent' if email_sent else 'failed'}",
+                            details={
+                                'user_email': user[4],
+                                'email_sent': email_sent,
+                                'admin_id': admin_id
+                            }
+                        )
+                        
+                except Exception as email_error:
+                    print(f"❌ Error sending bulk approval emails: {str(email_error)}")
+                
                 message = f"Successfully approved {affected_rows} user(s)"
                 
             else:  # reject
-                # Get user details before deletion for logging
+                # Get user details before deletion for email
                 placeholders = ','.join(['%s'] * len(user_ids))
                 cur.execute(f"""
-                    SELECT id, username, firstname, lastname
+                    SELECT id, firstname, lastname, username, email, roletype
                     FROM users 
                     WHERE id IN ({placeholders}) AND status = 'pending'
                 """, user_ids)
                 
                 user_details = cur.fetchall()
+                
+                # Send rejection emails BEFORE deletion
+                try:
+                    from utils.email_service import email_service
+                    
+                    for user in user_details:
+                        user_data = {
+                            'firstname': user[1],
+                            'lastname': user[2],
+                            'username': user[3],
+                            'email': user[4],
+                            'roletype': user[5]
+                        }
+                        
+                        email_sent = email_service.send_user_rejection_notification(user_data, rejection_reason)
+                        
+                        if email_sent:
+                            print(f"✅ Rejection email sent to {user[4]}")
+                        else:
+                            print(f"❌ Failed to send rejection email to {user[4]}")
+                        
+                except Exception as email_error:
+                    print(f"❌ Error sending bulk rejection emails: {str(email_error)}")
                 
                 # Delete rejected users
                 cur.execute(f"""
@@ -2137,8 +2262,8 @@ def manage_user_validation():
                 for user in user_details:
                     log_user_management(
                         admin_id=admin_id,
-                        action='rejected',
-                        target_user=f"{user[2]} {user[3]} (@{user[1]})"
+                        action='bulk_rejected',
+                        target_user=f"{user[1]} {user[2]} (@{user[3]})"
                     )
             
             return jsonify({
