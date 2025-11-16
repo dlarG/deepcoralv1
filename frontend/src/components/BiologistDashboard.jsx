@@ -12,6 +12,7 @@ import CoralDatabase from "./biologist/components/CoralDatabase";
 // import ResearchTools from "./biologist/components/ResearchTools";
 // import ProfileManagement from "./biologist/components/ProfileManagement";
 import { getBiologistStyle } from "./biologist/styles/biologistStyle";
+import CoralDistribution from "../components/biologist/components/CoralDistribution";
 
 function BiologistDashboard() {
   const { user, checkAuthStatus, logout, authLoading } = useAuth();
@@ -75,6 +76,8 @@ function BiologistDashboard() {
         );
       case "User":
         return <UserManagement />;
+      case "Coral Distribution":
+        return <CoralDistribution />;
       case "Image Analysis":
         return <ImageUpload user={user} darkMode={darkMode} />;
       case "Coral Database":

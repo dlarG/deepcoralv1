@@ -204,54 +204,6 @@ function TopNavigation({
           {darkMode ? <FiSun size={18} /> : <FiMoon size={18} />}
         </button>
 
-        <div className="notification-container" ref={notificationDropdownRef}>
-          <button
-            className="nav-action-btn notification-btn"
-            onClick={handleNotificationToggle}
-            title="Notifications"
-          >
-            <FiBell size={18} />
-            <span className="notification-badge">3</span>
-          </button>
-
-          {notificationDropdownOpen && (
-            <div className="notification-dropdown">
-              <div className="dropdown-header">
-                <h3>Notifications</h3>
-                <span className="mark-all-read">Mark all read</span>
-              </div>
-
-              <div className="notification-list">
-                {notifications.map((notification) => (
-                  <div
-                    key={notification.id}
-                    className={`notification-item ${
-                      notification.unread ? "unread" : ""
-                    }`}
-                  >
-                    <div className={`notification-icon ${notification.type}`}>
-                      {notification.type === "analysis" && <FiActivity />}
-                      {notification.type === "discovery" && <FiTrendingUp />}
-                      {notification.type === "system" && <FiSettings />}
-                    </div>
-                    <div className="notification-content">
-                      <h4>{notification.title}</h4>
-                      <p>{notification.message}</p>
-                      <span className="notification-time">
-                        {notification.time}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="dropdown-footer">
-                <button className="view-all-btn">View All Notifications</button>
-              </div>
-            </div>
-          )}
-        </div>
-
         <div
           className={`profile-container ${profileDropdownOpen ? "open" : ""}`}
           ref={profileDropdownRef}

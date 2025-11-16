@@ -1,0 +1,128 @@
+.dashboard-stat-value {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.dark-mode .dashboard-stat-value {
+  color: var(--text-light);
+}
+
+.dashboard-stat-label {
+  font-size: 1rem;
+  color: #64748b;
+  line-height: 1;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.dashboard-stat-sublabel {
+  font-size: 0.75rem;
+  color: var(--color-primary);
+  line-height: 1;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.dark-mode.dashboard-stat-value {
+  color: #e2e8f0;
+}
+
+.dark-mode.dashboard-stat-label {
+  color: #94a3b8;
+}
+
+.dashboard-stat-card {
+  background: white;
+  border-radius: 20px;
+  padding: 2rem;
+  border: 1px solid #e2e8f0;
+
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.dark-mode .dashboard-stat-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.dashboard-stat-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  border-radius: 20px 20px 0 0;
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.clickable .dashboard-stat-sublabel {
+  color: rgb(76, 76, 245);
+}
+
+.dashboard-action-btn {
+  position: relative;
+  background: none;
+  border: none;
+  padding: 0.75rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.dashboard-action-btn.primary {
+  background: var(--btn-primary-bg);
+  color: white;
+}
+
+.dark-mode .dashboard-action-btn.primary {
+  background: var(--btn-secondary-bg);
+  box-shadow: 0 4px 20px var(--color-secondary);
+}
+
+.dark-mode .dashboard-action-btn.primary:hover {
+  background: var(--btn-secondary-hover);
+  box-shadow: 0 4px 20px var(--color-secondary);
+}
+
+.dashboard-action-btn.primary:hover {
+  background: var(--btn-primary-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(14, 165, 233, 0.4);
+}
+
+.dashboard-action-btn.secondary {
+  background: #f8fafc;
+  color: #475569;
+  border: 2px solid #e2e8f0;
+}
+
+.dark-mode.dashboard-action-btn.secondary {
+  background: #334155;
+  color: #e2e8f0;
+  border: 2px solid #475569;
+}
+
+.action-btn.secondary:hover {
+  background: #e2e8f0;
+  transform: translateY(-2px);
+}
+
+.dark-mode.dashboard-action-btn.secondary:hover {
+  background: #475569;
+}

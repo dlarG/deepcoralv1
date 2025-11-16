@@ -120,7 +120,7 @@
   background: rgba(51, 65, 85, 0.8);
   border-color: rgba(71, 85, 105, 0.8);
 }
-.view-toggle {
+.dis-view-toggle {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -137,26 +137,26 @@
   position: relative;
 }
 
-.view-toggle:hover {
+.dis-view-toggle:hover {
   background: rgba(61, 218, 215, 0.1);
   color: var(--color-primary);
 }
 
-.dark-mode .view-toggle {
+.dark-mode .dis-view-toggle {
   color: var(--text-light);
 }
 
-.dark-mode .view-toggle:hover {
+.dark-mode .dis-view-toggle:hover {
   background: rgba(61, 218, 215, 0.1);
   color: var(--color-accent);
 }
-.view-toggle.active {
+.dis-view-toggle.active {
   background: linear-gradient(135deg, var(--color-primary), var(--color-hover));
   color: white;
   box-shadow: 0 4px 12px rgba(1, 42, 74, 0.3);
 }
 
-.dark-mode .view-toggle.active {
+.dark-mode .dis-view-toggle.active {
   background: linear-gradient(
     135deg,
     var(--color-accent),
@@ -789,7 +789,7 @@
   --accent-color: #8b5cf6;
 }
 
-.stat-icon {
+.distribution-stat-icon {
   width: 64px;
   height: 64px;
   border-radius: 18px;
@@ -801,16 +801,15 @@
     var(--accent-color),
     var(--accent-color) dd
   );
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
   position: relative;
   flex-shrink: 0;
 }
 
-.dark-mode .stat-icon {
+.dark-mode .distribution-stat-icon {
   color: var(--text-light);
 }
 
-.stat-icon::after {
+.distribution-stat-icon::after {
   content: "";
   position: absolute;
   inset: -2px;
@@ -828,7 +827,7 @@
   transition: opacity 0.3s ease;
 }
 
-.stat-card:hover .stat-icon::after {
+.stat-card:hover .distribution-stat-icon::after {
   opacity: 0.6;
 }
 
@@ -3429,8 +3428,7 @@ body.modal-open {
 .location-filters-section {
   margin-left: 1.5rem;
 }
-.dark-mode .search-input,
-.user-search-input {
+.dark-mode .user-search-input {
   color: var(--dark-text-primary);
 }
 

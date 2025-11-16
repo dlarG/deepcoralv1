@@ -796,11 +796,11 @@ const LocationSelector = ({
             )}
           </div>
           <div className="footer-actions">
-            <button className="cancel-btn" onClick={onClose}>
+            <button className="uploads-cancel-btn" onClick={onClose}>
               Cancel
             </button>
             <button
-              className="save-btn"
+              className="uploads-save-btn"
               onClick={handleSaveLocation}
               disabled={!selectedLocation || !transect || loading}
             >
