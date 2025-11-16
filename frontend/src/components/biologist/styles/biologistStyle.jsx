@@ -1048,52 +1048,11 @@ const getBiologistStyle = (sidebarOpen, darkMode = false) => `
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.researcher-avatar {
-  position: relative;
-  width: 48px;
-  height: 48px;
-}
 
-.researcher-avatar img {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  object-fit: cover;
-}
 
-.avatar-fallback {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background: var(--primary-color, #0ea5e9);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 14px;
-}
 
-.researcher-info {
-  flex: 1;
-}
 
-.researcher-name {
-  font-weight: 600;
-  color: var(--text-primary, #1f2937);
-  margin-bottom: 0.25rem;
-}
 
-.researcher-username {
-  color: var(--text-secondary, #6b7280);
-  font-size: 0.875rem;
-  margin-bottom: 0.25rem;
-}
-
-.researcher-institution {
-  color: var(--text-tertiary, #9ca3af);
-  font-size: 0.8rem;
-}
 
 .researcher-stats {
   display: flex;

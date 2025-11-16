@@ -273,7 +273,8 @@ import {
   FiCalendar,
   FiTrendingUp,
 } from "react-icons/fi";
-
+import { useNavigate } from "react-router-dom";
+import { encryptId } from "../../../utils/encryption";
 import "../styles/biologistdashboardStyle.css";
 
 function Dashboard({ user, darkMode, onNavigate }) {
@@ -287,14 +288,52 @@ function Dashboard({ user, darkMode, onNavigate }) {
     },
     contributing_researchers: [],
   });
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showResearchersModal, setShowResearchersModal] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [modalConfig, setModalConfig] = useState({
+    title: "",
+    message: "",
+    type: "success",
+    autoClose: true,
+  });
 
+  const showErrorModal = (title, message) => {
+    setModalConfig({
+      title,
+      message,
+      type: "error",
+      autoClose: false,
+    });
+    setShowModal(true);
+  };
   useEffect(() => {
     fetchDashboardData();
   }, []);
-
+  const handleUserProfileClick = (userId) => {
+    try {
+      const encryptedId = encryptId(userId);
+      if (encryptedId) {
+        // URL encode the encrypted ID to handle special characters
+        const encodedId = encodeURIComponent(encryptedId);
+        navigate(`/biologist/user/profile/${encodedId}`);
+      } else {
+        console.error("Failed to encrypt user ID");
+        showErrorModal(
+          "Navigation Error",
+          "Unable to open user profile. Please try again."
+        );
+      }
+    } catch (error) {
+      console.error("Error navigating to user profile:", error);
+      showErrorModal(
+        "Navigation Error",
+        "Unable to open user profile. Please try again."
+      );
+    }
+  };
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
@@ -367,31 +406,37 @@ function Dashboard({ user, darkMode, onNavigate }) {
             <div className="researchers-list">
               {dashboardData.contributing_researchers.map((researcher) => (
                 <div key={researcher.id} className="researcher-card">
-                  <div className="researcher-avatar">
-                    {researcher.profile_image ? (
-                      <img
-                        src={`/profile_images/${researcher.profile_image}`}
-                        alt={researcher.name}
-                        onError={(e) => {
-                          e.target.style.display = "none";
-                          e.target.nextElementSibling.style.display = "flex";
-                        }}
-                      />
-                    ) : null}
-                    <div
-                      className="avatar-fallback"
-                      style={{
-                        display: researcher.profile_image ? "none" : "flex",
-                      }}
-                    >
-                      {researcher.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")}
-                    </div>
-                  </div>
                   <div className="researcher-info">
-                    <div className="researcher-name">{researcher.name}</div>
+                    <div className="researcher-avatar">
+                      {researcher.profile_image ? (
+                        <img
+                          src={`/profile_uploads/${researcher.profile_image}`}
+                          alt={researcher.name}
+                          onError={(e) => {
+                            e.target.style.display = "none";
+                            e.target.nextElementSibling.style.display = "flex";
+                          }}
+                        />
+                      ) : null}
+                      <div
+                        className="avatar-fallback"
+                        style={{
+                          display: researcher.profile_image ? "none" : "flex",
+                        }}
+                      >
+                        {researcher.name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")}
+                      </div>
+                    </div>
+                    <div
+                      className="researcher-name clickable-name"
+                      onClick={() => handleUserProfileClick(researcher.id)}
+                      title="Click to view user profile"
+                    >
+                      {researcher.name}
+                    </div>
                     <div className="researcher-username">
                       @{researcher.username}
                     </div>

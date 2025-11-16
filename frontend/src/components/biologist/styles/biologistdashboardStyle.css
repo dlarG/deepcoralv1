@@ -90,6 +90,55 @@
   color: white;
 }
 
+.researcher-avatar {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  left: 38%;
+}
+
+.researcher-name.clickable-name {
+  color: var(--btn-primary-bg);
+  margin-top: 1.2rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.researcher-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.researcher-info {
+  flex: 1;
+}
+
+.researcher-username {
+  color: var(--text-secondary, #6b7280);
+  font-size: 0.875rem;
+  margin-bottom: 0.25rem;
+}
+
+.researcher-institution {
+  color: var(--text-tertiary, #9ca3af);
+  font-size: 0.8rem;
+}
+
+.avatar-fallback {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--primary-color, #0ea5e9);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+}
+
 .dark-mode .dashboard-action-btn.primary {
   background: var(--btn-secondary-bg);
   box-shadow: 0 4px 20px var(--color-secondary);

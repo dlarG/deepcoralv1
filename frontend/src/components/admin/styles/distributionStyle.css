@@ -805,6 +805,8 @@
   flex-shrink: 0;
 }
 
+
+
 .dark-mode .distribution-stat-icon {
   color: var(--text-light);
 }
