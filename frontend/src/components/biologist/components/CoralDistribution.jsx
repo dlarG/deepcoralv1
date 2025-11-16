@@ -37,7 +37,6 @@ import {
   Legend,
 } from "chart.js";
 import { Bar, Line, Pie } from "react-chartjs-2";
-import "../styles/distributionStyle.css";
 
 // Register Chart.js components
 ChartJS.register(
@@ -105,7 +104,7 @@ const createLocationIcon = (imageCount, isSelected = false) => {
   });
 };
 
-function Distribution() {
+function CoralDistribution() {
   const [locations, setLocations] = useState([]);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [locationImages, setLocationImages] = useState([]);
@@ -1875,4 +1874,4 @@ function Distribution() {
   );
 }
 
-export default Distribution;
+export default CoralDistribution;

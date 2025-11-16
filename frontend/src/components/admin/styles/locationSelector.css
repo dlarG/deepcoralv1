@@ -147,10 +147,36 @@
 }
 
 /* Update save button when validation fails */
-.save-btn:disabled {
+.uploads-save-btn:disabled {
   background-color: #9ca3af;
   cursor: not-allowed;
   opacity: 0.6;
+}
+
+.uploads-save-btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-light);
+  background: var(--color-primary);
+}
+
+.uploads-cancel-btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-light);
+  background: var(--color-secondary);
 }
 
 /* Improved form validation styling */

@@ -712,10 +712,8 @@ def get_dashboard_stats():
             total_detections = 0
             
             rows = cur.fetchall()
-            print(f"General coral distribution query returned {len(rows)} rows")
             
             for row in rows:
-                print(f"Row data: {row}")
                 detection_count = int(row[2]) if row[2] is not None else 0
                 total_detections += detection_count
                 
@@ -749,7 +747,6 @@ def get_dashboard_stats():
             """, (current_user_id,))
             
             personal_stats_row = cur.fetchone()
-            print(f"Personal stats row: {personal_stats_row}")
             
             # Get contributing researchers data (all active researchers)
             cur.execute("""
@@ -807,9 +804,6 @@ def get_dashboard_stats():
                 'active_users': len(contributing_researchers)
             }
             
-            print(f"General coral distribution: {len(coral_distribution)} items")
-            print(f"Personal stats: {recent_stats}")
-            print(f"Contributing researchers: {len(contributing_researchers)}")
             
             return jsonify({
                 'coral_distribution': coral_distribution,  # General distribution for dashboard card

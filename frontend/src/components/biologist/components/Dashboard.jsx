@@ -274,6 +274,8 @@ import {
   FiTrendingUp,
 } from "react-icons/fi";
 
+import "../styles/biologistdashboardStyle.css";
+
 function Dashboard({ user, darkMode, onNavigate }) {
   const [dashboardData, setDashboardData] = useState({
     coral_distribution: [],
@@ -462,11 +464,17 @@ function Dashboard({ user, darkMode, onNavigate }) {
           </p>
         </div>
         <div className="header-actions">
-          <button className="action-btn secondary" onClick={handleExportData}>
+          <button
+            className="dashboard-action-btn secondary"
+            onClick={handleExportData}
+          >
             <FiDownload size={18} />
             <span>Export My Data</span>
           </button>
-          <button className="action-btn primary" onClick={handleNewAnalysis}>
+          <button
+            className="dashboard-action-btn primary"
+            onClick={handleNewAnalysis}
+          >
             <FiPlus size={18} />
             <span>New Analysis</span>
           </button>
@@ -475,36 +483,36 @@ function Dashboard({ user, darkMode, onNavigate }) {
 
       {/* Statistics Cards */}
       <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-value">
+        <div className="dashboard-stat-card">
+          <div className="dashboard-stat-value">
             {dashboardData.recent_stats.total_images}
           </div>
-          <div className="stat-label">My Images Analyzed</div>
-          <div className="stat-sublabel">Last 30 days</div>
+          <div className="dashboard-stat-label">My Images Analyzed</div>
+          <div className="dashboard-stat-sublabel">Last 30 days</div>
         </div>
-        <div className="stat-card">
-          <div className="stat-value">
+        <div className="dashboard-stat-card">
+          <div className="dashboard-stat-value">
             {dashboardData.recent_stats.total_detections}
           </div>
-          <div className="stat-label">My Coral Detections</div>
-          <div className="stat-sublabel">Total identifications</div>
+          <div className="dashboard-stat-label">My Coral Detections</div>
+          <div className="dashboard-stat-sublabel">Total identifications</div>
         </div>
-        <div className="stat-card">
-          <div className="stat-value">
+        <div className="dashboard-stat-card">
+          <div className="dashboard-stat-value">
             {dashboardData.recent_stats.avg_confidence.toFixed(1)}%
           </div>
-          <div className="stat-label">My Avg Confidence</div>
-          <div className="stat-sublabel">Analysis accuracy</div>
+          <div className="dashboard-stat-label">My Avg Confidence</div>
+          <div className="dashboard-stat-sublabel">Analysis accuracy</div>
         </div>
         <div
-          className="stat-card clickable"
+          className="dashboard-stat-card clickable"
           onClick={() => setShowResearchersModal(true)}
         >
-          <div className="stat-value">
+          <div className="dashboard-stat-value">
             {dashboardData.recent_stats.active_users}
           </div>
-          <div className="stat-label">Contributing Researchers</div>
-          <div className="stat-sublabel">Click to view details</div>
+          <div className="dashboard-stat-label">Contributing Researchers</div>
+          <div className="dashboard-stat-sublabel">Click to view details</div>
         </div>
       </div>
 

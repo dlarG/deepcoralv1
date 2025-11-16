@@ -21,7 +21,6 @@ warnings.filterwarnings("ignore")
 
 image_bp = Blueprint('image', __name__)
 
-# Initialize availability flags
 PYTORCH_AVAILABLE = False
 YOLO_AVAILABLE = False
 SEGMENTATION_AVAILABLE = False
@@ -31,14 +30,12 @@ segmentation_model = None
 print("🔍 Checking package availability...")
 
 
-# Fix numpy compatibility first
 try:
     import numpy as np
     print(f"✅ NumPy {np.__version__} imported successfully")
 except Exception as e:
     print(f"❌ NumPy import failed: {e}")
 
-# Check PyTorch availability
 try:
     import torch
     print(f"✅ PyTorch {torch.__version__} imported successfully")
@@ -102,19 +99,16 @@ if PYTORCH_AVAILABLE:
         from albumentations.pytorch import ToTensorV2
         print("✅ Segmentation models imported successfully")
         
-        # Load segmentation model (11 classes - your existing model)
         BASE_DIR = Path(__file__).parent.parent
         MODEL_PATH = BASE_DIR.parent / "backend" / "models" / "segmentation" / "version3" / "coral_unet_best.pth"
         
         print(f"🔄 Loading segmentation model from: {MODEL_PATH}")
         print(f"📁 Model exists: {MODEL_PATH.exists()}")
         
-        # FIXED: Use 11 classes to match your existing model
         NUM_CLASSES = 9
         
         if MODEL_PATH.exists():
             try:
-                # Initialize model with 11 classes
                 segmentation_model = smp.Unet(
                     encoder_name="resnet34",
                     encoder_weights=None,
@@ -122,24 +116,19 @@ if PYTORCH_AVAILABLE:
                     classes=NUM_CLASSES
                 )
                 
-                # Load checkpoint with proper handling
                 checkpoint = torch.load(str(MODEL_PATH), map_location='cpu', weights_only=False)
                 
-                # Handle different checkpoint formats
                 if 'model_state_dict' in checkpoint:
-                    # New format from our training
                     segmentation_model.load_state_dict(checkpoint['model_state_dict'])
                 else:
-                    # Old format (direct state dict)
                     segmentation_model.load_state_dict(checkpoint)
                 
                 segmentation_model.eval()
                 print("✅ Segmentation model loaded successfully!")
                 SEGMENTATION_AVAILABLE = True
                 
-                # Define transforms for model
                 segmentation_transform = A.Compose([
-                    A.Resize(640, 640),
+                    A.Resize(1024, 1024),
                     A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                     ToTensorV2()
                 ])
@@ -159,7 +148,6 @@ if PYTORCH_AVAILABLE:
 else:
     print("❌ Segmentation unavailable - PyTorch not available")
 
-# NEW Coral class mapping (9 classes - your new model)
 CORAL_CLASSES = {
     1: {'name': 'acropora-branching', 'color': '#FF6B6B', 'category': 'hard_coral'},
     2: {'name': 'acropora-tabulate', 'color': '#FFD166', 'category': 'hard_coral'},
@@ -169,11 +157,9 @@ CORAL_CLASSES = {
     6: {'name': 'mushroom', 'color': '#EF476F', 'category': 'hard_coral'},
     7: {'name': 'non-acropora-branching', 'color': '#7209B7', 'category': 'hard_coral'},
     8: {'name': 'submassive', 'color': '#F72585', 'category': 'hard_coral'}
-    # Note: removed 'submassive' and 'soft-coral' to match your 8 coral classes + background
 }
 
 def hex_to_rgb(hex_color):
-    """Convert hex color to RGB tuple"""
     hex_color = hex_color.lstrip('#')
     return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
 
@@ -205,7 +191,7 @@ def predict_segmentation(image):
         raise Exception("Segmentation model not available")
     
     transform = A.Compose([
-        A.Resize(640, 640),
+        A.Resize(1024, 1024),
         A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ToTensorV2()
     ])
@@ -294,7 +280,6 @@ def get_system_status():
         "recommendations": []
     }
     
-    # Add version info if available
     try:
         import torch
         status["package_versions"] = {"torch": torch.__version__}
@@ -324,7 +309,6 @@ def get_system_status():
 
 @image_bp.route("/fix_yolo_compatibility", methods=["GET"])
 def fix_yolo_compatibility():
-    """Provide instructions to fix YOLO compatibility"""
     return jsonify({
         "issue": "YOLOv11 model incompatibility with current Ultralytics version",
         "your_model": "autocrop_yolov11_best.pt (requires C3k2 module)",
@@ -368,7 +352,7 @@ def serve_crop(filename):
 def serve_mask(filename):
     return send_from_directory(MASKS_FOLDER, filename)
 
-def preprocess_for_segmentation(image_path, target_size=(640, 640)):
+def preprocess_for_segmentation(image_path, target_size=(1024, 1024)):
     """Preprocess image for segmentation model"""
     transform = A.Compose([
         A.Resize(target_size[0], target_size[1]),
@@ -486,7 +470,7 @@ def log_image_validation_activity(user_id, total_images, valid_images, invalid_i
 def get_user_id_from_session():
     """Get user ID from session, with fallback"""
     try:
-        return session.get('user_id', 1)  # Default to user ID 1 if not in session
+        return session.get('user_id')  
     except RuntimeError:
         # Handle case when called outside request context
         return 1
@@ -517,7 +501,7 @@ def segment_coral_lifeforms(image_path):
         class_masks = {}
         
         for class_id, pixel_count in zip(unique_classes, pixel_counts):
-            if class_id in CORAL_CLASSES:  # Only include coral classes
+            if class_id in CORAL_CLASSES:  
                 percentage = (pixel_count / total_pixels) * 100
                 
                 coverage_data.append({
@@ -529,11 +513,9 @@ def segment_coral_lifeforms(image_path):
                     'coverage_percent': round(percentage, 2)
                 })
                 
-                # Create individual class mask
                 class_mask = (predictions_resized == class_id).astype(np.uint8) * 255
                 class_masks[class_id] = class_mask
 
-        # Create overlay and mask using consistent functions
         overlay_image = create_overlay(image, predictions_resized, alpha=0.5)
         mask_image = create_colored_mask(predictions_resized)
         
@@ -558,7 +540,6 @@ def create_visualization_mask(predictions):
             rgb_color = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
             colored_mask[mask] = rgb_color
     
-    # Background (class 0) remains black
     return colored_mask
 
 
@@ -568,7 +549,7 @@ def enhanced_crop_inside_quadrat(image_path, bbox, crop_method='conservative'):
     height = y2 - y1
     
     if crop_method == 'conservative':
-        margin = 0.01  # 4% margin reduction 
+        margin = 0.04  # 4% margin reduction 
     elif crop_method == 'moderate':
         margin = 0.12  # 12% margin reduction
     elif crop_method == 'aggressive':
@@ -1572,7 +1553,6 @@ def batch_analyze_images():
                         )
                         
                         if segmentation_saved:
-                            print(f"✅ Saved segmentation results for image_id {image_id}")
                             log_image_segmentation_activity(
                                 user_id=user_id,
                                 filename=crop_filename,
@@ -1766,17 +1746,12 @@ def save_segmentation_results(image_id, coverage_data, overlay_path):
     
     try:
         with conn.cursor() as cur:
-            # Debug: Print what we're trying to save
-            print(f"🔍 Saving segmentation for image_id: {image_id}")
-            print(f"🔍 Coverage data count: {len(coverage_data) if coverage_data else 0}")
-            print(f"🔍 Overlay path: {overlay_path}")
             
             if not coverage_data:
                 print("⚠️ No coverage data to save")
                 return True  # Not an error, just no data
             
             for coral_data in coverage_data:
-                print(f"🔍 Processing coral: {coral_data['class_name']}")
                 
                 # First, ensure coral lifeform exists
                 cur.execute("""
@@ -1796,11 +1771,7 @@ def save_segmentation_results(image_id, coverage_data, overlay_path):
                     continue
                     
                 class_id = result[0]
-                print(f"✅ Found coral lifeform ID: {class_id} for {coral_data['class_name']}")
-                
-                # FIXED: Check if overlay_path column exists, if not use only mask_path
                 try:
-                    # Try with overlay_path first
                     cur.execute("""
                         INSERT INTO segmentation_results 
                         (image_id, class_id, area_px, coverage_percent, overlay_path, mask_path)
@@ -1813,7 +1784,7 @@ def save_segmentation_results(image_id, coverage_data, overlay_path):
                         overlay_path,
                         overlay_path  # Use same path for both overlay and mask for now
                     ))
-                    print(f"✅ Saved segmentation result with overlay_path for {coral_data['class_name']}")
+                   
                 except psycopg2.errors.UndefinedColumn as e:
                     if "overlay_path" in str(e):
                         print("⚠️ overlay_path column doesn't exist, using mask_path only")
@@ -1834,7 +1805,6 @@ def save_segmentation_results(image_id, coverage_data, overlay_path):
                         raise e
             
             conn.commit()
-            print(f"✅ Successfully saved all segmentation results for image_id {image_id}")
             return True
             
     except Exception as e:

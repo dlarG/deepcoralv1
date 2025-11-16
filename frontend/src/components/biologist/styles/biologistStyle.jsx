@@ -429,25 +429,8 @@ const getBiologistStyle = (sidebarOpen, darkMode = false) => `
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
 }
 
-/* Navigation Action Buttons */
-.nav-action-btn {
-  position: relative;
-  background: none;
-  border: none;
-  color: var(--text-primary);
-  padding: 0.75rem;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
 
-.nav-action-btn:hover {
-  background: rgba(0, 0, 0, 0.05);
-  color: var(--color-primary);
-}
+
 
 .dark-mode .nav-action-btn:hover {
   background: rgba(255, 255, 255, 0.05);
@@ -521,24 +504,7 @@ const getBiologistStyle = (sidebarOpen, darkMode = false) => `
   gap: 1.5rem;
 }
 
-.sidebar-toggle {
-  width: 44px;
-  height: 44px;
-  border: none;
-  border-radius: 12px;
-  background: ${darkMode ? "#334155" : "#f1f5f9"};
-  color: ${darkMode ? "#e2e8f0" : "#475569"};
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s ease;
-}
 
-.sidebar-toggle:hover {
-  background: ${darkMode ? "#475569" : "#e2e8f0"};
-  transform: scale(1.05);
-}
 
 .nav-brand h1 {
   font-size: 1.5rem;
@@ -606,26 +572,6 @@ const getBiologistStyle = (sidebarOpen, darkMode = false) => `
   display: flex;
   align-items: center;
   gap: 1rem;
-}
-
-.nav-action-btn {
-  width: 44px;
-  height: 44px;
-  border: none;
-  border-radius: 12px;
-  background: ${darkMode ? "#334155" : "#f1f5f9"};
-  color: ${darkMode ? "#e2e8f0" : "#475569"};
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s ease;
-  position: relative;
-}
-
-.nav-action-btn:hover {
-  background: ${darkMode ? "#475569" : "#e2e8f0"};
-  transform: scale(1.05);
 }
 
 .notification-badge {
@@ -1218,6 +1164,8 @@ const getBiologistStyle = (sidebarOpen, darkMode = false) => `
 
 .nav-item {
   position: relative;
+  align-items:center;
+  text-align:center;
 }
 
 .nav-link {
@@ -1238,7 +1186,6 @@ const getBiologistStyle = (sidebarOpen, darkMode = false) => `
 
 .nav-link:hover {
   background: ${darkMode ? "#334155" : "#f8fafc"};
-  transform: translateX(4px);
 }
 
 .nav-link.active {
@@ -1309,7 +1256,7 @@ const getBiologistStyle = (sidebarOpen, darkMode = false) => `
 }
 
 .quick-action-btn.primary {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  background: var(--color-primary);
   color: #1e40af;
 }
 
@@ -1371,18 +1318,7 @@ const getBiologistStyle = (sidebarOpen, darkMode = false) => `
   flex-direction: column;
 }
 
-.stat-value {
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: ${darkMode ? "#e2e8f0" : "#0f172a"};
-  line-height: 1;
-}
 
-.stat-label {
-  font-size: 0.75rem;
-  color: ${darkMode ? "#94a3b8" : "#64748b"};
-  line-height: 1;
-}
 
 .sidebar-footer {
   padding: 1.5rem;
@@ -1473,28 +1409,9 @@ const getBiologistStyle = (sidebarOpen, darkMode = false) => `
   font-size: 0.875rem;
 }
 
-.action-btn.primary {
-  background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%);
-  color: white;
-  box-shadow: 0 4px 20px rgba(14, 165, 233, 0.3);
-}
 
-.action-btn.primary:hover {
-  background: linear-gradient(135deg, #0284c7 0%, #0891b2 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 30px rgba(14, 165, 233, 0.4);
-}
 
-.action-btn.secondary {
-  background: ${darkMode ? "#334155" : "#f8fafc"};
-  color: ${darkMode ? "#e2e8f0" : "#475569"};
-  border: 2px solid ${darkMode ? "#475569" : "#e2e8f0"};
-}
 
-.action-btn.secondary:hover {
-  background: ${darkMode ? "#475569" : "#e2e8f0"};
-  transform: translateY(-2px);
-}
 
 /* Stats Grid */
 .stats-grid {
@@ -1504,26 +1421,7 @@ const getBiologistStyle = (sidebarOpen, darkMode = false) => `
   margin-bottom: 2rem;
 }
 
-.stat-card {
-  background: ${darkMode ? "#1e293b" : "white"};
-  border-radius: 20px;
-  padding: 2rem;
-  border: 1px solid ${darkMode ? "#334155" : "#e2e8f0"};
-  box-shadow: 0 4px 20px rgba(0, 0, 0, ${darkMode ? "0.2" : "0.08"});
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
 
-.stat-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  border-radius: 20px 20px 0 0;
-}
 
 .stat-card.primary::before {
   background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%);
@@ -1683,6 +1581,7 @@ const getBiologistStyle = (sidebarOpen, darkMode = false) => `
   display: block;
   margin-bottom: 0.5rem;
   font-style: italic;
+  text-transform: capitalize;
 }
 
 .analysis-meta {
@@ -2056,11 +1955,6 @@ const getBiologistStyle = (sidebarOpen, darkMode = false) => `
     padding: 1.5rem;
   }
   
-  .notification-dropdown,
-  .profile-dropdown {
-    width: calc(100vw - 2rem);
-    right: -1rem;
-  }
 }
 
 @media (max-width: 576px) {
@@ -2177,12 +2071,12 @@ const getBiologistStyle = (sidebarOpen, darkMode = false) => `
   box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.1);
 }
 
-.biologist-dashboard.dark-mode .nav-action-btn {
+.biologist-dashboard.dark-mode {
   background: #334155;
   color: #e2e8f0;
 }
 
-.biologist-dashboard.dark-mode .nav-action-btn:hover {
+.biologist-dashboard.dark-mode{
   background: #475569;
 }
 
@@ -2337,8 +2231,7 @@ const getBiologistStyle = (sidebarOpen, darkMode = false) => `
 .nav-link:focus,
 .action-btn:focus,
 .quick-action-btn:focus,
-.sidebar-toggle:focus,
-.nav-action-btn:focus {
+.sidebar-toggle:focus {
   outline: 2px solid #0ea5e9;
   outline-offset: 2px;
 }
@@ -2440,6 +2333,50 @@ const getBiologistStyle = (sidebarOpen, darkMode = false) => `
   box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.15);
   transform: translateY(-1px);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.upload-section-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  max-width: 800px;
+  margin: 2rem auto;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

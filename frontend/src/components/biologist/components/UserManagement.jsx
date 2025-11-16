@@ -495,9 +495,6 @@ function UserManagement() {
                           <option value="biologist">
                             Biologist - Enhanced permissions
                           </option>
-                          <option value="admin">
-                            Admin - Full system access
-                          </option>
                         </select>
                         {userFormErrors.roletype && (
                           <span className="error-text">

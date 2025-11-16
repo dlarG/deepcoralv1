@@ -956,7 +956,7 @@ function AddImage() {
 
                   <div className="thumbnail-overlay">
                     {/* Enhanced Status indicator */}
-                    <div className={`status-indicator ${image.status}`}>
+                    <div className={`upload-status-indicator ${image.status}`}>
                       {image.status === "valid" && <FiCheckCircle size={12} />}
                       {image.status === "invalid" && <FiX size={12} />}
                       {image.status === "manually_included" && (
@@ -1000,7 +1000,7 @@ function AddImage() {
 
                     {/* Enhanced Remove button */}
                     <button
-                      className={`remove-btn ${image.status}`}
+                      className={`upload-remove-btn ${image.status}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         removeImage(originalIndex);
@@ -1285,17 +1285,17 @@ function AddImage() {
           )}
         </div>
 
-        <div className="charts-container">
+        <div className="upload-charts-container">
           <div className="chart-section">
             <h4>Coverage Distribution - Pie Chart</h4>
-            <div className="chart-wrapper">
+            <div className="upload-chart-wrapper">
               <Pie data={pieData} options={chartOptions} />
             </div>
           </div>
 
           <div className="chart-section">
             <h4>Coverage Distribution - Bar Chart</h4>
-            <div className="chart-wrapper">
+            <div className="upload-chart-wrapper">
               <Bar data={barData} options={barOptions} />
             </div>
           </div>
@@ -1352,7 +1352,7 @@ function AddImage() {
     const currentImage = images[currentImageIndex];
     if (!currentImage?.segmentationData?.crops) {
       return (
-        <div className="upload-analysis-results">
+        <div className="image-upload-analysis-results">
           <p>No analysis data available for this image.</p>
         </div>
       );
@@ -1364,7 +1364,7 @@ function AddImage() {
       currentImage.status === "manually_included";
 
     return (
-      <div className="upload-analysis-results">
+      <div className="image-upload-analysis-results">
         <div className="analysis-header">
           <h3 className="up-title">Coral Analysis Results</h3>
           <div className="analysis-stats">
@@ -1715,7 +1715,7 @@ function AddImage() {
                 <button
                   onClick={validateAllImages}
                   disabled={loading || batchLoading}
-                  className="upload-button secondary"
+                  className="upload-button primary"
                 >
                   <FiCheckCircle size={16} />
                   <span>Validate All</span>
@@ -1763,15 +1763,6 @@ function AddImage() {
                 <div className="results-tabs">
                   <button
                     className={`tab-button ${
-                      activeTab === "crops" ? "active" : ""
-                    }`}
-                    onClick={() => setActiveTab("crops")}
-                  >
-                    <FiGrid size={16} />
-                    <span>Detected Crops ({crops.length})</span>
-                  </button>
-                  <button
-                    className={`tab-button ${
                       activeTab === "analysis" ? "active" : ""
                     }`}
                     onClick={() => setActiveTab("analysis")}
@@ -1793,57 +1784,6 @@ function AddImage() {
                 </div>
 
                 <div className="tab-content">
-                  {activeTab === "crops" && (
-                    <div className="crops-section">
-                      <div className="crops-header">
-                        <div className="crops-title">
-                          <FiGrid size={20} />
-                          <span>Detected Crops ({crops.length})</span>
-                        </div>
-                        <div className="method-tag">
-                          {cropIntensity.charAt(0).toUpperCase() +
-                            cropIntensity.slice(1)}
-                        </div>
-                        {totalCrops > 0 && (
-                          <button
-                            onClick={downloadBatchCrops}
-                            className="download-all-btn"
-                          >
-                            <FiDownload size={16} />
-                            Download All ({totalCrops})
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="crops-grid">
-                        {crops.map((crop, i) => (
-                          <div key={i} className="crop-card">
-                            <div className="crop-image-container">
-                              <img
-                                src={`http://${process.env.REACT_APP_API_URL}/${crop}`}
-                                alt={`Crop ${i + 1}`}
-                                className="crop-image"
-                              />
-                              <div className="crop-overlay">
-                                <button
-                                  className="download-crop-btn"
-                                  onClick={() => downloadCrop(crop, i)}
-                                  title="Download crop"
-                                >
-                                  <FiDownload size={14} />
-                                  <span>Download</span>
-                                </button>
-                              </div>
-                            </div>
-                            <div className="crop-info">
-                              <span className="crop-label">Crop {i + 1}</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
                   {activeTab === "analysis" && renderAnalysisResults()}
                   {activeTab === "batch-analysis" && renderBatchAnalysisChart()}
                 </div>
@@ -1870,7 +1810,7 @@ function AddImage() {
       {/* Loading Overlay */}
       {(loading || batchLoading) && (
         <div className="loading-overlay">
-          <div className="loading-content">
+          <div className="imageupload-loading-content">
             <div className="loading-spinner"></div>
             <div className="loading-text">
               {batchLoading ? "Analyzing Batch..." : "Processing Image..."}

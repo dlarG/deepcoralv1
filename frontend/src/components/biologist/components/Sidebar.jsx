@@ -7,6 +7,7 @@ import {
   FiUser,
   FiUpload,
   FiUsers,
+  FiMap,
 } from "react-icons/fi";
 
 function Sidebar({ activeTab, setActiveTab, sidebarOpen }) {
@@ -16,6 +17,12 @@ function Sidebar({ activeTab, setActiveTab, sidebarOpen }) {
       label: "Dashboard",
       description: "Overview & Analytics",
       icon: FiHome,
+    },
+    {
+      id: "User",
+      label: "Users",
+      description: "User Management",
+      icon: FiUsers,
     },
     {
       id: "Image Analysis",
@@ -30,10 +37,10 @@ function Sidebar({ activeTab, setActiveTab, sidebarOpen }) {
       icon: FiDatabase,
     },
     {
-      id: "User",
-      label: "Users",
-      description: "User Management",
-      icon: FiUsers,
+      id: "Coral Distribution",
+      label: "Coral Map",
+      description: "Coral Distribution on Map",
+      icon: FiMap,
     },
     {
       id: "Profile",
