@@ -1228,7 +1228,6 @@ function ImageUpload() {
             <div className="save-section">
               <button className="save-to-db-btn" onClick={handleSaveToDatabase}>
                 <FiSave size={16} />
-                <FiMap size={16} />
                 Save to Database with Location
               </button>
             </div>

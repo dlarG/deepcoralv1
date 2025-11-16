@@ -909,6 +909,100 @@
   backdrop-filter: blur(8px);
 }
 
+/* .gallery-item.valid {
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+}  */
+
+.gallery-item {
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.gallery-item.pending {
+  border-color: #f59e0b;
+  background: #fef3c7;
+}
+
+.gallery-item.valid {
+  border-color: #10b981;
+  background: #d1fae5;
+}
+
+.gallery-item.active.valid {
+  border-color: #10b981;
+  background: #d1fae5;
+}
+
+.gallery-item.invalid {
+  border-color: #ef4444;
+  background: #fee2e2;
+}
+
+.gallery-item.active.invalid {
+  border-color: #ef4444;
+  background: #fee2e2;
+}
+
+.gallery-item.processed {
+  border-color: #8b5cf6;
+  background: #ede9fe;
+}
+
+.gallery-item.active {
+  transform: scale(1.05);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+}
+
+.rejected-images-panel {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+}
+
+.rejected-images-panel h4 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 1rem 0;
+  color: #dc2626;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.rejected-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.rejected-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: white;
+  border-radius: 8px;
+  border-left: 4px solid #ef4444;
+}
+
+.rejected-item .filename {
+  font-weight: 600;
+  color: #374151;
+}
+
+.rejected-item .rejection-reason {
+  color: #6b7280;
+  font-size: 0.875rem;
+  font-style: italic;
+}
+
 .dark-mode .gallery-item {
   background: linear-gradient(
     145deg,
@@ -1094,6 +1188,29 @@
 
 .upload-status-indicator.validating {
   background: #3b82f6;
+}
+
+.item-status {
+  margin-top: 0.5rem;
+}
+
+.quadrat-count,
+.crop-count {
+  font-size: 0.75rem;
+  color: #059669;
+  font-weight: 600;
+}
+
+.error-text {
+  font-size: 0.75rem;
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.validating-text {
+  font-size: 0.75rem;
+  color: #3b82f6;
+  font-weight: 600;
 }
 
 .upload-remove-btn {

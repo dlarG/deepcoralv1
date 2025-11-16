@@ -541,7 +541,7 @@ def get_user_profile(user_id):
         with conn.cursor() as cur:
             cur.execute("""
                 SELECT id, username, firstname, lastname, roletype, 
-                       bio, profile_image, created_at, updated_at 
+                       bio, profile_image, created_at, updated_at, last_login, institution, email
                 FROM users WHERE id = %s
             """, (user_id,))
             user = cur.fetchone()
@@ -559,7 +559,10 @@ def get_user_profile(user_id):
                     'bio': user[5],
                     'profile_image': user[6],
                     'created_at': user[7],
-                    'updated_at': user[8]
+                    'updated_at': user[8],
+                    'last_login': user[9],
+                    'institution': user[10],
+                    'email': user[11],
                 }
             }), 200
     except Exception as e:
