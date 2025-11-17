@@ -662,26 +662,14 @@ def create_segmentation_overlay(original_image, segmentation_mask, alpha=0.6):
 @image_bp.route("/detect_custom", methods=["POST", "OPTIONS"])
 @cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
 def detect_and_crop_custom():
+    """Updated single image detection with manual override support"""
     if request.method == "OPTIONS":
         return jsonify({}), 200
     
     if not YOLO_AVAILABLE or detection_model is None:
         return jsonify({
             "error": "Coral quadrat detection is currently unavailable",
-            "reason": "YOLO model not loaded due to compatibility issues",
-            "details": {
-                "model_issue": "YOLOv11 model requires newer Ultralytics version",
-                "current_status": {
-                    "pytorch_available": PYTORCH_AVAILABLE,
-                    "yolo_available": YOLO_AVAILABLE,
-                    "detection_model_loaded": detection_model is not None
-                }
-            },
-            "fix_instructions": {
-                "step1": "Update Ultralytics: pip install --upgrade ultralytics>=8.1.0",
-                "step2": "Restart the Flask application: python app.py",
-                "alternative": "Get fix details: GET /fix_yolo_compatibility"
-            }
+            "reason": "YOLO model not loaded due to compatibility issues"
         }), 503
     
     try:
@@ -698,6 +686,7 @@ def detect_and_crop_custom():
             return jsonify({"error": "Invalid file type"}), 400
 
         crop_intensity = request.form.get('intensity', 'conservative')
+        manual_override = request.form.get('manual_override', 'false').lower() == 'true'
         user_id = get_user_id_from_session()
         
         log_image_upload(
@@ -714,50 +703,86 @@ def detect_and_crop_custom():
         try:
             file.save(image_path)
         except Exception as e:
-            log_system_action(
-                user_id=user_id,
-                action='image_save_failed',
-                description=f"Failed to save uploaded image {file.filename}",
-                details={'error': str(e)}
-            )
             return jsonify({"error": f"Failed to save file: {str(e)}"}), 500
-
-        # Optional: Comment out underwater validation if too strict
-        img = cv2.imread(image_path)
-        if not validate_underwater_characteristics(img):
-            print("Warning: Image doesn't appear underwater, but proceeding anyway...")
-            # Don't reject - just log warning
 
         try:
             results = detection_model(image_path)
         except Exception as e:
-            log_system_action(
-                user_id=user_id,
-                action='detection_failed',
-                description=f"YOLO detection failed for {file.filename}",
-                details={'error': str(e)}
-            )
             try:
                 os.remove(image_path)
             except:
                 pass
             return jsonify({"error": f"Model processing failed: {str(e)}"}), 500
 
-        # IMPROVED: Robust detection validation with confidence threshold
-        CONFIDENCE_THRESHOLD = 0.87  # 87% confidence threshold
+        CONFIDENCE_THRESHOLD = 0.87
         
         if not results[0].boxes or len(results[0].boxes) == 0:
-            try:
-                os.remove(image_path)
-            except:
-                pass
-            return jsonify({
-                "error": "No objects detected in this image",
-                "confidence_threshold": CONFIDENCE_THRESHOLD
-            }), 400
+            if manual_override:
+                # Process entire image as single crop
+                print(f"Manual override: Processing entire image {file.filename}")
+                
+                img = cv2.imread(image_path)
+                height, width = img.shape[:2]
+                
+                # Create full image crop with small margin
+                margin = min(width, height) * 0.02  # 2% margin
+                cropped = enhanced_crop_inside_quadrat(image_path, [margin, margin, width-margin, height-margin], crop_intensity)
+                cropped = enhance_cropped_image(cropped)
 
-        # IMPROVED: Detailed detection analysis
+                crop_filename = f"manual_override_{crop_intensity}_{safe_filename}"
+                crop_path = os.path.join(OUTPUT_FOLDER, crop_filename)
+                cropped.save(crop_path, quality=95)
+
+                # Segment and create results
+                coverage_data, class_masks, overlay_image, mask_image, total_pixels = segment_coral_lifeforms(crop_path)
+                
+                overlay_filename = f"overlay_{crop_filename}"
+                overlay_path = os.path.join(MASKS_FOLDER, overlay_filename)
+                if overlay_image is not None:
+                    overlay_bgr = cv2.cvtColor(overlay_image, cv2.COLOR_RGB2BGR)
+                    cv2.imwrite(overlay_path, overlay_bgr)
+
+                mask_filename = f"mask_{crop_filename}"
+                mask_path = os.path.join(MASKS_FOLDER, mask_filename)
+                if mask_image is not None:
+                    mask_bgr = cv2.cvtColor(mask_image, cv2.COLOR_RGB2BGR)
+                    cv2.imwrite(mask_path, mask_bgr)
+
+                try:
+                    os.remove(image_path)
+                except:
+                    pass
+
+                return jsonify({
+                    "crops": [f"crops/{crop_filename}"],
+                    "segmentation_data": [{
+                        'crop_url': f"crops/{crop_filename}",
+                        'overlay_url': f"masks/{overlay_filename}",
+                        'mask_url': f"masks/{mask_filename}",
+                        'coverage_data': coverage_data,
+                        'total_pixels': total_pixels,
+                        'detection_label': "manual_override",
+                        'confidence': 0.5,
+                        'manually_included': True
+                    }],
+                    "method": crop_intensity,
+                    "original_filename": file.filename,
+                    "manual_override": True,
+                    "message": "Manual override: Processed entire image without quadrat detection"
+                })
+            else:
+                try:
+                    os.remove(image_path)
+                except:
+                    pass
+                return jsonify({
+                    "error": "No objects detected in this image",
+                    "confidence_threshold": CONFIDENCE_THRESHOLD
+                }), 400
+
+        # Process detected objects
         valid_quadrats = []
+        low_confidence_quadrats = []
         all_detections = []
         
         for i, box in enumerate(results[0].boxes):
@@ -770,83 +795,76 @@ def detect_and_crop_custom():
                 "label": label,
                 "confidence": confidence,
                 "class_id": cls,
-                "is_valid": False,
-                "bbox": box.xyxy[0].tolist() if hasattr(box.xyxy[0], 'tolist') else box.xyxy[0].cpu().tolist()
+                "bbox": box.xyxy[0].tolist() if hasattr(box.xyxy[0], 'tolist') else box.xyxy[0].cpu().tolist(),
+                "box": box
             }
             
-            # IMPROVED: Check for valid quadrat classes with confidence threshold
             if label.lower() in ['full_quadrat', 'half_quadrat']:
                 if confidence >= CONFIDENCE_THRESHOLD:
                     detection_info["is_valid"] = True
                     valid_quadrats.append(detection_info)
-                else:
+                elif confidence >= 0.4:
                     detection_info["is_valid"] = False
-                    print(f"Detection {i}: {label} with confidence {confidence:.3f} below threshold {CONFIDENCE_THRESHOLD}")
+                    low_confidence_quadrats.append(detection_info)
             
             all_detections.append(detection_info)
 
-        # IMPROVED: Detailed error reporting
-        if len(valid_quadrats) == 0:
-            log_system_action(
-                user_id=user_id,
-                action='no_quadrats_detected',
-                description=f"No valid coral quadrats detected in {file.filename}",
-                details={
-                    'total_detections': len(all_detections),
-                    'confidence_threshold': CONFIDENCE_THRESHOLD
-                }
-            )
+        # Determine which quadrats to process
+        quadrats_to_process = valid_quadrats.copy()
+        
+        if manual_override and len(low_confidence_quadrats) > 0:
+            print(f"Manual override: Including {len(low_confidence_quadrats)} low-confidence detections")
+            quadrats_to_process.extend(low_confidence_quadrats)
+
+        if len(quadrats_to_process) == 0:
             try:
                 os.remove(image_path)
             except:
                 pass
             
-            # Provide helpful error message based on what was detected
-            quadrat_detections = [d for d in all_detections if d['label'].lower() in ['full_quadrat', 'half_quadrat']]
-            other_detections = [d for d in all_detections if d['label'].lower() not in ['full_quadrat', 'half_quadrat']]
-            
-            error_message = "No valid coral quadrats detected"
-            
-            if quadrat_detections:
-                highest_confidence = max([d['confidence'] for d in quadrat_detections])
-                error_message += f". Highest quadrat confidence: {highest_confidence:.3f} (threshold: {CONFIDENCE_THRESHOLD})"
-            elif other_detections:
-                detected_labels = list(set([d['label'] for d in other_detections]))
-                error_message += f". Detected: {', '.join(detected_labels)}"
+            if manual_override:
+                return jsonify({
+                    "error": "Manual override requested but no detections found to override",
+                    "suggestion": "Try uploading the image through batch analysis for full-image processing"
+                }), 400
             else:
-                error_message += " with sufficient confidence"
-            
-            return jsonify({
-                "error": error_message,
-                "confidence_threshold": CONFIDENCE_THRESHOLD,
-                "total_detections": len(all_detections),
-                "quadrat_detections_low_confidence": len(quadrat_detections),
-                "other_detections": len(other_detections)
-            }), 400
+                error_message = f"No valid coral quadrats detected above {CONFIDENCE_THRESHOLD:.0%} threshold"
+                if low_confidence_quadrats:
+                    highest_conf = max([d['confidence'] for d in low_confidence_quadrats])
+                    error_message += f". Highest confidence: {highest_conf:.3f}"
+                
+                return jsonify({
+                    "error": error_message,
+                    "confidence_threshold": CONFIDENCE_THRESHOLD,
+                    "low_confidence_detections": len(low_confidence_quadrats),
+                    "manual_override_available": len(low_confidence_quadrats) > 0
+                }), 400
 
-        # IMPROVED: Process only valid quadrats
+        # Process the selected quadrats
         crops = []
-        processed_count = 0
         segmentation_results = []
         
-        for i, detection in enumerate(valid_quadrats):
+        for i, detection in enumerate(quadrats_to_process):
             try:
-                if not detection["is_valid"]:
-                    continue
-                    
+                box = detection["box"]
                 x1, y1, x2, y2 = detection["bbox"]
+                confidence = detection["confidence"]
+                label = detection["label"]
+                is_low_confidence = confidence < CONFIDENCE_THRESHOLD
 
                 cropped = enhanced_crop_inside_quadrat(image_path, [x1, y1, x2, y2], crop_intensity)
                 cropped = enhance_cropped_image(cropped)
 
-                crop_filename = f"{detection['label']}_{i}_{crop_intensity}_{safe_filename}"
+                # Add indicators to filename
+                override_suffix = "_manual" if manual_override and is_low_confidence else ""
+                crop_filename = f"{label}_{i}_{crop_intensity}{override_suffix}_{safe_filename}"
                 crop_path = os.path.join(OUTPUT_FOLDER, crop_filename)
                 cropped.save(crop_path, quality=95)
 
                 # Segment and create overlay
                 coverage_data, class_masks, overlay_image, mask_image, total_pixels = segment_coral_lifeforms(crop_path)
                 
-                # Save overlay instead of visualization mask
+                # Save overlay
                 overlay_filename = f"overlay_{crop_filename}"
                 overlay_path = os.path.join(MASKS_FOLDER, overlay_filename)
                 if overlay_image is not None:
@@ -857,24 +875,26 @@ def detect_and_crop_custom():
                 mask_filename = f"mask_{crop_filename}"
                 mask_path = os.path.join(MASKS_FOLDER, mask_filename)
                 if mask_image is not None:
-                    Image.fromarray(mask_image).save(mask_path, quality=95)
+                    mask_bgr = cv2.cvtColor(mask_image, cv2.COLOR_RGB2BGR)
+                    cv2.imwrite(mask_path, mask_bgr)
 
-                # Add to segmentation results
+                # Add to results
                 segmentation_results.append({
                     'crop_url': f"crops/{crop_filename}",
                     'overlay_url': f"masks/{overlay_filename}",
                     'mask_url': f"masks/{mask_filename}",
                     'coverage_data': coverage_data,
                     'total_pixels': total_pixels,
-                    'detection_label': detection['label'],
-                    'confidence': detection['confidence']
+                    'detection_label': label,
+                    'confidence': confidence,
+                    'manually_included': manual_override and is_low_confidence,
+                    'below_threshold': is_low_confidence
                 })
 
                 crops.append(f"crops/{crop_filename}")
-                processed_count += 1
                 
             except Exception as e:
-                print(f"Error processing valid quadrat {i}: {str(e)}")
+                print(f"Error processing quadrat {i}: {str(e)}")
                 continue
                 
         try:
@@ -884,15 +904,16 @@ def detect_and_crop_custom():
 
         if len(crops) == 0:
             return jsonify({
-                "error": "Valid quadrats detected but could not be processed",
-                "confidence_threshold": CONFIDENCE_THRESHOLD,
-                "valid_quadrats_detected": len(valid_quadrats)
+                "error": "Quadrats detected but could not be processed",
+                "confidence_threshold": CONFIDENCE_THRESHOLD
             }), 400
         
+        # Log the analysis
         detection_results_data = {
-            'highest_confidence': max([d['confidence'] for d in valid_quadrats]),
+            'highest_confidence': max([d['confidence'] for d in quadrats_to_process]),
             'total_detections': len(all_detections),
-            'valid_detections': len(valid_quadrats)
+            'valid_detections': len(valid_quadrats),
+            'manual_overrides': len([d for d in quadrats_to_process if d['confidence'] < CONFIDENCE_THRESHOLD])
         }
         
         log_image_detection_activity(
@@ -902,27 +923,25 @@ def detect_and_crop_custom():
             crop_count=len(crops),
             method=crop_intensity
         )
-        
 
         return jsonify({
             "crops": crops,
-            "segmentation_data": segmentation_results,  # Add this line
+            "segmentation_data": segmentation_results,
             "method": crop_intensity,
             "original_filename": file.filename,
-            "valid_quadrats": len(crops),
+            "valid_quadrats": len(valid_quadrats),
+            "manual_overrides": len([d for d in quadrats_to_process if d['confidence'] < CONFIDENCE_THRESHOLD]),
             "confidence_threshold": CONFIDENCE_THRESHOLD,
             "total_detections": len(all_detections),
-            "valid_detections": len(valid_quadrats),
-            "highest_confidence": max([d['confidence'] for d in valid_quadrats])
+            "processing_details": {
+                "manual_override_used": manual_override,
+                "low_confidence_included": any(d['confidence'] < CONFIDENCE_THRESHOLD for d in quadrats_to_process)
+            }
         })
     except Exception as e:
-        log_system_action(
-            user_id=user_id,
-            action='image_processing_error',
-            description=f"Unexpected error processing {file.filename if 'file' in locals() else 'unknown file'}",
-            details={'error': str(e)}
-        )
         print(f"Unexpected error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
 
 def validate_underwater_characteristics(img):
@@ -1350,7 +1369,7 @@ def save_segmentation_results(image_id, coverage_data, mask_path):
 @image_bp.route("/batch_analyze", methods=["POST", "OPTIONS"])
 @cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
 def batch_analyze_images():
-    """Enhanced batch analysis with manual override support"""
+    """Enhanced batch analysis with proper manual override support and shorter filenames"""
     if request.method == "OPTIONS":
         return jsonify({}), 200
     
@@ -1363,13 +1382,29 @@ def batch_analyze_images():
 
         # Get manual override information from form data
         manually_included = request.form.get('manually_included', '[]')
+        debug_info = request.form.get('debug_info', '{}')
+        
         try:
             manually_included_indices = json.loads(manually_included) if manually_included else []
+            debug_data = json.loads(debug_info) if debug_info else {}
         except:
             manually_included_indices = []
+            debug_data = {}
 
         uploader_id = user_id
         crop_intensity = request.form.get('intensity', 'conservative')
+        
+        # Enhanced debugging
+        print(f"\n🔍 BATCH ANALYSIS DEBUG:")
+        print(f"   📁 Total files received: {len(files)}")
+        print(f"   🔧 Manually included indices: {manually_included_indices}")
+        print(f"   📊 Debug info from frontend: {debug_data}")
+        print(f"   🎯 Crop intensity: {crop_intensity}")
+        
+        # Log filenames for debugging
+        for i, file in enumerate(files):
+            is_manual = i in manually_included_indices
+            print(f"   📄 File {i}: {file.filename} {'(MANUAL OVERRIDE)' if is_manual else ''}")
         
         log_system_action(
             user_id=user_id,
@@ -1379,7 +1414,8 @@ def batch_analyze_images():
                 'file_count': len(files),
                 'crop_intensity': crop_intensity,
                 'manually_included_count': len(manually_included_indices),
-                'manually_included_indices': manually_included_indices
+                'manually_included_indices': manually_included_indices,
+                'debug_info': debug_data
             }
         )
 
@@ -1391,12 +1427,16 @@ def batch_analyze_images():
         batch_total_pixels = 0
         rejected_images = []
         
+        CONFIDENCE_THRESHOLD = 0.87
+        
         for file_index, file in enumerate(files):
             if not file or file.filename == '':
                 continue
                 
             # Check if this file was manually included
             is_manually_included = file_index in manually_included_indices
+            print(f"\n🔄 Processing file {file_index}: {file.filename}")
+            print(f"   🔧 Manual override: {is_manually_included}")
                 
             # Validate file extension
             allowed_extensions = {'png', 'jpg', 'jpeg', 'webp'}
@@ -1410,72 +1450,20 @@ def batch_analyze_images():
                 continue
                 
             # Process each file
-            unique_id = str(uuid.uuid4())[:8]
-            safe_filename = f"batch_{file_index}_{unique_id}.{ext}"
+            unique_id = str(uuid.uuid4())[:6]  # Shortened to 6 characters
+            safe_filename = f"b{file_index}_{unique_id}.{ext}"  # Shortened batch filename
             image_path = os.path.join(UPLOAD_FOLDER, safe_filename)
             
             file.save(image_path)
             
             # Detection and processing
-            detection_results = detection_model(image_path)
-            
-            # Check for valid quadrat detections (OR manually included)
-            valid_detections = []
-            if detection_results[0].boxes:
-                for box in detection_results[0].boxes:
-                    cls = int(box.cls)
-                    confidence = float(box.conf)
-                    label = detection_model.names[cls]
-                    
-                    if label.lower() in ['full_quadrat', 'half_quadrat'] and confidence > 0.4:
-                        valid_detections.append(box)
-            
-            # If no valid detections but manually included, create a full-image crop
-            if len(valid_detections) == 0 and is_manually_included:
-                print(f"No quadrats detected in {file.filename}, but manually included - processing entire image")
-                
-                # Create a fake detection box covering the entire image
-                img = cv2.imread(image_path)
-                if img is not None:
-                    height, width = img.shape[:2]
-                    
-                    # Create a mock detection result for the entire image with smaller margin
-                    class MockBox:
-                        def __init__(self, width, height):
-                            # Use smaller margins for manual override to get more of the image
-                            margin_x = width * 0.05   # 5% margin
-                            margin_y = height * 0.05  # 5% margin
-                            
-                            self.xyxy = [[
-                                margin_x, 
-                                margin_y, 
-                                width - margin_x, 
-                                height - margin_y
-                            ]]
-                            self.conf = 0.7  # Higher confidence for manual override
-                            self.cls = None  # No class for manual override
-                            
-                    mock_detection = MockBox(width, height)
-                    valid_detections.append(mock_detection)
-                    
-                    log_system_action(
-                        user_id=user_id,
-                        action='manual_override_processed',
-                        description=f"Processing manually included image {file.filename} without detected quadrats",
-                        details={
-                            'filename': file.filename,
-                            'file_index': file_index,
-                            'image_dimensions': f"{width}x{height}",
-                            'override_reason': 'User manually included despite no quadrat detection',
-                            'crop_area': f"{width - margin_x*2}x{height - margin_y*2}"
-                        }
-                    )
-            
-            # If still no valid detections and not manually included, reject
-            if len(valid_detections) == 0:
+            try:
+                detection_results = detection_model(image_path)
+            except Exception as e:
+                print(f"❌ Detection failed for {file.filename}: {e}")
                 rejected_images.append({
                     'filename': file.filename,
-                    'reason': 'No coral quadrats detected and not manually included',
+                    'reason': f'Detection model failed: {str(e)}',
                     'file_index': file_index
                 })
                 try:
@@ -1484,67 +1472,171 @@ def batch_analyze_images():
                     pass
                 continue
             
+            # Enhanced detection handling for manual overrides
+            valid_detections = []
+            low_confidence_detections = []
+            
+            if detection_results[0].boxes:
+                print(f"   🎯 Found {len(detection_results[0].boxes)} detections")
+                for box_idx, box in enumerate(detection_results[0].boxes):
+                    cls = int(box.cls)
+                    confidence = float(box.conf)
+                    label = detection_model.names[cls]
+                    
+                    print(f"      Detection {box_idx}: {label} @ {confidence:.3f}")
+                    
+                    if label.lower() in ['full_quadrat', 'half_quadrat']:
+                        if confidence >= CONFIDENCE_THRESHOLD:
+                            print(f"      ✅ Valid detection (>= {CONFIDENCE_THRESHOLD})")
+                            valid_detections.append(box)
+                        elif confidence >= 0.4:
+                            print(f"      ⚠️ Low confidence detection (>= 0.4)")
+                            if is_manually_included:
+                                print(f"      🔧 Including due to manual override")
+                                valid_detections.append(box)
+                            else:
+                                print(f"      ❌ Skipping (not manually included)")
+                                low_confidence_detections.append(box)
+                        else:
+                            print(f"      ❌ Very low confidence (< 0.4) - ignoring")
+            else:
+                print(f"   ❌ No detections found")
+            
+            # Handle different scenarios
+            if len(valid_detections) == 0:
+                if is_manually_included:
+                    print(f"   🔧 Manual override: No valid detections, processing full image")
+                    
+                    img = cv2.imread(image_path)
+                    if img is not None:
+                        height, width = img.shape[:2]
+                        
+                        # Create a mock detection for the entire image
+                        class MockBox:
+                            def __init__(self, width, height):
+                                margin_x = width * 0.05
+                                margin_y = height * 0.05
+                                
+                                self.xyxy = [[
+                                    margin_x, 
+                                    margin_y, 
+                                    width - margin_x, 
+                                    height - margin_y
+                                ]]
+                                self.conf = 0.5
+                                self.cls = None
+                                
+                        mock_detection = MockBox(width, height)
+                        valid_detections.append(mock_detection)
+                        print(f"   ✅ Created full-image mock detection")
+                    else:
+                        print(f"   ❌ Could not load image for manual processing")
+                        rejected_images.append({
+                            'filename': file.filename,
+                            'reason': 'Could not load image for manual processing',
+                            'file_index': file_index
+                        })
+                        try:
+                            os.remove(image_path)
+                        except:
+                            pass
+                        continue
+                else:
+                    print(f"   ❌ No valid detections and not manually included - rejecting")
+                    rejected_images.append({
+                        'filename': file.filename,
+                        'reason': f'No coral quadrats detected above {CONFIDENCE_THRESHOLD:.0%} threshold',
+                        'file_index': file_index,
+                        'detection_details': {
+                            'low_confidence_count': len(low_confidence_detections),
+                            'highest_confidence': max([float(box.conf) for box in low_confidence_detections]) if low_confidence_detections else 0
+                        }
+                    })
+                    try:
+                        os.remove(image_path)
+                    except:
+                        pass
+                    continue
+            
+            print(f"   🔬 Processing {len(valid_detections)} detections")
+            
+            # Process valid detections
             image_crops = []
             
             for i, box in enumerate(valid_detections):
                 try:
+                    print(f"      Processing detection {i+1}/{len(valid_detections)}")
+                    
                     x1, y1, x2, y2 = box.xyxy[0].tolist() if hasattr(box.xyxy[0], 'tolist') else box.xyxy[0]
                     
-                    # Determine label - use mock label for manual overrides
-                    if hasattr(box, 'cls'):
+                    # Determine label
+                    if hasattr(box, 'cls') and box.cls is not None:
                         cls = int(box.cls)
                         label = detection_model.names[cls]
                     else:
-                        label = "manual_override"
+                        label = "manual"  # Shortened
+                    
+                    # Get confidence
+                    confidence = float(box.conf) if hasattr(box, 'conf') else 0.5
 
                     # Crop and segment
                     cropped = enhanced_crop_inside_quadrat(image_path, [x1, y1, x2, y2], crop_intensity)
                     cropped = enhance_cropped_image(cropped)
 
-                    # Add manual override indicator to filename
-                    override_suffix = "_manual" if is_manually_included else ""
-                    crop_filename = f"{label}_{i}_{file_index}{override_suffix}_{safe_filename}"
+                    # FIXED: Much shorter filename generation
+                    label_short = "fq" if label == "full_quadrat" else "hq" if label == "half_quadrat" else "m"
+                    manual_suffix = "_m" if is_manually_included else ""
+                    confidence_suffix = "_l" if confidence < CONFIDENCE_THRESHOLD else ""
+                    
+                    # Short filename: fq_0_1_m_l_abc123.jpg (maximum ~20 characters)
+                    crop_filename = f"{label_short}_{i}_{file_index}{manual_suffix}{confidence_suffix}_{unique_id}.{ext}"
+                    
+                    print(f"         📝 Generated filename: {crop_filename} (length: {len(crop_filename)})")
+                    
                     crop_path = os.path.join(OUTPUT_FOLDER, crop_filename)
                     cropped.save(crop_path, quality=95)
 
-                    # FIXED: Segment the cropped image and get both overlay and mask
+                    print(f"         💾 Saved crop: {crop_filename}")
+
+                    # Segment the cropped image
                     coverage_data, class_masks, overlay_image, mask_image, total_pixels = segment_coral_lifeforms(crop_path)
                     
+                    print(f"         🔬 Segmentation: {len(coverage_data)} coral types, {total_pixels} pixels")
+                    
                     # Save overlay image
-                    overlay_filename = f"overlay_{crop_filename}"
+                    overlay_filename = f"ov_{crop_filename}"  # Shortened overlay prefix
                     overlay_path = os.path.join(MASKS_FOLDER, overlay_filename)
                     if overlay_image is not None:
-                        # Convert RGB to BGR for OpenCV saving
                         overlay_bgr = cv2.cvtColor(overlay_image, cv2.COLOR_RGB2BGR)
                         cv2.imwrite(overlay_path, overlay_bgr)
+                        print(f"         💾 Saved overlay: {overlay_filename}")
 
                     # Save mask image
-                    mask_filename = f"mask_{crop_filename}"
+                    mask_filename = f"mk_{crop_filename}"  # Shortened mask prefix
                     mask_path = os.path.join(MASKS_FOLDER, mask_filename)
                     if mask_image is not None:
-                        # Save mask as well
                         mask_bgr = cv2.cvtColor(mask_image, cv2.COLOR_RGB2BGR)
                         cv2.imwrite(mask_path, mask_bgr)
+                        print(f"         💾 Saved mask: {mask_filename}")
 
-                    # Save to database with proper error handling
-                    analysis_confidence = float(box.conf) if hasattr(box, 'conf') else 0.5  # Default for manual overrides
-                    
-                    # Add manual override flag to database
+                    # Save to database with proper flags
                     image_id = save_image_to_database_with_override(
                         crop_filename, 
                         uploader_id, 
                         total_pixels, 
                         total_pixels, 
-                        analysis_confidence,
+                        confidence,
                         is_manually_included,
-                        file.filename  # Original filename
+                        file.filename
                     )
                     
                     if image_id is None:
-                        print(f"Failed to save image {crop_filename} to database")
+                        print(f"         ❌ Failed to save to database")
                         continue
+                    else:
+                        print(f"         ✅ Saved to database with ID: {image_id}")
                     
-                    # FIXED: Save segmentation results to database
+                    # Save segmentation results to database
                     if image_id and coverage_data:
                         segmentation_saved = save_segmentation_results(
                             image_id, 
@@ -1559,8 +1651,9 @@ def batch_analyze_images():
                                 coverage_data=coverage_data,
                                 total_pixels=total_pixels
                             )
+                            print(f"         ✅ Saved segmentation results")
                         else:
-                            print(f"❌ Failed to save segmentation results for image_id {image_id}")
+                            print(f"         ❌ Failed to save segmentation results")
 
                     # Accumulate batch statistics
                     batch_total_pixels += total_pixels
@@ -1576,33 +1669,50 @@ def batch_analyze_images():
                             }
                         batch_coverage_data[class_name]['total_pixels'] += coral['pixel_count']
 
-                    image_crops.append({
+                    # Create the crop result object
+                    crop_result = {
                         'crop_url': f"crops/{crop_filename}",
-                        'overlay_url': f"masks/{overlay_filename}",  # For overlay
-                        'mask_url': f"masks/{mask_filename}",        # For mask
-                        'visualization_url': f"masks/{overlay_filename}",  # For backward compatibility
+                        'overlay_url': f"masks/{overlay_filename}",
+                        'mask_url': f"masks/{mask_filename}",
+                        'visualization_url': f"masks/{overlay_filename}",
                         'coverage_data': coverage_data,
                         'total_pixels': total_pixels,
                         'detection_label': label,
                         'image_id': image_id,
                         'manually_included': is_manually_included,
-                        'confidence': analysis_confidence
-                    })
+                        'confidence': confidence,
+                        'below_threshold': confidence < CONFIDENCE_THRESHOLD,
+                        'detection_type': 'manual_override' if not hasattr(box, 'cls') else 'detected'
+                    }
+                    
+                    image_crops.append(crop_result)
+                    print(f"         ✅ Added crop result")
 
                 except Exception as e:
-                    print(f"Error processing crop {i} in image {file_index}: {e}")
+                    print(f"         ❌ Error processing crop {i}: {e}")
                     import traceback
                     traceback.print_exc()
                     continue
             
+            # Add results if we have crops
             if image_crops:
-                all_results.append({
+                result = {
                     'filename': file.filename,
                     'crops': image_crops,
                     'processed': True,
                     'manually_included': is_manually_included,
-                    'file_index': file_index
-                })
+                    'file_index': file_index,
+                    'detection_summary': {
+                        'total_crops': len(image_crops),
+                        'manual_override': is_manually_included,
+                        'low_confidence_included': any(crop['below_threshold'] for crop in image_crops)
+                    }
+                }
+                
+                all_results.append(result)
+                print(f"   ✅ Added result: {len(image_crops)} crops, manual: {is_manually_included}")
+            else:
+                print(f"   ❌ No crops generated")
             
             # Clean up
             try:
@@ -1619,6 +1729,18 @@ def batch_analyze_images():
         successful_images = len(all_results)
         total_crops = sum(len(result['crops']) for result in all_results)
         manually_included_count = sum(1 for result in all_results if result.get('manually_included', False))
+
+        print(f"\n🎯 BATCH ANALYSIS SUMMARY:")
+        print(f"   📊 Total files: {len(files)}")
+        print(f"   ✅ Processed: {successful_images}")
+        print(f"   🔧 Manually included: {manually_included_count}")
+        print(f"   ❌ Rejected: {len(rejected_images)}")
+        print(f"   🔬 Total crops: {total_crops}")
+        
+        # Debug: Show which files were processed
+        for result in all_results:
+            manual_status = "(MANUAL)" if result.get('manually_included', False) else ""
+            print(f"      ✅ {result['filename']} -> {len(result['crops'])} crops {manual_status}")
 
         log_batch_analysis_activity(
             user_id=user_id,
@@ -1644,6 +1766,12 @@ def batch_analyze_images():
                 "enabled": len(manually_included_indices) > 0,
                 "count": manually_included_count,
                 "indices": manually_included_indices
+            },
+            "processing_details": {
+                "confidence_threshold": CONFIDENCE_THRESHOLD,
+                "low_confidence_processed": sum(1 for result in all_results 
+                                              if any(crop.get('below_threshold', False) for crop in result['crops'])),
+                "debug_info": debug_data
             }
         })
 
@@ -1654,11 +1782,10 @@ def batch_analyze_images():
             description=f"Error during batch analysis",
             details={'error': str(e), 'file_count': len(files) if 'files' in locals() else 0}
         )
-        print(f"Batch analysis error: {str(e)}")
+        print(f"❌ Batch analysis error: {str(e)}")
         import traceback
         traceback.print_exc()
-        return jsonify({"error": f"Batch analysis failed: {str(e)}"}), 500
-    
+        return jsonify({"error": f"Batch analysis failed: {str(e)}"}), 500    
     
 def save_image_to_database_with_override(filename, uploader_id, total_pixels, analyzed_area_px, analysis_confidence, manually_included=False, original_filename=None):
     """Enhanced save function with manual override support"""

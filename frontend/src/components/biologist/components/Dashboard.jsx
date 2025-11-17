@@ -292,8 +292,8 @@ function Dashboard({ user, darkMode, onNavigate }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showResearchersModal, setShowResearchersModal] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [modalConfig, setModalConfig] = useState({
+  const [setShowModal] = useState(false);
+  const [setModalConfig] = useState({
     title: "",
     message: "",
     type: "success",

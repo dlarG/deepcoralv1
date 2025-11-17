@@ -819,38 +819,34 @@ function ImageUpload() {
                 <FiList size={16} />
               </button>
             </div>
-
-            <div className="gallery-filter-actions">
-              {invalidImagesCount > 0 && (
-                <button
-                  className={`filter-btn ${showInvalidImages ? "active" : ""}`}
-                  onClick={() => setShowInvalidImages(!showInvalidImages)}
-                  title={
-                    showInvalidImages
-                      ? "Hide invalid images"
-                      : "Show invalid images"
-                  }
-                >
-                  {showInvalidImages ? (
-                    <FiEye size={14} />
-                  ) : (
-                    <FiEyeOff size={14} />
-                  )}
-                  <span>{showInvalidImages ? "Hide" : "Show"} Invalid</span>
-                </button>
-              )}
-
-              {invalidImagesCount > 0 && (
-                <button
-                  onClick={removeAllInvalidImages}
-                  className="action-button danger-outline"
-                  title={`Remove all ${invalidImagesCount} invalid images`}
-                >
-                  <FiTrash2 size={14} />
-                  <span>Remove Invalid ({invalidImagesCount})</span>
-                </button>
-              )}
-            </div>
+            {invalidImagesCount > 0 && (
+              <button
+                className={`filter-btn ${showInvalidImages ? "active" : ""}`}
+                onClick={() => setShowInvalidImages(!showInvalidImages)}
+                title={
+                  showInvalidImages
+                    ? "Hide invalid images"
+                    : "Show invalid images"
+                }
+              >
+                {showInvalidImages ? (
+                  <FiEye size={14} />
+                ) : (
+                  <FiEyeOff size={14} />
+                )}
+                <span>{showInvalidImages ? "Hide" : "Show"} Invalid</span>
+              </button>
+            )}
+            {invalidImagesCount > 0 && (
+              <button
+                onClick={removeAllInvalidImages}
+                className="action-button danger-outline"
+                title={`Remove all ${invalidImagesCount} invalid images`}
+              >
+                <FiTrash2 size={14} />
+                <span>Remove Invalid ({invalidImagesCount})</span>
+              </button>
+            )}
 
             <div className="gallery-actions">
               <button onClick={clearImages} className="action-button clear">
@@ -867,11 +863,6 @@ function ImageUpload() {
             <span className="status-label">Valid</span>
           </div>
 
-          <div className="status-item manually-included">
-            <span className="status-count">{manuallyIncludedCount}</span>
-            <span className="status-label">Manually Included</span>
-          </div>
-
           <div className="status-item invalid">
             <span className="status-count">{invalidImagesCount}</span>
             <span className="status-label">Invalid</span>
@@ -881,19 +872,6 @@ function ImageUpload() {
             <span className="status-count">{pendingImagesCount}</span>
             <span className="status-label">Pending</span>
           </div>
-
-          {validImagesCount + manuallyIncludedCount > 0 &&
-            invalidImagesCount > 0 && (
-              <div className="analysis-info">
-                <FiAlertTriangle size={14} />
-                <span>
-                  {validImagesCount + manuallyIncludedCount} images ready for
-                  analysis
-                  {manuallyIncludedCount > 0 &&
-                    ` (${manuallyIncludedCount} manually included)`}
-                </span>
-              </div>
-            )}
         </div>
 
         <div className={`image-gallery ${viewMode}`}>
@@ -1325,86 +1303,95 @@ function ImageUpload() {
         </div>
 
         <div className="quadrats-analysis">
-          {segmentationData.crops.map((cropData, cropIndex) => (
-            <div key={cropIndex} className="quadrat-analysis-card">
-              <div className="quadrat-header">
-                <h4>
-                  Quadrat {cropIndex + 1} - {cropData.detection_label}
-                  {cropData.manually_included && (
-                    <span className="manual-override-indicator">
-                      {" "}
-                      (Manual Override)
-                    </span>
-                  )}
-                </h4>
-                <div className="quadrat-actions">
-                  <button
-                    className="download-btn small"
-                    onClick={() => downloadCrop(cropData.crop_url, cropIndex)}
-                  >
-                    <FiDownload size={12} />
-                    Crop
-                  </button>
-                  <button
-                    className="download-btn small"
-                    onClick={() =>
-                      downloadSegmentationOverlay(
-                        cropData.overlay_url || cropData.visualization_url,
-                        cropIndex
-                      )
-                    }
-                  >
-                    <FiDownload size={12} />
-                    Overlay
-                  </button>
-                  {cropData.mask_url && (
+          {segmentationData.crops.map((cropData, cropIndex) => {
+            const isLowConfidence =
+              cropData.confidence && cropData.confidence < 0.87;
+            const isManualOverride =
+              cropData.manually_included || cropData.below_threshold;
+
+            return (
+              <div key={cropIndex} className="quadrat-analysis-card">
+                <div className="quadrat-header">
+                  <h4>
+                    Quadrat {cropIndex + 1} - {cropData.detection_label}
+                    {isManualOverride && (
+                      <span className="manual-override-indicator">
+                        {isLowConfidence
+                          ? ` (Manual Override - ${(
+                              cropData.confidence * 100
+                            ).toFixed(1)}% confidence)`
+                          : " (Manual Override)"}
+                      </span>
+                    )}
+                  </h4>
+                  <div className="quadrat-actions">
+                    <button
+                      className="download-btn small"
+                      onClick={() => downloadCrop(cropData.crop_url, cropIndex)}
+                    >
+                      <FiDownload size={12} />
+                      Crop
+                    </button>
                     <button
                       className="download-btn small"
                       onClick={() =>
-                        downloadSegmentationMask(cropData.mask_url, cropIndex)
+                        downloadSegmentationOverlay(
+                          cropData.overlay_url || cropData.visualization_url,
+                          cropIndex
+                        )
                       }
                     >
                       <FiDownload size={12} />
-                      Mask
+                      Overlay
                     </button>
-                  )}
+                    {cropData.mask_url && (
+                      <button
+                        className="download-btn small"
+                        onClick={() =>
+                          downloadSegmentationMask(cropData.mask_url, cropIndex)
+                        }
+                      >
+                        <FiDownload size={12} />
+                        Mask
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              <div className="quadrat-content">
-                <div className="quadrat-visuals">
-                  <div className="visual-item">
-                    <img
-                      src={`http://${process.env.REACT_APP_API_URL}/${cropData.crop_url}`}
-                      alt={`Crop ${cropIndex + 1}`}
-                      className="analysis-image"
-                    />
-                    <span className="visual-label">Original Crop</span>
-                  </div>
-                  <div className="visual-item">
-                    <img
-                      src={`http://${process.env.REACT_APP_API_URL}/${
-                        cropData.overlay_url || cropData.visualization_url
-                      }`}
-                      alt={`Segmentation Overlay ${cropIndex + 1}`}
-                      className="analysis-image"
-                    />
-                    <span className="visual-label">Coral Overlay</span>
-                  </div>
-                  {cropData.mask_url && (
+                <div className="quadrat-content">
+                  <div className="quadrat-visuals">
                     <div className="visual-item">
                       <img
-                        src={`http://${process.env.REACT_APP_API_URL}/${cropData.mask_url}`}
-                        alt={`Segmentation Mask ${cropIndex + 1}`}
+                        src={`http://${process.env.REACT_APP_API_URL}/${cropData.crop_url}`}
+                        alt={`Crop ${cropIndex + 1}`}
                         className="analysis-image"
                       />
-                      <span className="visual-label">Coral Mask</span>
+                      <span className="visual-label">Original Crop</span>
                     </div>
-                  )}
-                </div>
+                    <div className="visual-item">
+                      <img
+                        src={`http://${process.env.REACT_APP_API_URL}/${
+                          cropData.overlay_url || cropData.visualization_url
+                        }`}
+                        alt={`Segmentation Overlay ${cropIndex + 1}`}
+                        className="analysis-image"
+                      />
+                      <span className="visual-label">Coral Overlay</span>
+                    </div>
+                    {cropData.mask_url && (
+                      <div className="visual-item">
+                        <img
+                          src={`http://${process.env.REACT_APP_API_URL}/${cropData.mask_url}`}
+                          alt={`Segmentation Mask ${cropIndex + 1}`}
+                          className="analysis-image"
+                        />
+                        <span className="visual-label">Coral Mask</span>
+                      </div>
+                    )}
+                  </div>
 
-                {cropData.coverage_data &&
-                  cropData.coverage_data.length > 0 && (
+                  {cropData.coverage_data &&
+                  cropData.coverage_data.length > 0 ? (
                     <div className="coverage-analysis">
                       <h5>Coral Coverage</h5>
                       <div className="coverage-stats">
@@ -1445,24 +1432,26 @@ function ImageUpload() {
                         %
                       </div>
                     </div>
+                  ) : (
+                    <div className="no-coverage-found">
+                      <p>ℹ️ No coral coverage detected in this quadrat.</p>
+                      {isManualOverride && (
+                        <p className="manual-override-note">
+                          {isLowConfidence
+                            ? `This quadrat was detected with ${(
+                                cropData.confidence * 100
+                              ).toFixed(
+                                1
+                              )}% confidence (below 87% threshold) but was manually included. The segmentation model processed it but may not have found distinct coral features to classify.`
+                            : "This image was manually included despite no automatic quadrat detection. The segmentation model may not have found coral features to classify."}
+                        </p>
+                      )}
+                    </div>
                   )}
-
-                {(!cropData.coverage_data ||
-                  cropData.coverage_data.length === 0) && (
-                  <div className="no-coverage-found">
-                    <p>ℹ️ No coral coverage detected in this quadrat.</p>
-                    {isManuallyIncluded && (
-                      <p className="manual-override-note">
-                        This image was manually included despite no automatic
-                        quadrat detection. The segmentation model may not have
-                        found coral features to classify.
-                      </p>
-                    )}
-                  </div>
-                )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     );

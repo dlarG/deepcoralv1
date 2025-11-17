@@ -8,18 +8,18 @@ gis_bp = Blueprint('gis', __name__)
 @gis_bp.route('/locations', methods=['GET', 'OPTIONS'])
 @cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
 def get_existing_locations():
-    """Get all existing locations with their data"""
+    """Get all existing locations with their data including manually included images"""
     if request.method == "OPTIONS":
         return jsonify({}), 200
     
-    conn = None  # Initialize conn variable
+    conn = None
     try:
         conn = get_db_connection()
         if not conn:
             return jsonify({"error": "Database connection failed"}), 500
             
         with conn.cursor() as cur:
-            # Get locations with aggregated data
+            # UPDATED: Include both processing statuses
             cur.execute("""
                 SELECT 
                     ST_X(i.location) as longitude,
@@ -27,15 +27,19 @@ def get_existing_locations():
                     COUNT(DISTINCT i.id) as image_count,
                     COUNT(DISTINCT sr.id) as segmentation_count,
                     AVG(i.analysis_confidence) as avg_confidence,
-                    ARRAY_AGG(DISTINCT cl.class_name) as coral_types,
+                    ARRAY_AGG(DISTINCT cl.class_name) FILTER (WHERE cl.class_name IS NOT NULL) as coral_types,
                     MAX(i.uploaded_at) as last_update,
                     COALESCE(MIN(i.municipality), '') as municipality,
                     COALESCE(MIN(i.barangay), '') as barangay,
-                    ARRAY_AGG(DISTINCT i.transect) as transects
+                    ARRAY_AGG(DISTINCT i.transect) FILTER (WHERE i.transect IS NOT NULL) as transects,
+                    COUNT(DISTINCT CASE WHEN i.manually_included = true THEN i.id END) as manually_included_count,
+                    STRING_AGG(DISTINCT i.processing_status, ', ') as processing_statuses
                 FROM images i
                 LEFT JOIN segmentation_results sr ON i.id = sr.image_id
                 LEFT JOIN coral_lifeforms cl ON sr.class_id = cl.id
                 WHERE i.location IS NOT NULL
+                AND i.processing_status IN ('completed', 'manually_included_completed')
+                AND (i.upload_status = 'approved' OR i.upload_status IS NULL)
                 GROUP BY ST_X(i.location), ST_Y(i.location)
                 ORDER BY last_update DESC
             """)
@@ -55,13 +59,23 @@ def get_existing_locations():
                     'last_update': row[6].isoformat() if row[6] else None,
                     'municipality': row[7] if len(row) > 7 else None,
                     'barangay': row[8] if len(row) > 8 else None,
-                    'transects': sorted(list(set(transects))) if transects else []
+                    'transects': sorted(list(set(transects))) if transects else [],
+                    'manually_included_count': row[10] if len(row) > 10 else 0,
+                    'processing_statuses': row[11] if len(row) > 11 else None  # Debug info
                 })
+            
+            print(f"🔍 Existing locations query returned {len(locations)} locations")
+            if locations:
+                total_images = sum(loc['image_count'] for loc in locations)
+                total_manual = sum(loc['manually_included_count'] for loc in locations)
+                print(f"   Total images: {total_images} (manually included: {total_manual})")
             
             return jsonify({"locations": locations})
             
     except Exception as e:
         print(f"Error fetching locations: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
     finally:
         if conn:
