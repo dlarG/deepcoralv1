@@ -95,6 +95,8 @@ CREATE TABLE images (
     CONSTRAINT enforce_srid_location CHECK (ST_SRID(location) = 4326)
 );
 
+ALTER TABLE images ALTER COLUMN filename TYPE VARCHAR(100);
+
 -- Coral lifeforms reference table (unchanged, but good as is)
 CREATE TABLE coral_lifeforms (
     id SERIAL PRIMARY KEY,

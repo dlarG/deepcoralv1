@@ -224,9 +224,14 @@ function Distribution() {
         setLocationAnalytics(analyticsData);
       }
 
-      // Pan map to location
-      if (mapRef.current) {
-        mapRef.current.setView([location.latitude, location.longitude], 15);
+      // FIXED: Only pan map to location if we're in map view and map is available
+      if (viewMode === "map" && mapRef.current) {
+        try {
+          mapRef.current.setView([location.latitude, location.longitude], 15);
+        } catch (mapError) {
+          console.warn("Could not pan map to location:", mapError);
+          // Don't throw error, just log it
+        }
       }
     } catch (error) {
       console.error("Error loading location details:", error);
@@ -521,8 +526,6 @@ function Distribution() {
             </div>
           )}
         </div>
-
-        {/* Location Details Panel - Similar to sidebar but horizontal */}
         {selectedLocation && (
           <div className="location-details-panel">
             <div className="location-details-header">
@@ -963,9 +966,14 @@ function Distribution() {
         setLocationAnalytics(analyticsData);
       }
 
-      // Pan map to location
-      if (mapRef.current) {
-        mapRef.current.setView([location.latitude, location.longitude], 15);
+      // FIXED: Only pan map to location if we're in map view and map is available
+      if (viewMode === "map" && mapRef.current) {
+        try {
+          mapRef.current.setView([location.latitude, location.longitude], 15);
+        } catch (mapError) {
+          console.warn("Could not pan map to location:", mapError);
+          // Don't throw error, just log it
+        }
       }
     } catch (error) {
       console.error("Error loading location details:", error);

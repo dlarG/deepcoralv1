@@ -51,6 +51,12 @@ ChartJS.register(
 );
 
 function AddImage() {
+  const [validationCompleted, setValidationCompleted] = useState(false);
+  const [analysisCompleted, setAnalysisCompleted] = useState(false);
+  const [validationProgress, setValidationProgress] = useState({
+    current: 0,
+    total: 0,
+  });
   const [images, setImages] = useState([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [crops, setCrops] = useState([]);
@@ -261,6 +267,10 @@ function AddImage() {
     setCrops([]);
     setShowSaveButton(false);
     setSavedToDatabase(false);
+
+    // Reset button states when new images are added
+    setValidationCompleted(false);
+    setAnalysisCompleted(false);
   };
 
   const handleDrag = (e) => {
@@ -312,11 +322,17 @@ function AddImage() {
     setCurrentImageIndex(0);
     setCrops([]);
     setRejectedImages([]);
-    setManuallyIncluded(new Set()); // Add this line
+    setManuallyIncluded(new Set());
     setShowSaveButton(false);
     setSavedToDatabase(false);
     setBatchResults(null);
     setShowBatchChart(false);
+
+    // Reset button states
+    setValidationCompleted(false);
+    setAnalysisCompleted(false);
+    setValidationProgress({ current: 0, total: 0 });
+    setBatchProgress({ current: 0, total: 0 });
   };
 
   const removeImage = (index, skipConfirmation = false) => {
@@ -508,11 +524,14 @@ function AddImage() {
   };
 
   const validateAllImages = async () => {
+    if (loading || validationCompleted) return; // Prevent multiple validations
+
     setLoading(true);
+    setValidationProgress({ current: 0, total: images.length });
+
     const updatedImages = [...images];
     const rejected = [];
 
-    // IMPROVED: Show validation progress and details
     let validatedCount = 0;
     let validCount = 0;
     let invalidCount = 0;
@@ -520,11 +539,14 @@ function AddImage() {
     for (let i = 0; i < images.length; i++) {
       if (images[i].processed) continue;
 
+      // Update progress
+      setValidationProgress({ current: i + 1, total: images.length });
+
       updatedImages[i].status = "validating";
       setImages([...updatedImages]);
 
       const validation = await validateImageForQuadrats(images[i].file);
-      // validatedCount++;
+      validatedCount++;
 
       if (validation.valid) {
         updatedImages[i].status = "valid";
@@ -554,8 +576,9 @@ function AddImage() {
 
     setRejectedImages(rejected);
     setLoading(false);
+    setValidationCompleted(true); // Mark validation as completed
+    setValidationProgress({ current: 0, total: 0 });
 
-    // IMPROVED: More informative validation results
     const validationSummary =
       `Validation complete:\n` +
       `${validCount} images valid with quadrats\n` +
@@ -592,8 +615,12 @@ function AddImage() {
     }
 
     // Prevent multiple clicks
-    if (analysisInProgress) {
-      alert("Analysis already in progress!");
+    if (analysisInProgress || analysisCompleted) {
+      if (analysisCompleted) {
+        alert("Analysis already completed! Clear images to analyze new ones.");
+      } else {
+        alert("Analysis already in progress!");
+      }
       return;
     }
 
@@ -606,13 +633,11 @@ function AddImage() {
         (img.status === "pending" && img.processed !== false)
     );
 
+    // FIXED: Calculate manually_included_indices based on the validImages array indices
     const manuallyIncludedIndices = [];
-    validImages.forEach((img, index) => {
-      const originalIndex = images.findIndex(
-        (originalImg) => originalImg === img
-      );
+    validImages.forEach((img, validIndex) => {
       if (img.status === "manually_included") {
-        manuallyIncludedIndices.push(originalIndex);
+        manuallyIncludedIndices.push(validIndex); // Use validIndex, not original index
       }
     });
 
@@ -620,7 +645,7 @@ function AddImage() {
       (img) => img.status === "invalid"
     ).length;
 
-    const manuallyIncludedCount = images.filter(
+    const manuallyIncludedCount = validImages.filter(
       (img) => img.status === "manually_included"
     ).length;
 
@@ -645,6 +670,30 @@ function AddImage() {
 
     confirmMessage += ` Proceed with analyzing ${validImages.length} total image(s)?`;
 
+    // Enhanced debug logging
+    console.log("=== BATCH ANALYSIS DEBUG ===");
+    console.log(
+      "All images:",
+      images.map((img, idx) => ({
+        index: idx,
+        filename: img.file.name,
+        status: img.status,
+      }))
+    );
+    console.log(
+      "Valid images:",
+      validImages.map((img, idx) => ({
+        validIndex: idx,
+        filename: img.file.name,
+        status: img.status,
+      }))
+    );
+    console.log(
+      "Manually included indices (in validImages array):",
+      manuallyIncludedIndices
+    );
+    console.log("Manually included count:", manuallyIncludedCount);
+
     if (invalidCount > 0 || manuallyIncludedCount > 0) {
       const proceed = window.confirm(confirmMessage);
       if (!proceed) return;
@@ -657,6 +706,9 @@ function AddImage() {
     setBatchProgress({ current: 0, total: validImages.length });
 
     try {
+      for (let i = 0; i < validImages.length; i++) {
+        setBatchProgress({ current: i + 1, total: validImages.length });
+      }
       const csrfResponse = await fetch(
         `http://${process.env.REACT_APP_API_URL}/csrf-token`,
         {
@@ -675,6 +727,20 @@ function AddImage() {
       formData.append(
         "manually_included",
         JSON.stringify(manuallyIncludedIndices)
+      );
+
+      // Additional debug info
+      formData.append(
+        "debug_info",
+        JSON.stringify({
+          total_valid_images: validImages.length,
+          manually_included_count: manuallyIncludedCount,
+          manually_included_indices: manuallyIncludedIndices,
+          valid_images_filenames: validImages.map((img) => img.file.name),
+          manually_included_filenames: validImages
+            .filter((img, idx) => manuallyIncludedIndices.includes(idx))
+            .map((img) => img.file.name),
+        })
       );
 
       const res = await fetch(
@@ -709,6 +775,7 @@ function AddImage() {
       setShowBatchChart(true);
       setActiveTab("batch-analysis");
       setShowSaveButton(true);
+      setAnalysisCompleted(true);
 
       // FIXED: Process results with proper manual override handling
       const processedImagesWithData = validImages.map((image) => {
@@ -805,7 +872,84 @@ function AddImage() {
     setShowSaveButton(false);
     console.log("Location saved:", location, saveResult);
   };
+  const renderLoadingOverlay = () => {
+    if (!loading && !batchLoading) return null;
 
+    const isValidating = loading && validationProgress.total > 0;
+    const isAnalyzing = batchLoading && batchProgress.total > 0;
+
+    let progressPercentage = 0;
+    let currentStep = 0;
+    let totalSteps = 0;
+    let statusText = "";
+    let subText = "";
+
+    if (isValidating) {
+      currentStep = validationProgress.current;
+      totalSteps = validationProgress.total;
+      progressPercentage =
+        totalSteps > 0 ? (currentStep / totalSteps) * 100 : 0;
+      statusText = "Validating Images...";
+      subText = `Processing ${currentStep} of ${totalSteps} images`;
+    } else if (isAnalyzing) {
+      currentStep = batchProgress.current;
+      totalSteps = batchProgress.total;
+      progressPercentage =
+        totalSteps > 0 ? (currentStep / totalSteps) * 100 : 0;
+      statusText = "Analyzing Batch...";
+      subText = `Processing ${currentStep} of ${totalSteps} images`;
+    } else if (loading) {
+      progressPercentage = 50;
+      statusText = "Processing Image...";
+      subText = "Please wait while we analyze your image";
+    } else if (batchLoading) {
+      progressPercentage = 50;
+      statusText = "Analyzing Batch...";
+      subText = "Processing your images...";
+    }
+
+    return (
+      <div className="loading-overlay">
+        <div className="imageupload-loading-content">
+          <div className="loading-spinner"></div>
+          <div className="loading-text">{statusText}</div>
+          <div className="loading-subtext">{subText}</div>
+
+          {/* Enhanced Progress Bar */}
+          <div className="progress-bar-container">
+            <div
+              className="progress-bar"
+              style={{ width: `${progressPercentage}%` }}
+            ></div>
+          </div>
+
+          {/* Progress Percentage */}
+          <div className="progress-percentage">
+            {Math.round(progressPercentage)}%
+            {totalSteps > 0 && (
+              <span className="progress-count">
+                {" "}
+                ({currentStep}/{totalSteps})
+              </span>
+            )}
+          </div>
+
+          {/* Cancel Button for Long Operations */}
+          {(isValidating || isAnalyzing) && (
+            <button
+              className="cancel-operation-btn"
+              onClick={() => {
+                // You can implement cancellation logic here if needed
+                console.log("Operation cancellation requested");
+              }}
+            >
+              Cancel Operation
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
   const renderImageGallery = () => {
     const validImagesCount = images.filter(
       (img) => img.status === "valid" || img.status === "processed"
@@ -901,11 +1045,6 @@ function AddImage() {
           <div className="status-item valid">
             <span className="status-count">{validImagesCount}</span>
             <span className="status-label">Valid</span>
-          </div>
-
-          <div className="status-item manually-included">
-            <span className="status-count">{manuallyIncludedCount}</span>
-            <span className="status-label">Manually Included</span>
           </div>
 
           <div className="status-item invalid">
@@ -1383,86 +1522,95 @@ function AddImage() {
         </div>
 
         <div className="quadrats-analysis">
-          {segmentationData.crops.map((cropData, cropIndex) => (
-            <div key={cropIndex} className="quadrat-analysis-card">
-              <div className="quadrat-header">
-                <h4>
-                  Quadrat {cropIndex + 1} - {cropData.detection_label}
-                  {cropData.manually_included && (
-                    <span className="manual-override-indicator">
-                      {" "}
-                      (Manual Override)
-                    </span>
-                  )}
-                </h4>
-                <div className="quadrat-actions">
-                  <button
-                    className="download-btn small"
-                    onClick={() => downloadCrop(cropData.crop_url, cropIndex)}
-                  >
-                    <FiDownload size={12} />
-                    Crop
-                  </button>
-                  <button
-                    className="download-btn small"
-                    onClick={() =>
-                      downloadSegmentationOverlay(
-                        cropData.overlay_url || cropData.visualization_url,
-                        cropIndex
-                      )
-                    }
-                  >
-                    <FiDownload size={12} />
-                    Overlay
-                  </button>
-                  {cropData.mask_url && (
+          {segmentationData.crops.map((cropData, cropIndex) => {
+            const isLowConfidence =
+              cropData.confidence && cropData.confidence < 0.87;
+            const isManualOverride =
+              cropData.manually_included || cropData.below_threshold;
+
+            return (
+              <div key={cropIndex} className="quadrat-analysis-card">
+                <div className="quadrat-header">
+                  <h4>
+                    Quadrat {cropIndex + 1} - {cropData.detection_label}
+                    {isManualOverride && (
+                      <span className="manual-override-indicator">
+                        {isLowConfidence
+                          ? ` (Manual Override - ${(
+                              cropData.confidence * 100
+                            ).toFixed(1)}% confidence)`
+                          : " (Manual Override)"}
+                      </span>
+                    )}
+                  </h4>
+                  <div className="quadrat-actions">
+                    <button
+                      className="download-btn small"
+                      onClick={() => downloadCrop(cropData.crop_url, cropIndex)}
+                    >
+                      <FiDownload size={12} />
+                      Crop
+                    </button>
                     <button
                       className="download-btn small"
                       onClick={() =>
-                        downloadSegmentationMask(cropData.mask_url, cropIndex)
+                        downloadSegmentationOverlay(
+                          cropData.overlay_url || cropData.visualization_url,
+                          cropIndex
+                        )
                       }
                     >
                       <FiDownload size={12} />
-                      Mask
+                      Overlay
                     </button>
-                  )}
+                    {cropData.mask_url && (
+                      <button
+                        className="download-btn small"
+                        onClick={() =>
+                          downloadSegmentationMask(cropData.mask_url, cropIndex)
+                        }
+                      >
+                        <FiDownload size={12} />
+                        Mask
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              <div className="quadrat-content">
-                <div className="quadrat-visuals">
-                  <div className="visual-item">
-                    <img
-                      src={`http://${process.env.REACT_APP_API_URL}/${cropData.crop_url}`}
-                      alt={`Crop ${cropIndex + 1}`}
-                      className="analysis-image"
-                    />
-                    <span className="visual-label">Original Crop</span>
-                  </div>
-                  <div className="visual-item">
-                    <img
-                      src={`http://${process.env.REACT_APP_API_URL}/${
-                        cropData.overlay_url || cropData.visualization_url
-                      }`}
-                      alt={`Segmentation Overlay ${cropIndex + 1}`}
-                      className="analysis-image"
-                    />
-                    <span className="visual-label">Coral Overlay</span>
-                  </div>
-                  {cropData.mask_url && (
+                <div className="quadrat-content">
+                  <div className="quadrat-visuals">
                     <div className="visual-item">
                       <img
-                        src={`http://${process.env.REACT_APP_API_URL}/${cropData.mask_url}`}
-                        alt={`Segmentation Mask ${cropIndex + 1}`}
+                        src={`http://${process.env.REACT_APP_API_URL}/${cropData.crop_url}`}
+                        alt={`Crop ${cropIndex + 1}`}
                         className="analysis-image"
                       />
-                      <span className="visual-label">Coral Mask</span>
+                      <span className="visual-label">Original Crop</span>
                     </div>
-                  )}
-                </div>
+                    <div className="visual-item">
+                      <img
+                        src={`http://${process.env.REACT_APP_API_URL}/${
+                          cropData.overlay_url || cropData.visualization_url
+                        }`}
+                        alt={`Segmentation Overlay ${cropIndex + 1}`}
+                        className="analysis-image"
+                      />
+                      <span className="visual-label">Coral Overlay</span>
+                    </div>
+                    {cropData.mask_url && (
+                      <div className="visual-item">
+                        <img
+                          src={`http://${process.env.REACT_APP_API_URL}/${cropData.mask_url}`}
+                          alt={`Segmentation Mask ${cropIndex + 1}`}
+                          className="analysis-image"
+                        />
+                        <span className="visual-label">Coral Mask</span>
+                      </div>
+                    )}
+                  </div>
 
-                {cropData.coverage_data &&
-                  cropData.coverage_data.length > 0 && (
+                  {cropData.coverage_data &&
+                  cropData.coverage_data.length > 0 ? (
                     <div className="coverage-analysis">
                       <h5>Coral Coverage</h5>
                       <div className="coverage-stats">
@@ -1503,24 +1651,26 @@ function AddImage() {
                         %
                       </div>
                     </div>
+                  ) : (
+                    <div className="no-coverage-found">
+                      <p>ℹ️ No coral coverage detected in this quadrat.</p>
+                      {isManualOverride && (
+                        <p className="manual-override-note">
+                          {isLowConfidence
+                            ? `This quadrat was detected with ${(
+                                cropData.confidence * 100
+                              ).toFixed(
+                                1
+                              )}% confidence (below 87% threshold) but was manually included. The segmentation model processed it but may not have found distinct coral features to classify.`
+                            : "This image was manually included despite no automatic quadrat detection. The segmentation model may not have found coral features to classify."}
+                        </p>
+                      )}
+                    </div>
                   )}
-
-                {(!cropData.coverage_data ||
-                  cropData.coverage_data.length === 0) && (
-                  <div className="no-coverage-found">
-                    <p>ℹ️ No coral coverage detected in this quadrat.</p>
-                    {isManuallyIncluded && (
-                      <p className="manual-override-note">
-                        This image was manually included despite no automatic
-                        quadrat detection. The segmentation model may not have
-                        found coral features to classify.
-                      </p>
-                    )}
-                  </div>
-                )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     );
@@ -1701,6 +1851,7 @@ function AddImage() {
                   value={cropIntensity}
                   onChange={(e) => setCropIntensity(e.target.value)}
                   className="intensity-select-compact"
+                  disabled={loading || batchLoading || analysisCompleted}
                 >
                   <option value="conservative">Conservative</option>
                   <option value="moderate">Moderate</option>
@@ -1712,32 +1863,81 @@ function AddImage() {
 
             <div className="controls-right">
               <div className="process-buttons-compact">
+                {/* Enhanced Validate Button */}
                 <button
                   onClick={validateAllImages}
-                  disabled={loading || batchLoading}
-                  className="upload-button primary"
+                  disabled={loading || batchLoading || validationCompleted}
+                  className={`upload-button primary ${
+                    validationCompleted
+                      ? "completed"
+                      : loading || batchLoading
+                      ? "disabled"
+                      : ""
+                  }`}
+                  title={
+                    validationCompleted
+                      ? "Validation completed - Clear images to validate new ones"
+                      : loading || batchLoading
+                      ? "Please wait for current operation to complete"
+                      : "Validate all images for coral quadrats"
+                  }
                 >
-                  <FiCheckCircle size={16} />
-                  <span>Validate All</span>
+                  {loading ? (
+                    <>
+                      <FiLoader size={16} className="spinning" />
+                      <span>Validating...</span>
+                    </>
+                  ) : validationCompleted ? (
+                    <>
+                      <FiCheckCircle size={16} />
+                      <span>Validation Complete</span>
+                    </>
+                  ) : (
+                    <>
+                      <FiCheckCircle size={16} />
+                      <span>Validate All</span>
+                    </>
+                  )}
                 </button>
 
+                {/* Enhanced Analyze Button */}
                 <button
                   onClick={handleBatchAnalyze}
                   disabled={
-                    images.length === 0 || batchLoading || analysisInProgress
+                    images.length === 0 ||
+                    batchLoading ||
+                    analysisInProgress ||
+                    analysisCompleted ||
+                    loading
                   }
                   className={`process-button analysis compact ${
-                    analysisInProgress ? "disabled" : ""
+                    analysisCompleted
+                      ? "completed"
+                      : analysisInProgress || batchLoading
+                      ? "disabled"
+                      : ""
                   }`}
+                  title={
+                    analysisCompleted
+                      ? "Analysis completed - Clear images to analyze new ones"
+                      : analysisInProgress || batchLoading
+                      ? "Analysis in progress..."
+                      : images.length === 0
+                      ? "No images to analyze"
+                      : "Start batch analysis of valid images"
+                  }
                 >
                   {batchLoading || analysisInProgress ? (
                     <>
                       <FiLoader size={16} className="spinning" />
                       <span className="btn-text">
-                        {analysisInProgress
-                          ? `Analyzing ${batchProgress.current}/${batchProgress.total}`
-                          : "Processing..."}
+                        Analyzing {batchProgress.current}/{batchProgress.total}
                       </span>
+                    </>
+                  ) : analysisCompleted ? (
+                    <>
+                      <FiCheckCircle size={16} />
+                      <span className="btn-text">Analysis Complete</span>
                     </>
                   ) : (
                     <>
@@ -1807,32 +2007,7 @@ function AddImage() {
       {renderConfirmationModal()}
       {renderManualOverrideModal()}
 
-      {/* Loading Overlay */}
-      {(loading || batchLoading) && (
-        <div className="loading-overlay">
-          <div className="imageupload-loading-content">
-            <div className="loading-spinner"></div>
-            <div className="loading-text">
-              {batchLoading ? "Analyzing Batch..." : "Processing Image..."}
-            </div>
-            <div className="loading-subtext">
-              {batchLoading
-                ? `Processing ${batchProgress.current} of ${batchProgress.total} images`
-                : "Please wait while we analyze your image"}
-            </div>
-            <div className="progress-bar-container">
-              <div
-                className="progress-bar"
-                style={{
-                  width: batchLoading
-                    ? `${(batchProgress.current / batchProgress.total) * 100}%`
-                    : "50%",
-                }}
-              ></div>
-            </div>
-          </div>
-        </div>
-      )}
+      {renderLoadingOverlay()}
     </div>
   );
 }

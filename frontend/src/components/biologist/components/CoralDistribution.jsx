@@ -9,7 +9,6 @@ import {
   FiCalendar,
   FiTrendingUp,
   FiBarChart2,
-  FiPieChart,
   FiImage,
   FiFilter,
   FiEye,
@@ -36,7 +35,7 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
-import { Bar, Line, Pie } from "react-chartjs-2";
+import { Bar, Line } from "react-chartjs-2";
 
 // Register Chart.js components
 ChartJS.register(
