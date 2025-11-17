@@ -614,7 +614,7 @@ function AddImage() {
       return;
     }
 
-    // Prevent multiple clicks
+    // Prevent multiple clicks and check if analysis already completed
     if (analysisInProgress || analysisCompleted) {
       if (analysisCompleted) {
         alert("Analysis already completed! Clear images to analyze new ones.");
@@ -699,16 +699,13 @@ function AddImage() {
       if (!proceed) return;
     }
 
-    // Set analysis in progress
+    // Set analysis in progress - FIXED: Set initial progress to 0
     setAnalysisInProgress(true);
     setBatchLoading(true);
     setShowBatchChart(false);
     setBatchProgress({ current: 0, total: validImages.length });
 
     try {
-      for (let i = 0; i < validImages.length; i++) {
-        setBatchProgress({ current: i + 1, total: validImages.length });
-      }
       const csrfResponse = await fetch(
         `http://${process.env.REACT_APP_API_URL}/csrf-token`,
         {
@@ -743,6 +740,27 @@ function AddImage() {
         })
       );
 
+      // ADDED: Progress simulation for better UX while waiting for server response
+      const simulateProgress = () => {
+        let currentProgress = 0;
+        const progressInterval = setInterval(() => {
+          currentProgress += Math.random() * 10; // Random increment between 0-10%
+          if (currentProgress < 90) {
+            // Don't go above 90% until we get actual response
+            setBatchProgress({
+              current: Math.floor((currentProgress / 100) * validImages.length),
+              total: validImages.length,
+            });
+          } else {
+            clearInterval(progressInterval);
+          }
+        }, 500); // Update every 500ms
+
+        return progressInterval;
+      };
+
+      const progressInterval = simulateProgress();
+
       const res = await fetch(
         `http://${process.env.REACT_APP_API_URL}/batch_analyze`,
         {
@@ -754,6 +772,15 @@ function AddImage() {
           },
         }
       );
+
+      // ADDED: Clear the progress simulation once we get response
+      clearInterval(progressInterval);
+
+      // ADDED: Set to 100% when complete
+      setBatchProgress({
+        current: validImages.length,
+        total: validImages.length,
+      });
 
       const contentType = res.headers.get("content-type") || "";
       const resBody = contentType.includes("application/json")
