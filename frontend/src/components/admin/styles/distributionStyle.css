@@ -157,11 +157,7 @@
 }
 
 .dark-mode .dis-view-toggle.active {
-  background: linear-gradient(
-    135deg,
-    var(--color-accent),
-    var(--btn-accent-hover)
-  );
+  background: var(--color-secondary);
   color: var(--color-dark);
 }
 .quick-actions {
@@ -672,11 +668,7 @@
 }
 
 .dark-mode .apply-filters-btn {
-  background: linear-gradient(
-    135deg,
-    var(--color-accent),
-    var(--btn-accent-hover)
-  );
+  background: var(--color-secondary);
   color: var(--color-dark);
 }
 
@@ -805,8 +797,6 @@
   flex-shrink: 0;
 }
 
-
-
 .dark-mode .distribution-stat-icon {
   color: var(--text-light);
 }
@@ -831,6 +821,11 @@
 
 .stat-card:hover .distribution-stat-icon::after {
   opacity: 0.6;
+}
+
+.dark-mode .loading-content {
+  border: 2px solid var(--text-light);
+  background: var(--dark-bg-tertiary);
 }
 
 .stat-content {
@@ -3455,7 +3450,7 @@ body.modal-open {
 }
 
 .dark-mode .results-count {
-  color: var(--dark-text-secondary);
+  color: var(--text-light);
 }
 
 /* ====== TABLE STYLES ====== */
@@ -3650,7 +3645,7 @@ body.modal-open {
 }
 
 .dark-mode .date-range {
-  color: var(--dark-text-secondary);
+  color: var(--text-light);
 }
 
 .coral-types-list {
@@ -3733,7 +3728,7 @@ body.modal-open {
 
 .dark-mode .view-details-btn {
   background: var(--dark-bg-tertiary);
-  color: var(--dark-text-primary);
+  color: var(--text-light);
   border-color: var(--dark-border);
 }
 

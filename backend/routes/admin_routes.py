@@ -1627,6 +1627,96 @@ def get_chart_data():
             conn.close()
 
 
+@admin_bp.route('/notifications', methods=['GET'])
+@cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
+@login_required
+@admin_required
+def get_admin_notifications():
+    """Get notification counts for admin dashboard"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({"error": "Database connection failed"}), 500
+            
+        with conn.cursor() as cur:
+            # Count pending users
+            cur.execute("""
+                SELECT COUNT(*) 
+                FROM users 
+                WHERE status = 'pending' 
+                AND deleted_at IS NULL
+            """)
+            pending_users = cur.fetchone()[0]
+            
+            # Count pending images (if you want to add image approval later)
+            cur.execute("""
+                SELECT COUNT(*) 
+                FROM images 
+                WHERE upload_status = 'pending'
+            """)
+            pending_images = cur.fetchone()[0]
+            
+            # You can add more notification types here
+            # For example: pending coral submissions, flagged content, etc.
+            
+            return jsonify({
+                "pending_users": pending_users,
+                "pending_images": pending_images,
+                "total_notifications": pending_users + pending_images
+            })
+            
+    except Exception as e:
+        print(f"Error fetching admin notifications: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+# You can add more specific notification endpoints
+@admin_bp.route('/notifications/users/pending', methods=['GET'])
+@cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
+@login_required
+@admin_required
+def get_pending_users_details():
+    """Get detailed list of pending users for notifications"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({"error": "Database connection failed"}), 500
+            
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, username, firstname, lastname, email, created_at
+                FROM users 
+                WHERE status = 'pending' 
+                AND deleted_at IS NULL
+                ORDER BY created_at ASC
+                LIMIT 10
+            """)
+            
+            pending_users = []
+            for row in cur.fetchall():
+                pending_users.append({
+                    'id': row[0],
+                    'username': row[1],
+                    'firstname': row[2],
+                    'lastname': row[3],
+                    'email': row[4],
+                    'created_at': row[5].isoformat() if row[5] else None
+                })
+            
+            return jsonify({
+                "pending_users": pending_users,
+                "count": len(pending_users)
+            })
+            
+    except Exception as e:
+        print(f"Error fetching pending users: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
 @admin_bp.route('/admin/models/current', methods=['GET'])
 @admin_required
 @login_required

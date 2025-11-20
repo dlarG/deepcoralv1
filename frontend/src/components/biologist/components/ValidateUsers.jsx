@@ -24,11 +24,11 @@ import {
 } from "react-icons/fi";
 import { useAuth } from "../../../context/AuthContext";
 import SuccessModal from "../../SuccessMessage";
-import "../styles/validateStyle.css";
+import "../../admin/styles/validateStyle.css";
 
-function Validate() {
+function ValidateUsers() {
   const { user } = useAuth();
-  const [activeFilter, setActiveFilter] = useState("users"); // Changed default to users
+  const [activeFilter, setActiveFilter] = useState("images"); // Changed default to users
 
   // Image validation state
   const [pendingUploads, setPendingUploads] = useState([]);
@@ -59,13 +59,13 @@ function Validate() {
     try {
       // Fetch pending users count
       const usersResponse = await fetch(
-        "http://localhost:5000/admin/pending-users",
+        "http://localhost:5000/biologist/pending-users",
         { method: "GET", credentials: "include" }
       );
 
       // Fetch pending images count
       const imagesResponse = await fetch(
-        "http://localhost:5000/admin/pending-image-uploads",
+        "http://localhost:5000/biologist/pending-image-uploads",
         { method: "GET", credentials: "include" }
       );
 
@@ -142,7 +142,7 @@ function Validate() {
     setLoading(true);
     try {
       const response = await fetch(
-        "http://localhost:5000/admin/pending-image-uploads",
+        "http://localhost:5000/biologist/pending-image-uploads",
         {
           method: "GET",
           credentials: "include",
@@ -167,7 +167,7 @@ function Validate() {
     setLoading(true);
     try {
       const response = await fetch(
-        "http://localhost:5000/admin/pending-users",
+        "http://localhost:5000/biologist/pending-users",
         {
           method: "GET",
           credentials: "include",
@@ -339,17 +339,17 @@ function Validate() {
 
       if (isUserAction) {
         // User validation endpoints
-        endpoint = "http://localhost:5000/admin/manage-user-validation";
+        endpoint = "http://localhost:5000/biologist/manage-user-validation";
         requestData = { user_ids: itemIds, action };
       } else {
         // Image validation endpoints
         if (action === "delete") {
           endpoint =
-            "http://localhost:5000/validation/admin/delete-pending-images";
+            "http://localhost:5000/validation/biologist/delete-pending-images";
           requestData = { image_ids: itemIds };
         } else {
           endpoint =
-            "http://localhost:5000/validation/admin/manage-image-uploads";
+            "http://localhost:5000/validation/biologist/manage-image-uploads";
           requestData = { image_ids: itemIds, action };
         }
       }
@@ -468,72 +468,6 @@ function Validate() {
         </div>
       </div>
 
-      {/* Enhanced Filter Tabs */}
-      <div className="validation-tabs">
-        <div className="tabs-container">
-          <button
-            className={`tab-button ${activeFilter === "users" ? "active" : ""}`}
-            onClick={() => setActiveFilter("users")}
-          >
-            <div className="validate-tab-content">
-              <FiUsers className="tab-icon" />
-              <span className="tab-label">User Requests</span>
-              {notificationCounts.pendingUsers > 0 && (
-                <div className="tab-badge">
-                  {notificationCounts.pendingUsers > 99
-                    ? "99+"
-                    : notificationCounts.pendingUsers}
-                </div>
-              )}
-            </div>
-          </button>
-
-          <button
-            className={`tab-button ${
-              activeFilter === "images" ? "active" : ""
-            }`}
-            onClick={() => setActiveFilter("images")}
-          >
-            <div className="validate-tab-content">
-              <FiImage className="tab-icon" />
-              <span className="tab-label">Image Uploads</span>
-              {notificationCounts.pendingImages > 0 && (
-                <div className="tab-badge">
-                  {notificationCounts.pendingImages > 99
-                    ? "99+"
-                    : notificationCounts.pendingImages}
-                </div>
-              )}
-            </div>
-          </button>
-        </div>
-      </div>
-
-      {/* Enhanced Search and Filter Controls */}
-      <div className="quick-stats">
-        <div className="validate-stat-card users">
-          <div className="stat-icon">
-            <FiUsers />
-          </div>
-          <div className="stat-content">
-            <div className="stat-number">{notificationCounts.pendingUsers}</div>
-            <div className="stat-label">Pending Users</div>
-          </div>
-        </div>
-        <div className="validate-stat-card images">
-          <div className="stat-icon">
-            <FiImage />
-          </div>
-          <div className="stat-content">
-            <div className="stat-number">
-              {notificationCounts.pendingImages}
-            </div>
-            <div className="stat-label">Pending Images</div>
-          </div>
-        </div>
-      </div>
-
-      {/* FIXED: Bulk Actions Bar - Now positioned correctly and shows for both tabs */}
       {shouldShowBulkActions() && (
         <div className="bulk-actions-bar">
           <div className="selection-info">
@@ -578,207 +512,6 @@ function Validate() {
 
       {/* Content Area */}
       <div className="validation-content">
-        {/* USER VALIDATION SECTION */}
-        {activeFilter === "users" && (
-          <div className="users-validation-section">
-            {loading ? (
-              <div className="loading-state">
-                <div className="loading-spinner-large"></div>
-                <h3>Loading user requests...</h3>
-                <p>Please wait while we fetch pending registrations</p>
-              </div>
-            ) : filteredUsers.length === 0 ? (
-              <div className="empty-state">
-                <div className="validate-empty-icon">
-                  <FiUsers />
-                </div>
-                <h3>
-                  {searchTerm ? "No users found" : "No pending user requests"}
-                </h3>
-                <p>
-                  {searchTerm
-                    ? `No users match "${searchTerm}". Try adjusting your search.`
-                    : "All user registrations have been processed. New requests will appear here."}
-                </p>
-                {searchTerm && (
-                  <button
-                    className="clear-search-btn"
-                    onClick={() => setSearchTerm("")}
-                  >
-                    Clear Search
-                  </button>
-                )}
-              </div>
-            ) : (
-              <>
-                {/* Users Header */}
-                <div className="users-list-header">
-                  <div className="header-info">
-                    <h3>
-                      {filteredUsers.length} User Request
-                      {filteredUsers.length !== 1 ? "s" : ""}
-                      {searchTerm && ` matching "${searchTerm}"`}
-                    </h3>
-                  </div>
-
-                  <div className="header-actions">
-                    <button className="select-all-btn" onClick={selectAllUsers}>
-                      {selectedUsers.size === filteredUsers.length ? (
-                        <>
-                          <FiX />
-                          Deselect All
-                        </>
-                      ) : (
-                        <>
-                          <FiCheck />
-                          Select All
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                {/* REMOVED: The duplicate bulk actions bar that was only checking selectedImages */}
-
-                {/* Enhanced Users Grid */}
-                <div className="users-grid">
-                  {filteredUsers.map((user) => {
-                    const priority = getUserPriority(user.created_at);
-                    const isSelected = selectedUsers.has(user.id);
-
-                    return (
-                      <div
-                        key={user.id}
-                        className={`user-card ${priority} ${
-                          isSelected ? "selected" : ""
-                        }`}
-                      >
-                        {/* Priority Badge */}
-                        {priority === "urgent" && (
-                          <div className="priority-badge urgent">
-                            <FiAlertTriangle />
-                            Urgent
-                          </div>
-                        )}
-
-                        <div className="user-card-header">
-                          <div className="selection-checkbox">
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() => toggleUserSelection(user.id)}
-                              className="user-checkbox"
-                            />
-                          </div>
-
-                          <div className="user-avatar-section">
-                            <div className="user-avatar">
-                              {user.profile_image ? (
-                                <img
-                                  src={`/profile_uploads/${user.profile_image}`}
-                                  alt={`${user.firstname} ${user.lastname}`}
-                                  onError={(e) => {
-                                    e.target.style.display = "none";
-                                    e.target.nextSibling.style.display = "flex";
-                                  }}
-                                />
-                              ) : (
-                                <div className="avatar-initials">
-                                  {user.firstname?.charAt(0)?.toUpperCase()}
-                                  {user.lastname?.charAt(0)?.toUpperCase()}
-                                </div>
-                              )}
-                              <div
-                                className="avatar-placeholder"
-                                style={{ display: "none" }}
-                              >
-                                <FiUser />
-                              </div>
-                            </div>
-
-                            <div className="status-indicator pending">
-                              <FiClock />
-                              Pending
-                            </div>
-                          </div>
-
-                          <div className="user-info">
-                            <h4 className="user-name">
-                              {user.firstname} {user.lastname}
-                            </h4>
-                            <p className="user-username">@{user.username}</p>
-                            <p className="user-email">{user.email}</p>
-
-                            <div className="user-badges">
-                              <span className={`role-badge ${user.roletype}`}>
-                                <FiShield />
-                                {user.roletype.charAt(0).toUpperCase() +
-                                  user.roletype.slice(1)}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="user-details">
-                          <div className="detail-grid">
-                            <div className="detail-item">
-                              <FiCalendar className="detail-icon" />
-                              <div className="detail-content">
-                                <span className="detail-label">Registered</span>
-                                <span className="detail-value">
-                                  {formatDate(user.created_at)}
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="detail-item">
-                              <FiClock className="detail-icon" />
-                              <div className="detail-content">
-                                <span className="detail-label">Waiting</span>
-                                <span
-                                  className={`detail-value time-waiting ${priority}`}
-                                >
-                                  {getTimeSince(user.created_at)}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="user-actions">
-                          <button
-                            className="validate-action-btn approve"
-                            onClick={() => {
-                              setSelectedUsers(new Set([user.id]));
-                              handleBulkAction("approve");
-                            }}
-                            disabled={actionLoading}
-                          >
-                            <FiCheck />
-                            <span>Approve</span>
-                          </button>
-
-                          <button
-                            className="validate-action-btn reject"
-                            onClick={() => {
-                              setSelectedUsers(new Set([user.id]));
-                              handleBulkAction("reject");
-                            }}
-                            disabled={actionLoading}
-                          >
-                            <FiX />
-                            <span>Reject</span>
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-          </div>
-        )}
-
         {/* IMAGE VALIDATION SECTION (Enhanced but keeping existing logic) */}
         {activeFilter === "images" && (
           <div className="images-validation-section">
@@ -884,7 +617,7 @@ function Validate() {
                                   selectedImages.has(image.id) ? "selected" : ""
                                 }`}
                               >
-                                <div className="validate-image-header">
+                                <div className="image-header">
                                   <input
                                     type="checkbox"
                                     checked={selectedImages.has(image.id)}
@@ -1007,4 +740,4 @@ function Validate() {
   );
 }
 
-export default Validate;
+export default ValidateUsers;

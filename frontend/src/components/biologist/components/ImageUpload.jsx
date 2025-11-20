@@ -30,7 +30,6 @@ import {
   BarElement,
 } from "chart.js";
 import { Pie, Bar } from "react-chartjs-2";
-// Import LocationSelector from admin components
 import LocationSelector from "../../admin/components/LocationSelector";
 import "../styles/uploadImage.css";
 
@@ -43,7 +42,22 @@ ChartJS.register(
   BarElement
 );
 
-function ImageUpload() {
+ChartJS.register(
+  ArcElement,
+  Tooltip,
+  Legend,
+  CategoryScale,
+  LinearScale,
+  BarElement
+);
+
+function AddImage() {
+  const [validationCompleted, setValidationCompleted] = useState(false);
+  const [analysisCompleted, setAnalysisCompleted] = useState(false);
+  const [validationProgress, setValidationProgress] = useState({
+    current: 0,
+    total: 0,
+  });
   const [images, setImages] = useState([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [crops, setCrops] = useState([]);
@@ -60,7 +74,7 @@ function ImageUpload() {
   const [confirmRemove, setConfirmRemove] = useState(null);
   const { user } = useAuth();
 
-  // GIS and validation states (same as admin)
+  // New GIS and validation states
   const [showLocationSelector, setShowLocationSelector] = useState(false);
   const [processedImagesForSaving, setProcessedImagesForSaving] = useState([]);
   const [rejectedImages, setRejectedImages] = useState([]);
@@ -73,9 +87,9 @@ function ImageUpload() {
   const [manuallyIncluded, setManuallyIncluded] = useState(new Set());
   const [showManualOverrideModal, setShowManualOverrideModal] = useState(false);
   const [imageToOverride, setImageToOverride] = useState(null);
+
   const [analysisInProgress, setAnalysisInProgress] = useState(false);
 
-  // Copy all the functions from AddImage.jsx
   const processCrops = async (file, intensity) => {
     try {
       const formData = new FormData();
@@ -152,10 +166,13 @@ function ImageUpload() {
       newManuallyIncluded.add(imageToOverride.index);
       setManuallyIncluded(newManuallyIncluded);
 
+      console.log("Updated manually included:", newManuallyIncluded); // Debug log
+
       // Update the image status to manually_included
       setImages((prev) =>
         prev.map((img, idx) => {
           if (idx === imageToOverride.index) {
+            console.log("Updating image at index", idx); // Debug log
             return {
               ...img,
               status: "manually_included",
@@ -170,6 +187,8 @@ function ImageUpload() {
 
       setShowManualOverrideModal(false);
       setImageToOverride(null);
+    } else {
+      console.log("No imageToOverride found!");
     }
   };
 
@@ -249,6 +268,10 @@ function ImageUpload() {
     setCrops([]);
     setShowSaveButton(false);
     setSavedToDatabase(false);
+
+    // Reset button states when new images are added
+    setValidationCompleted(false);
+    setAnalysisCompleted(false);
   };
 
   const handleDrag = (e) => {
@@ -272,6 +295,28 @@ function ImageUpload() {
     }
   };
 
+  const downloadSegmentationMask = (maskUrl, index) => {
+    const link = document.createElement("a");
+    link.href = `http://${process.env.REACT_APP_API_URL}/${maskUrl}`;
+    link.download = `segmentation_${index + 1}_${
+      images[currentImageIndex].file.name
+    }`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const downloadSegmentationOverlay = (overlayUrl, index) => {
+    const link = document.createElement("a");
+    link.href = `http://${process.env.REACT_APP_API_URL}/${overlayUrl}`;
+    link.download = `coral_overlay_${index + 1}_${
+      images[currentImageIndex].file.name
+    }`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const clearImages = () => {
     images.forEach((image) => URL.revokeObjectURL(image.preview));
     setImages([]);
@@ -283,11 +328,18 @@ function ImageUpload() {
     setSavedToDatabase(false);
     setBatchResults(null);
     setShowBatchChart(false);
+
+    // Reset button states
+    setValidationCompleted(false);
+    setAnalysisCompleted(false);
+    setValidationProgress({ current: 0, total: 0 });
+    setBatchProgress({ current: 0, total: 0 });
   };
 
   const removeImage = (index, skipConfirmation = false) => {
     const imageToRemove = images[index];
 
+    // Show confirmation for processed images unless skipped
     if (!skipConfirmation && imageToRemove.processed) {
       setConfirmRemove(index);
       return;
@@ -299,12 +351,14 @@ function ImageUpload() {
 
     setImages(newImages);
 
+    // Update rejected images list if removing from there
     if (imageToRemove.status === "invalid") {
       setRejectedImages((prev) =>
         prev.filter((rejImg) => rejImg.file.name !== imageToRemove.file.name)
       );
     }
 
+    // Adjust current image index
     if (currentImageIndex >= newImages.length) {
       setCurrentImageIndex(Math.max(0, newImages.length - 1));
     }
@@ -317,8 +371,10 @@ function ImageUpload() {
       setCrops(newImages[currentImageIndex]?.crops || []);
     }
 
+    // Clear confirmation
     setConfirmRemove(null);
 
+    // Update processed images for saving if needed
     if (imageToRemove.processed) {
       setProcessedImagesForSaving((prev) =>
         prev.filter((img) => img.file.name !== imageToRemove.file.name)
@@ -326,6 +382,7 @@ function ImageUpload() {
     }
   };
 
+  // Batch remove invalid images
   const removeAllInvalidImages = () => {
     const invalidCount = images.filter(
       (img) => img.status === "invalid"
@@ -340,6 +397,7 @@ function ImageUpload() {
     ) {
       const validImages = images.filter((img) => img.status !== "invalid");
 
+      // Clean up URLs for removed images
       images
         .filter((img) => img.status === "invalid")
         .forEach((img) => {
@@ -364,28 +422,6 @@ function ImageUpload() {
     const link = document.createElement("a");
     link.href = `http://${process.env.REACT_APP_API_URL}/${cropUrl}`;
     link.download = `crop_${index + 1}_${images[currentImageIndex].file.name}`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const downloadSegmentationMask = (maskUrl, index) => {
-    const link = document.createElement("a");
-    link.href = `http://${process.env.REACT_APP_API_URL}/${maskUrl}`;
-    link.download = `segmentation_${index + 1}_${
-      images[currentImageIndex].file.name
-    }`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const downloadSegmentationOverlay = (overlayUrl, index) => {
-    const link = document.createElement("a");
-    link.href = `http://${process.env.REACT_APP_API_URL}/${overlayUrl}`;
-    link.download = `coral_overlay_${index + 1}_${
-      images[currentImageIndex].file.name
-    }`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -419,6 +455,7 @@ function ImageUpload() {
         }
       );
 
+      // Don't throw error on 400 - handle it gracefully
       if (response.ok) {
         const data = await response.json();
 
@@ -440,11 +477,13 @@ function ImageUpload() {
           };
         }
       } else if (response.status === 400) {
+        // Handle 400 errors gracefully - this is expected for invalid images
         const errorData = await response.json().catch(() => ({}));
 
         let reason =
           errorData.error || "No coral quadrats detected in this image";
 
+        // Add confidence information if available
         if (
           errorData.confidence_threshold &&
           errorData.quadrat_detections_low_confidence > 0
@@ -466,6 +505,7 @@ function ImageUpload() {
           totalDetections: errorData.total_detections || 0,
         };
       } else {
+        // Handle other HTTP errors (500, etc.)
         const errorText = await response.text().catch(() => "Unknown error");
         return {
           valid: false,
@@ -474,6 +514,7 @@ function ImageUpload() {
         };
       }
     } catch (error) {
+      // Handle network errors, parsing errors, etc.
       console.error("Validation network error:", error);
       return {
         valid: false,
@@ -484,20 +525,29 @@ function ImageUpload() {
   };
 
   const validateAllImages = async () => {
+    if (loading || validationCompleted) return; // Prevent multiple validations
+
     setLoading(true);
+    setValidationProgress({ current: 0, total: images.length });
+
     const updatedImages = [...images];
     const rejected = [];
 
+    let validatedCount = 0;
     let validCount = 0;
     let invalidCount = 0;
 
     for (let i = 0; i < images.length; i++) {
       if (images[i].processed) continue;
 
+      // Update progress
+      setValidationProgress({ current: i + 1, total: images.length });
+
       updatedImages[i].status = "validating";
       setImages([...updatedImages]);
 
       const validation = await validateImageForQuadrats(images[i].file);
+      validatedCount++;
 
       if (validation.valid) {
         updatedImages[i].status = "valid";
@@ -527,6 +577,8 @@ function ImageUpload() {
 
     setRejectedImages(rejected);
     setLoading(false);
+    setValidationCompleted(true); // Mark validation as completed
+    setValidationProgress({ current: 0, total: 0 });
 
     const validationSummary =
       `Validation complete:\n` +
@@ -563,11 +615,17 @@ function ImageUpload() {
       return;
     }
 
-    if (analysisInProgress) {
-      alert("Analysis already in progress!");
+    // Prevent multiple clicks and check if analysis already completed
+    if (analysisInProgress || analysisCompleted) {
+      if (analysisCompleted) {
+        alert("Analysis already completed! Clear images to analyze new ones.");
+      } else {
+        alert("Analysis already in progress!");
+      }
       return;
     }
 
+    // Get valid images AND manually included images
     const validImages = images.filter(
       (img) =>
         img.status === "valid" ||
@@ -576,13 +634,11 @@ function ImageUpload() {
         (img.status === "pending" && img.processed !== false)
     );
 
+    // FIXED: Calculate manually_included_indices based on the validImages array indices
     const manuallyIncludedIndices = [];
-    validImages.forEach((img, index) => {
-      const originalIndex = images.findIndex(
-        (originalImg) => originalImg === img
-      );
+    validImages.forEach((img, validIndex) => {
       if (img.status === "manually_included") {
-        manuallyIncludedIndices.push(originalIndex);
+        manuallyIncludedIndices.push(validIndex); // Use validIndex, not original index
       }
     });
 
@@ -590,7 +646,7 @@ function ImageUpload() {
       (img) => img.status === "invalid"
     ).length;
 
-    const manuallyIncludedCount = images.filter(
+    const manuallyIncludedCount = validImages.filter(
       (img) => img.status === "manually_included"
     ).length;
 
@@ -615,11 +671,36 @@ function ImageUpload() {
 
     confirmMessage += ` Proceed with analyzing ${validImages.length} total image(s)?`;
 
+    // Enhanced debug logging
+    console.log("=== BATCH ANALYSIS DEBUG ===");
+    console.log(
+      "All images:",
+      images.map((img, idx) => ({
+        index: idx,
+        filename: img.file.name,
+        status: img.status,
+      }))
+    );
+    console.log(
+      "Valid images:",
+      validImages.map((img, idx) => ({
+        validIndex: idx,
+        filename: img.file.name,
+        status: img.status,
+      }))
+    );
+    console.log(
+      "Manually included indices (in validImages array):",
+      manuallyIncludedIndices
+    );
+    console.log("Manually included count:", manuallyIncludedCount);
+
     if (invalidCount > 0 || manuallyIncludedCount > 0) {
       const proceed = window.confirm(confirmMessage);
       if (!proceed) return;
     }
 
+    // Set analysis in progress - FIXED: Set initial progress to 0
     setAnalysisInProgress(true);
     setBatchLoading(true);
     setShowBatchChart(false);
@@ -636,7 +717,7 @@ function ImageUpload() {
       const csrfData = await csrfResponse.json();
 
       const formData = new FormData();
-      validImages.forEach((image) => {
+      validImages.forEach((image, index) => {
         formData.append("images", image.file);
       });
       formData.append("csrf_token", csrfData.csrf_token);
@@ -645,6 +726,45 @@ function ImageUpload() {
         "manually_included",
         JSON.stringify(manuallyIncludedIndices)
       );
+
+      // Additional debug info
+      formData.append(
+        "debug_info",
+        JSON.stringify({
+          total_valid_images: validImages.length,
+          manually_included_count: manuallyIncludedCount,
+          manually_included_indices: manuallyIncludedIndices,
+          valid_images_filenames: validImages.map((img) => img.file.name),
+          manually_included_filenames: validImages
+            .filter((img, idx) => manuallyIncludedIndices.includes(idx))
+            .map((img) => img.file.name),
+        })
+      );
+
+      let progressStep = 0;
+      const totalSteps = validImages.length;
+
+      const updateProgress = () => {
+        setBatchProgress({ current: progressStep, total: totalSteps });
+      };
+
+      // ADDED: Progress simulation for better UX while waiting for server response
+      const simulateProgress = () => {
+        let currentProgress = 0;
+        const progressInterval = setInterval(() => {
+          currentProgress += Math.random() * 10; // Random increment between 0-10%
+          if (progressStep < totalSteps - 1) {
+            progressStep++;
+            updateProgress();
+          } else {
+            clearInterval(progressInterval);
+          }
+        }, 1000); // Update every 500ms
+
+        return progressInterval;
+      };
+
+      const progressInterval = simulateProgress();
 
       const res = await fetch(
         `http://${process.env.REACT_APP_API_URL}/batch_analyze`,
@@ -657,6 +777,12 @@ function ImageUpload() {
           },
         }
       );
+
+      // ADDED: Clear the progress simulation once we get response
+      clearInterval(progressInterval);
+
+      // ADDED: Set to 100% when complete
+      setBatchProgress({ current: totalSteps, total: totalSteps });
 
       const contentType = res.headers.get("content-type") || "";
       const resBody = contentType.includes("application/json")
@@ -678,7 +804,9 @@ function ImageUpload() {
       setShowBatchChart(true);
       setActiveTab("batch-analysis");
       setShowSaveButton(true);
+      setAnalysisCompleted(true);
 
+      // FIXED: Process results with proper manual override handling
       const processedImagesWithData = validImages.map((image) => {
         const result = data.results.find((r) => r.filename === image.file.name);
         if (result && result.crops) {
@@ -690,10 +818,11 @@ function ImageUpload() {
             segmentationData: {
               crops: result.crops.map((crop) => ({
                 ...crop,
+                // Ensure both field names are available for backward compatibility
                 overlay_url: crop.overlay_url || crop.visualization_url,
                 visualization_url: crop.overlay_url || crop.visualization_url,
-                mask_url: crop.mask_url,
-                manually_included: crop.manually_included || false,
+                mask_url: crop.mask_url, // Add mask URL
+                manually_included: crop.manually_included || false, // Track manual override
               })),
               total_crops: result.crops.length,
               filename: result.filename,
@@ -706,6 +835,7 @@ function ImageUpload() {
 
       setProcessedImagesForSaving(processedImagesWithData);
 
+      // FIXED: Update images with results, preserving manual override status
       const updatedImages = images.map((image) => {
         const result = data.results.find((r) => r.filename === image.file.name);
         if (result && result.crops) {
@@ -733,6 +863,7 @@ function ImageUpload() {
 
       setImages(updatedImages);
 
+      // Show success message with manual override info
       let successMessage = `Analysis completed successfully!\n`;
       successMessage += `${data.batch_statistics.total_images_processed} images processed\n`;
       successMessage += `${data.batch_statistics.total_crops} total crops generated\n`;
@@ -751,7 +882,7 @@ function ImageUpload() {
       alert("Batch analysis failed: " + error.message);
     } finally {
       setBatchLoading(false);
-      setAnalysisInProgress(false);
+      setAnalysisInProgress(false); // Re-enable button
       setBatchProgress({ current: 0, total: 0 });
     }
   };
@@ -770,8 +901,84 @@ function ImageUpload() {
     setShowSaveButton(false);
     console.log("Location saved:", location, saveResult);
   };
+  const renderLoadingOverlay = () => {
+    if (!loading && !batchLoading) return null;
 
-  // Copy all the render functions from AddImage.jsx with same logic
+    const isValidating = loading && validationProgress.total > 0;
+    const isAnalyzing = batchLoading && batchProgress.total > 0;
+
+    let progressPercentage = 0;
+    let currentStep = 0;
+    let totalSteps = 0;
+    let statusText = "";
+    let subText = "";
+
+    if (isValidating) {
+      currentStep = validationProgress.current;
+      totalSteps = validationProgress.total;
+      progressPercentage =
+        totalSteps > 0 ? (currentStep / totalSteps) * 100 : 0;
+      statusText = "Validating Images...";
+      subText = `Processing ${currentStep} of ${totalSteps} images`;
+    } else if (isAnalyzing) {
+      currentStep = batchProgress.current;
+      totalSteps = batchProgress.total;
+      progressPercentage =
+        totalSteps > 0 ? (currentStep / totalSteps) * 100 : 0;
+      statusText = "Analyzing Batch...";
+      subText = `Processing ${currentStep} of ${totalSteps} images`;
+    } else if (loading) {
+      progressPercentage = 50;
+      statusText = "Processing Image...";
+      subText = "Please wait while we analyze your image";
+    } else if (batchLoading) {
+      progressPercentage = 50;
+      statusText = "Analyzing Batch...";
+      subText = "Processing your images...";
+    }
+
+    return (
+      <div className="loading-overlay">
+        <div className="imageupload-loading-content">
+          <div className="loading-spinner"></div>
+          <div className="loading-text">{statusText}</div>
+          <div className="loading-subtext">{subText}</div>
+
+          {/* Enhanced Progress Bar */}
+          <div className="progress-bar-container">
+            <div
+              className="progress-bar"
+              style={{ width: `${progressPercentage}%` }}
+            ></div>
+          </div>
+
+          {/* Progress Percentage */}
+          <div className="progress-percentage">
+            {Math.round(progressPercentage)}%
+            {totalSteps > 0 && (
+              <span className="progress-count">
+                {" "}
+                ({currentStep}/{totalSteps})
+              </span>
+            )}
+          </div>
+
+          {/* Cancel Button for Long Operations */}
+          {(isValidating || isAnalyzing) && (
+            <button
+              className="cancel-operation-btn"
+              onClick={() => {
+                // You can implement cancellation logic here if needed
+                console.log("Operation cancellation requested");
+              }}
+            >
+              Cancel Operation
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
   const renderImageGallery = () => {
     const validImagesCount = images.filter(
       (img) => img.status === "valid" || img.status === "processed"
@@ -786,6 +993,7 @@ function ImageUpload() {
       (img) => img.status === "manually_included"
     ).length;
 
+    // Filter images based on showInvalidImages setting
     const displayImages = showInvalidImages
       ? images
       : images.filter((img) => img.status !== "invalid");
@@ -819,34 +1027,38 @@ function ImageUpload() {
                 <FiList size={16} />
               </button>
             </div>
-            {invalidImagesCount > 0 && (
-              <button
-                className={`filter-btn ${showInvalidImages ? "active" : ""}`}
-                onClick={() => setShowInvalidImages(!showInvalidImages)}
-                title={
-                  showInvalidImages
-                    ? "Hide invalid images"
-                    : "Show invalid images"
-                }
-              >
-                {showInvalidImages ? (
-                  <FiEye size={14} />
-                ) : (
-                  <FiEyeOff size={14} />
-                )}
-                <span>{showInvalidImages ? "Hide" : "Show"} Invalid</span>
-              </button>
-            )}
-            {invalidImagesCount > 0 && (
-              <button
-                onClick={removeAllInvalidImages}
-                className="action-button danger-outline"
-                title={`Remove all ${invalidImagesCount} invalid images`}
-              >
-                <FiTrash2 size={14} />
-                <span>Remove Invalid ({invalidImagesCount})</span>
-              </button>
-            )}
+
+            <div className="gallery-filter-actions">
+              {invalidImagesCount > 0 && (
+                <button
+                  className={`filter-btn ${showInvalidImages ? "active" : ""}`}
+                  onClick={() => setShowInvalidImages(!showInvalidImages)}
+                  title={
+                    showInvalidImages
+                      ? "Hide invalid images"
+                      : "Show invalid images"
+                  }
+                >
+                  {showInvalidImages ? (
+                    <FiEye size={14} />
+                  ) : (
+                    <FiEyeOff size={14} />
+                  )}
+                  <span>{showInvalidImages ? "Hide" : "Show"} Invalid</span>
+                </button>
+              )}
+
+              {invalidImagesCount > 0 && (
+                <button
+                  onClick={removeAllInvalidImages}
+                  className="action-button danger-outline"
+                  title={`Remove all ${invalidImagesCount} invalid images`}
+                >
+                  <FiTrash2 size={14} />
+                  <span>Remove Invalid ({invalidImagesCount})</span>
+                </button>
+              )}
+            </div>
 
             <div className="gallery-actions">
               <button onClick={clearImages} className="action-button clear">
@@ -857,6 +1069,7 @@ function ImageUpload() {
           </div>
         </div>
 
+        {/* Enhanced Image Status Summary */}
         <div className="image-status-summary">
           <div className="status-item valid">
             <span className="status-count">{validImagesCount}</span>
@@ -872,6 +1085,19 @@ function ImageUpload() {
             <span className="status-count">{pendingImagesCount}</span>
             <span className="status-label">Pending</span>
           </div>
+
+          {validImagesCount + manuallyIncludedCount > 0 &&
+            invalidImagesCount > 0 && (
+              <div className="analysis-info">
+                <FiAlertTriangle size={14} />
+                <span>
+                  {validImagesCount + manuallyIncludedCount} images ready for
+                  analysis
+                  {manuallyIncludedCount > 0 &&
+                    ` (${manuallyIncludedCount} manually included)`}
+                </span>
+              </div>
+            )}
         </div>
 
         <div className={`image-gallery ${viewMode}`}>
@@ -897,6 +1123,7 @@ function ImageUpload() {
                   <img src={image.preview} alt={`Thumbnail ${originalIndex}`} />
 
                   <div className="thumbnail-overlay">
+                    {/* Enhanced Status indicator */}
                     <div className={`upload-status-indicator ${image.status}`}>
                       {image.status === "valid" && <FiCheckCircle size={12} />}
                       {image.status === "invalid" && <FiX size={12} />}
@@ -911,6 +1138,7 @@ function ImageUpload() {
                       )}
                     </div>
 
+                    {/* Manual Override Button for Invalid Images */}
                     {image.status === "invalid" && (
                       <button
                         className="manual-include-btn"
@@ -924,6 +1152,7 @@ function ImageUpload() {
                       </button>
                     )}
 
+                    {/* Remove Manual Override Button */}
                     {image.status === "manually_included" && (
                       <button
                         className="remove-manual-include-btn"
@@ -937,6 +1166,7 @@ function ImageUpload() {
                       </button>
                     )}
 
+                    {/* Enhanced Remove button */}
                     <button
                       className={`upload-remove-btn ${image.status}`}
                       onClick={(e) => {
@@ -1012,30 +1242,6 @@ function ImageUpload() {
             );
           })}
         </div>
-
-        {validImagesCount + manuallyIncludedCount > 0 && (
-          <div className="analysis-readiness">
-            <div className="readiness-content">
-              <FiCheckCircle size={16} className="ready-icon" />
-              <span className="ready-text">
-                {validImagesCount + manuallyIncludedCount} image
-                {validImagesCount + manuallyIncludedCount > 1 ? "s" : ""} ready
-                for batch analysis
-              </span>
-              {manuallyIncludedCount > 0 && (
-                <span className="manual-text">
-                  ({manuallyIncludedCount} manually included)
-                </span>
-              )}
-              {invalidImagesCount > 0 && (
-                <span className="skip-text">
-                  ({invalidImagesCount} invalid image
-                  {invalidImagesCount > 1 ? "s" : ""} will be skipped)
-                </span>
-              )}
-            </div>
-          </div>
-        )}
       </div>
     );
   };
@@ -1112,6 +1318,7 @@ function ImageUpload() {
       return <div className="no-results">No coral coverage data found</div>;
     }
 
+    // Prepare data for charts
     const pieData = {
       labels: coverageData.map((coral) => coral.class_name),
       datasets: [
@@ -1178,7 +1385,7 @@ function ImageUpload() {
           <div className="upload-batch-stats">
             <div className="upload-stat-card">
               <span className="upload-stat-number">
-                {batchResults.batch_statistics.total_images_processed}
+                {batchResults.batch_statistics.total_crops}
               </span>
               <span className="upload-stat-label">Images Analyzed</span>
             </div>
@@ -1202,10 +1409,12 @@ function ImageUpload() {
             </div>
           </div>
 
+          {/* Save to Database Button */}
           {showSaveButton && !savedToDatabase && (
             <div className="save-section">
               <button className="save-to-db-btn" onClick={handleSaveToDatabase}>
                 <FiSave size={16} />
+                <FiMap size={16} />
                 Save to Database with Location
               </button>
             </div>
@@ -1267,6 +1476,20 @@ function ImageUpload() {
       </div>
     );
   };
+
+  // const formatFileSize = (bytes) => {
+  //   if (bytes === 0) return "0 Bytes";
+  //   const k = 1024;
+  //   const sizes = ["Bytes", "KB", "MB", "GB"];
+  //   const i = Math.floor(Math.log(bytes) / Math.log(k));
+  //   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  // };
+
+  const totalCrops = images.reduce(
+    (sum, img) => sum + (img.crops?.length || 0),
+    0
+  );
+  // const completedImages = images.filter((img) => img.processed).length;
 
   const renderAnalysisResults = () => {
     const currentImage = images[currentImageIndex];
@@ -1534,11 +1757,6 @@ function ImageUpload() {
     );
   };
 
-  const totalCrops = images.reduce(
-    (sum, img) => sum + (img.crops?.length || 0),
-    0
-  );
-
   return (
     <div className="content-section">
       {images.length === 0 ? (
@@ -1637,6 +1855,7 @@ function ImageUpload() {
                   value={cropIntensity}
                   onChange={(e) => setCropIntensity(e.target.value)}
                   className="intensity-select-compact"
+                  disabled={loading || batchLoading || analysisCompleted}
                 >
                   <option value="conservative">Conservative</option>
                   <option value="moderate">Moderate</option>
@@ -1648,32 +1867,81 @@ function ImageUpload() {
 
             <div className="controls-right">
               <div className="process-buttons-compact">
+                {/* Enhanced Validate Button */}
                 <button
                   onClick={validateAllImages}
-                  disabled={loading || batchLoading}
-                  className="upload-button primary"
+                  disabled={loading || batchLoading || validationCompleted}
+                  className={`upload-button primary ${
+                    validationCompleted
+                      ? "completed"
+                      : loading || batchLoading
+                      ? "disabled"
+                      : ""
+                  }`}
+                  title={
+                    validationCompleted
+                      ? "Validation completed - Clear images to validate new ones"
+                      : loading || batchLoading
+                      ? "Please wait for current operation to complete"
+                      : "Validate all images for coral quadrats"
+                  }
                 >
-                  <FiCheckCircle size={16} />
-                  <span>Validate All</span>
+                  {loading ? (
+                    <>
+                      <FiLoader size={16} className="spinning" />
+                      <span>Validating...</span>
+                    </>
+                  ) : validationCompleted ? (
+                    <>
+                      <FiCheckCircle size={16} />
+                      <span>Validation Complete</span>
+                    </>
+                  ) : (
+                    <>
+                      <FiCheckCircle size={16} />
+                      <span>Validate All</span>
+                    </>
+                  )}
                 </button>
 
+                {/* Enhanced Analyze Button */}
                 <button
                   onClick={handleBatchAnalyze}
                   disabled={
-                    images.length === 0 || batchLoading || analysisInProgress
+                    images.length === 0 ||
+                    batchLoading ||
+                    analysisInProgress ||
+                    analysisCompleted ||
+                    loading
                   }
                   className={`process-button analysis compact ${
-                    analysisInProgress ? "disabled" : ""
+                    analysisCompleted
+                      ? "completed"
+                      : analysisInProgress || batchLoading
+                      ? "disabled"
+                      : ""
                   }`}
+                  title={
+                    analysisCompleted
+                      ? "Analysis completed - Clear images to analyze new ones"
+                      : analysisInProgress || batchLoading
+                      ? "Analysis in progress..."
+                      : images.length === 0
+                      ? "No images to analyze"
+                      : "Start batch analysis of valid images"
+                  }
                 >
                   {batchLoading || analysisInProgress ? (
                     <>
                       <FiLoader size={16} className="spinning" />
                       <span className="btn-text">
-                        {analysisInProgress
-                          ? `Analyzing ${batchProgress.current}/${batchProgress.total}`
-                          : "Processing..."}
+                        Analyzing {batchProgress.current}/{batchProgress.total}
                       </span>
+                    </>
+                  ) : analysisCompleted ? (
+                    <>
+                      <FiCheckCircle size={16} />
+                      <span className="btn-text">Analysis Complete</span>
                     </>
                   ) : (
                     <>
@@ -1729,7 +1997,7 @@ function ImageUpload() {
         </div>
       )}
 
-      {/* Location Selector Modal - Using admin component */}
+      {/* Location Selector Modal */}
       {showLocationSelector && (
         <LocationSelector
           isOpen={showLocationSelector}
@@ -1743,33 +2011,9 @@ function ImageUpload() {
       {renderConfirmationModal()}
       {renderManualOverrideModal()}
 
-      {(loading || batchLoading) && (
-        <div className="loading-overlay">
-          <div className="imageupload-loading-content">
-            <div className="loading-spinner"></div>
-            <div className="loading-text">
-              {batchLoading ? "Analyzing Batch..." : "Processing Image..."}
-            </div>
-            <div className="loading-subtext">
-              {batchLoading
-                ? `Processing ${batchProgress.current} of ${batchProgress.total} images`
-                : "Please wait while we analyze your image"}
-            </div>
-            <div className="progress-bar-container">
-              <div
-                className="progress-bar"
-                style={{
-                  width: batchLoading
-                    ? `${(batchProgress.current / batchProgress.total) * 100}%`
-                    : "50%",
-                }}
-              ></div>
-            </div>
-          </div>
-        </div>
-      )}
+      {renderLoadingOverlay()}
     </div>
   );
 }
 
-export default ImageUpload;
+export default AddImage;

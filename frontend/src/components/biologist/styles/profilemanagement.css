@@ -768,8 +768,21 @@
   background: rgba(239, 68, 68, 0.1);
 }
 
+.dark-mode .success-modal {
+  background: linear-gradient(
+    145deg,
+    rgba(30, 41, 59, 0.95) 0%,
+    rgba(15, 23, 42, 0.95) 100%
+  );
+  border: 1px solid rgba(51, 65, 85, 0.6);
+}
+
+.dark-mode .success-modal-close {
+  background: rgba(51, 65, 85, 0.6);
+  color: #e2e8f0;
+}
+
 .error-text {
-  color: #ef4444;
   font-size: 0.8rem;
   font-weight: 500;
   margin-top: 0.5rem;

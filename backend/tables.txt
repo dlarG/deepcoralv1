@@ -107,6 +107,9 @@ CREATE TABLE coral_lifeforms (
     description TEXT
 );
 
+ALTER TABLE IF EXISTS public.coral_lifeforms
+    ADD COLUMN class_code character varying(20);
+
 -- Enhanced segmentation results
 CREATE TABLE segmentation_results (
     id SERIAL PRIMARY KEY,

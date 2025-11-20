@@ -503,7 +503,9 @@ function Dashboard({ user, darkMode, onNavigate }) {
       {/* Welcome Header */}
       <div className="dashboard-header">
         <div className="welcome-section">
-          <h2>Welcome back, {user?.firstname}!</h2>
+          <h2 className="report-title">
+            Welcome back, {user?.firstname} {user?.lastname} 👋
+          </h2>
           <p>
             Here's your personal research progress and coral analysis results.
           </p>

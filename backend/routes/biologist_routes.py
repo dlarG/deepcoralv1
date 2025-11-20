@@ -571,110 +571,6 @@ def get_user_profile(user_id):
         if conn:
             conn.close()
 
-
-# @biologist_bp.route('/biologist/dashboard/stats', methods=['GET', 'OPTIONS'])
-# @cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
-# @biologist_required
-# @login_required
-# def get_dashboard_stats():
-#     """Get dashboard statistics for biologist"""
-#     if request.method == 'OPTIONS':
-#         return jsonify({}), 200
-    
-#     try:
-#         conn = get_db_connection()
-#         if conn is None:
-#             return jsonify({'error': 'Database connection failed'}), 500
-
-#         with conn.cursor() as cur:
-#             # Get coral lifeform distribution
-#             cur.execute("""
-#                 SELECT 
-#                     cl.class_name,
-#                     cl.color_hex,
-#                     COUNT(sr.id) as detection_count,
-#                     SUM(sr.area_px) as total_area_px,
-#                     AVG(sr.coverage_percent) as avg_coverage,
-#                     COUNT(DISTINCT sr.image_id) as image_count
-#                 FROM coral_lifeforms cl
-#                 LEFT JOIN segmentation_results sr ON cl.id = sr.class_id
-#                 LEFT JOIN images i ON sr.image_id = i.id
-#                 WHERE (i.upload_status = 'approved' OR sr.id IS NULL)
-#                 GROUP BY cl.id, cl.class_name, cl.color_hex
-#                 HAVING COUNT(sr.id) > 0
-#                 ORDER BY detection_count DESC
-#                 LIMIT 10
-#             """)
-            
-#             coral_distribution = []
-#             total_detections = 0
-            
-#             rows = cur.fetchall()
-#             print(f"Query returned {len(rows)} rows")  # Debug line
-            
-#             for row in rows:
-#                 print(f"Row data: {row}")  # Debug line
-#                 # Fixed: row[2] is detection_count (index 2), not row[1]
-#                 detection_count = row[2] if row[2] is not None else 0
-#                 total_detections += detection_count
-                
-#                 coral_distribution.append({
-#                     'class_name': row[0],
-#                     'color_hex': row[1] or '#6B7280',
-#                     'detection_count': detection_count,
-#                     'total_area_px': row[3] if row[3] is not None else 0,
-#                     'avg_coverage': float(row[4]) if row[4] is not None else 0.0,
-#                     'image_count': row[5] if row[5] is not None else 0
-#                 })
-            
-#             # Calculate percentages
-#             for item in coral_distribution:
-#                 if total_detections > 0:
-#                     item['percentage'] = (item['detection_count'] / total_detections) * 100
-#                 else:
-#                     item['percentage'] = 0
-            
-#             # Get recent analysis statistics
-#             cur.execute("""
-#                 SELECT 
-#                     COUNT(DISTINCT i.id) as total_images,
-#                     COUNT(DISTINCT sr.id) as total_detections,
-#                     AVG(COALESCE(i.analysis_confidence, 0)) as avg_confidence,
-#                     COUNT(DISTINCT i.uploader_id) as active_users
-#                 FROM images i
-#                 LEFT JOIN segmentation_results sr ON i.id = sr.image_id
-#                 WHERE i.uploaded_at >= NOW() - INTERVAL '30 days'
-#                 AND (i.upload_status = 'approved' OR i.upload_status IS NULL)
-#             """)
-            
-#             stats_row = cur.fetchone()
-#             print(f"Stats row: {stats_row}")  # Debug line
-            
-#             recent_stats = {
-#                 'total_images': stats_row[0] if stats_row[0] is not None else 0,
-#                 'total_detections': stats_row[1] if stats_row[1] is not None else 0,
-#                 'avg_confidence': float(stats_row[2]) if stats_row[2] is not None else 0.0,
-#                 'active_users': stats_row[3] if stats_row[3] is not None else 0
-#             }
-            
-#             print(f"Coral distribution: {len(coral_distribution)} items")  # Debug line
-#             print(f"Recent stats: {recent_stats}")  # Debug line
-            
-#             return jsonify({
-#                 'coral_distribution': coral_distribution,
-#                 'recent_stats': recent_stats,
-#                 'success': True
-#             }), 200
-
-#     except Exception as e:
-#         print(f"Error fetching dashboard stats: {e}")
-#         import traceback
-#         traceback.print_exc()  # This will show the full error trace
-#         return jsonify({'error': str(e)}), 500
-#     finally:
-#         if conn:
-#             conn.close()
-
 @biologist_bp.route('/biologist/dashboard/stats', methods=['GET', 'OPTIONS'])
 @cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
 @biologist_required
@@ -820,6 +716,433 @@ def get_dashboard_stats():
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+# Replace the existing biologist validation endpoints with these working versions:
+
+@biologist_bp.route('/biologist/pending-users', methods=['GET', 'OPTIONS'])
+@cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
+@biologist_required
+@login_required
+def get_pending_users():
+    """Get all pending user registrations (same as admin but biologist endpoint)"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({"error": "Database connection failed"}), 500
+    
+    try:
+        with conn.cursor() as cur:
+            # Get ALL pending users (same as admin - no role filtering)
+            cur.execute("""
+                SELECT id, username, firstname, lastname, email, roletype, 
+                       profile_image, created_at, institution, bio
+                FROM users 
+                WHERE status = 'pending'
+                ORDER BY created_at ASC
+            """)
+            
+            users = cur.fetchall()
+            
+            pending_users = []
+            for user in users:
+                pending_users.append({
+                    'id': user[0],
+                    'username': user[1],
+                    'firstname': user[2],
+                    'lastname': user[3],
+                    'email': user[4],
+                    'roletype': user[5],
+                    'profile_image': user[6],
+                    'created_at': user[7].isoformat() if user[7] else None,
+                    'institution': user[8] if len(user) > 8 and user[8] else None,
+                    'bio': user[9] if len(user) > 9 and user[9] else None
+                })
+            
+            return jsonify({
+                'pending_users': pending_users,
+                'success': True
+            }), 200
+
+    except Exception as e:
+        print(f"Error fetching pending users: {e}")
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@biologist_bp.route('/biologist/pending-image-uploads', methods=['GET', 'OPTIONS'])
+@cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
+@biologist_required
+@login_required
+def get_pending_image_uploads():
+    """Get pending image uploads grouped by user (same as admin but biologist endpoint)"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({"error": "Database connection failed"}), 500
+            
+        with conn.cursor() as cur:
+            # Use the EXACT same query as admin routes (working query)
+            cur.execute("""
+                SELECT 
+                    i.uploader_id,
+                    u.username,
+                    u.firstname, 
+                    u.lastname,
+                    u.roletype,
+                    COUNT(i.id) as pending_count,
+                    MAX(i.uploaded_at) as last_upload,
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'id', i.id,
+                            'filename', i.filename,
+                            'uploaded_at', i.uploaded_at,
+                            'processing_status', i.processing_status,
+                            'analysis_confidence', i.analysis_confidence
+                        ) ORDER BY i.uploaded_at DESC
+                    ) as images
+                FROM images i
+                JOIN users u ON i.uploader_id = u.id
+                WHERE i.upload_status = 'pending'
+                GROUP BY i.uploader_id, u.username, u.firstname, u.lastname, u.roletype
+                ORDER BY last_upload DESC
+            """)
+            
+            results = cur.fetchall()
+            
+            pending_uploads = []
+            for row in results:
+                pending_uploads.append({
+                    'uploader_id': row[0],
+                    'username': row[1],
+                    'firstname': row[2],
+                    'lastname': row[3],
+                    'roletype': row[4],
+                    'pending_count': row[5],
+                    'last_upload': row[6].isoformat() if row[6] else None,
+                    'images': row[7] if row[7] else []
+                })
+            
+            return jsonify({
+                "success": True,
+                "pending_uploads": pending_uploads
+            })
+            
+    except Exception as e:
+        print(f"Error fetching pending uploads: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@biologist_bp.route('/biologist/manage-user-validation', methods=['POST', 'OPTIONS'])
+@cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
+@biologist_required
+@login_required
+def manage_user_validation():
+    """Approve or reject pending users (same as admin but biologist endpoint)"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    try:
+        data = request.get_json()
+        user_ids = data.get('user_ids', [])
+        action = data.get('action')  # 'approve' or 'reject'
+        rejection_reason = data.get('reason')  # Optional rejection reason
+        
+        if not user_ids or action not in ['approve', 'reject']:
+            return jsonify({"error": "Invalid request data"}), 400
+            
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({"error": "Database connection failed"}), 500
+            
+        biologist_id = session.get('user_id')
+        
+        with conn.cursor() as cur:
+            # Check biologist privileges
+            cur.execute("SELECT roletype FROM users WHERE id = %s", (biologist_id,))
+            user_result = cur.fetchone()
+            
+            if not user_result or user_result[0].lower() != 'biologist':
+                return jsonify({"error": "Biologist access required"}), 403
+            
+            if action == 'approve':
+                # Get user details for email before update
+                placeholders = ','.join(['%s'] * len(user_ids))
+                cur.execute(f"""
+                    SELECT id, firstname, lastname, username, email, roletype
+                    FROM users 
+                    WHERE id IN ({placeholders}) AND status = 'pending'
+                """, user_ids)
+                
+                user_details = cur.fetchall()
+                
+                # Update user status to approved (no role filtering - same as admin)
+                cur.execute(f"""
+                    UPDATE users 
+                    SET status = 'approved', updated_at = NOW()
+                    WHERE id IN ({placeholders}) AND status = 'pending'
+                """, user_ids)
+                
+                affected_rows = cur.rowcount
+                conn.commit()
+                
+                # Send approval emails (same as admin)
+                try:
+                    from utils.email_service import email_service
+                    
+                    for user in user_details:
+                        user_data = {
+                            'firstname': user[1],
+                            'lastname': user[2],
+                            'username': user[3],
+                            'email': user[4],
+                            'roletype': user[5]
+                        }
+                        
+                        email_sent = email_service.send_user_approval_notification(user_data)
+                        
+                        if email_sent:
+                            print(f"✅ Approval email sent to {user[4]}")
+                        else:
+                            print(f"❌ Failed to send approval email to {user[4]}")
+                            
+                except Exception as email_error:
+                    print(f"❌ Error sending bulk approval emails: {str(email_error)}")
+                
+                message = f"Successfully approved {affected_rows} user(s)"
+                
+            else:  # reject
+                # Get user details before deletion for email
+                placeholders = ','.join(['%s'] * len(user_ids))
+                cur.execute(f"""
+                    SELECT id, firstname, lastname, username, email, roletype
+                    FROM users 
+                    WHERE id IN ({placeholders}) AND status = 'pending'
+                """, user_ids)
+                
+                user_details = cur.fetchall()
+                
+                # Send rejection emails BEFORE deletion (same as admin)
+                try:
+                    from utils.email_service import email_service
+                    
+                    for user in user_details:
+                        user_data = {
+                            'firstname': user[1],
+                            'lastname': user[2],
+                            'username': user[3],
+                            'email': user[4],
+                            'roletype': user[5]
+                        }
+                        
+                        email_sent = email_service.send_user_rejection_notification(user_data, rejection_reason)
+                        
+                        if email_sent:
+                            print(f"✅ Rejection email sent to {user[4]}")
+                        else:
+                            print(f"❌ Failed to send rejection email to {user[4]}")
+                        
+                except Exception as email_error:
+                    print(f"❌ Error sending bulk rejection emails: {str(email_error)}")
+                
+                # Delete rejected users (no role filtering - same as admin)
+                cur.execute(f"""
+                    DELETE FROM users 
+                    WHERE id IN ({placeholders}) AND status = 'pending'
+                """, user_ids)
+                
+                affected_rows = cur.rowcount
+                conn.commit()
+                
+                message = f"Successfully rejected {affected_rows} user(s)"
+            
+            return jsonify({
+                "success": True,
+                "message": message,
+                "affected_count": affected_rows
+            })
+            
+    except Exception as e:
+        print(f"Error managing user validation: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@biologist_bp.route('/validation/biologist/manage-image-uploads', methods=['POST', 'OPTIONS'])
+@cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
+@biologist_required
+@login_required
+def manage_image_uploads():
+    """Approve or reject image uploads (same as admin but biologist endpoint)"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    try:
+        data = request.get_json()
+        if not data or 'image_ids' not in data or 'action' not in data:
+            return jsonify({'error': 'Missing required fields'}), 400
+        
+        image_ids = data['image_ids']
+        action = data['action']  # 'approve' or 'reject'
+        
+        if action not in ['approve', 'reject']:
+            return jsonify({'error': 'Invalid action'}), 400
+        
+        conn = get_db_connection()
+        if conn is None:
+            return jsonify({'error': 'Database connection failed'}), 500
+
+        with conn.cursor() as cur:
+            new_status = 'approved' if action == 'approve' else 'rejected'
+            
+            # Update image status (same logic as admin)
+            cur.execute("""
+                UPDATE images 
+                SET upload_status = %s
+                WHERE id = ANY(%s) AND upload_status = 'pending'
+                RETURNING id, filename, uploader_id
+            """, (new_status, image_ids))
+            
+            updated_images = cur.fetchall()
+            conn.commit()
+            
+            action_text = 'approved' if action == 'approve' else 'rejected'
+            
+            return jsonify({
+                'message': f'Successfully {action_text} {len(updated_images)} image(s)',
+                'updated_images': [
+                    {'id': img[0], 'filename': img[1], 'uploader_id': img[2]} 
+                    for img in updated_images
+                ],
+                'success': True
+            }), 200
+
+    except Exception as e:
+        print(f"Error managing image uploads: {e}")
+        if 'conn' in locals():
+            conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'conn' in locals() and conn:
+            conn.close()
+
+
+@biologist_bp.route('/validation/biologist/delete-pending-images', methods=['POST', 'OPTIONS'])
+@cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
+@biologist_required
+@login_required
+def delete_pending_images():
+    """Delete pending image uploads (same as admin but biologist endpoint)"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    try:
+        data = request.get_json()
+        if not data or 'image_ids' not in data:
+            return jsonify({'error': 'Missing image_ids'}), 400
+        
+        image_ids = data['image_ids']
+        
+        conn = get_db_connection()
+        if conn is None:
+            return jsonify({'error': 'Database connection failed'}), 500
+
+        with conn.cursor() as cur:
+            # Get image filenames for file deletion (same as admin)
+            cur.execute("""
+                SELECT id, filename
+                FROM images 
+                WHERE id = ANY(%s) AND upload_status = 'pending'
+            """, (image_ids,))
+            
+            images_to_delete = cur.fetchall()
+            
+            # Delete images from database
+            cur.execute("""
+                DELETE FROM images 
+                WHERE id = ANY(%s) AND upload_status = 'pending'
+            """, (image_ids,))
+            
+            conn.commit()
+            
+            # Delete physical files (same as admin)
+            for img_id, filename in images_to_delete:
+                try:
+                    # Delete from crops folder
+                    crops_path = os.path.join(current_app.root_path, '..', 'frontend', 'public', 'crops', filename)
+                    if os.path.exists(crops_path):
+                        os.remove(crops_path)
+                    
+                    # Delete from uploads folder if exists
+                    uploads_path = os.path.join(current_app.root_path, '..', 'frontend', 'public', 'uploads', filename)
+                    if os.path.exists(uploads_path):
+                        os.remove(uploads_path)
+                        
+                except Exception as file_error:
+                    print(f"Error deleting file {filename}: {file_error}")
+            
+            return jsonify({
+                'message': f'Successfully deleted {len(images_to_delete)} image(s)',
+                'deleted_images': [
+                    {'id': img[0], 'filename': img[1]} 
+                    for img in images_to_delete
+                ],
+                'success': True
+            }), 200
+
+    except Exception as e:
+        print(f"Error deleting images: {e}")
+        if 'conn' in locals():
+            conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'conn' in locals() and conn:
+            conn.close()
+
+@biologist_bp.route('/biologist/notifications', methods=['GET', 'OPTIONS'])
+@cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
+@biologist_required
+@login_required
+def get_biologist_notifications():
+    """Get notification counts for biologist dashboard (images only)"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+        
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({"error": "Database connection failed"}), 500
+            
+        with conn.cursor() as cur:
+            # Count pending images only (exclude user registrations)
+            cur.execute("""
+                SELECT COUNT(*) 
+                FROM images 
+                WHERE upload_status = 'pending'
+            """)
+            pending_images = cur.fetchone()[0]
+            
+            return jsonify({
+                "pending_images": pending_images,
+                "success": True
+            })
+            
+    except Exception as e:
+        print(f"Error fetching biologist notifications: {e}")
+        return jsonify({"error": str(e)}), 500
     finally:
         if conn:
             conn.close()

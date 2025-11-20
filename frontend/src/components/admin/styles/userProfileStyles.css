@@ -327,7 +327,6 @@
   align-items: center;
   gap: 1rem;
   padding: 1.5rem 2rem;
-  background: linear-gradient(135deg, var(--color-neutral), #ffffff);
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -367,13 +366,11 @@
   margin: 0;
   font-size: 1.4rem;
   font-weight: 600;
-  color: var(--text-primary);
 }
 
 .profile-header-content p {
   margin: 0.25rem 0 0 0;
   font-size: 0.9rem;
-  color: var(--text-secondary);
 }
 
 .profile-header-actions {
@@ -460,7 +457,6 @@
   align-items: center;
   gap: 0.75rem;
   font-weight: 500;
-  color: var(--text-primary);
   min-width: 150px;
 }
 
@@ -549,19 +545,16 @@
 .timeline-content h4 {
   margin: 0 0 0.5rem 0;
   font-weight: 600;
-  color: var(--text-primary);
 }
 
 .timeline-date {
   margin: 0.25rem 0;
   font-weight: 500;
-  color: var(--text-primary);
 }
 
 .timeline-time {
   margin: 0;
   font-size: 0.9rem;
-  color: var(--text-secondary);
 }
 
 /* Activity Logs Card */
@@ -783,7 +776,6 @@
   margin: 0;
   font-size: 1rem;
   font-weight: 600;
-  color: var(--text-primary);
   line-height: 1.4;
 }
 
