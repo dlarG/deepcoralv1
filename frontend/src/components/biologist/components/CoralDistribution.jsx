@@ -187,16 +187,25 @@ function CoralDistribution() {
 
       const paramString = params.toString();
 
-      // Load images for this location with filtering
+      // FIXED: For municipality scope, we still use the location coordinates but let the backend
+      // filter by municipality. The backend will get the municipality from this location
+      // and then fetch ALL images from that municipality.
       const imagesUrl = `http://${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/images?${paramString}`;
 
       console.log("Loading images from:", imagesUrl);
+      console.log(
+        "Scope:",
+        scope,
+        "Expected municipality:",
+        location.municipality
+      );
 
       const imagesResponse = await fetch(imagesUrl);
       const imagesData = await imagesResponse.json();
 
       if (imagesResponse.ok) {
         console.log("Loaded images:", imagesData.images?.length, "images");
+        console.log("Debug info:", imagesData.debug_info); // This will show the backend processing info
         setLocationImages(imagesData.images || []);
 
         // Update available transects based on the data
@@ -209,6 +218,8 @@ function CoralDistribution() {
             ),
           ] || [];
         setAvailableTransects(transects.sort());
+      } else {
+        console.error("Failed to load images:", imagesData.error);
       }
 
       // Load analytics for this location with filtering

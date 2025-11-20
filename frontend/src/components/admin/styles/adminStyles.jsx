@@ -3868,61 +3868,10 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
 
 
 
-.analysis-info {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: #d97706;
-  font-size: 0.875rem;
-  font-weight: 500;
-  margin-left: auto;
-  padding: 0.5rem 1rem;
-  background: #fef3c7;
-  border-radius: 6px;
-}
+
 
 /* Gallery Filter Actions */
-.gallery-filter-actions {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
 
-.filter-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #d1d5db;
-  background: white;
-  color: #6b7280;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.filter-btn:hover {
-  background: #f9fafb;
-  border-color: #9ca3af;
-}
-
-.filter-btn.active {
-  background: #3b82f6;
-  color: white;
-  border-color: #3b82f6;
-}
-
-.action-button.danger-outline {
-  background: white;
-  color: #ef4444;
-  border: 1px solid #ef4444;
-}
-
-.action-button.danger-outline:hover {
-  background: #ef4444;
-  color: white;
-}
 
 /* Enhanced Item Status */
 .item-status .quadrat-count.valid {

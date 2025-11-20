@@ -919,7 +919,7 @@ function UserProfile({ darkMode }) {
             <div className="header-icon actions">
               <FiSettings size={20} />
             </div>
-            <div className="header-content">
+            <div className="profile-header-content">
               <h2>Quick Actions</h2>
               <p>Common administrative tasks</p>
             </div>

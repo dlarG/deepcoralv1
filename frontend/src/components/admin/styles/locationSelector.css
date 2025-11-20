@@ -187,3 +187,129 @@
 .transect-select:invalid {
   border-color: #ef4444;
 }
+
+/* Add to locationSelector.css */
+
+.images-count-info {
+  color: #6b7280 !important;
+  font-size: 0.875rem;
+  margin-top: 4px !important;
+}
+
+.transect-status {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background-color: #f9fafb;
+}
+
+.transect-status h5 {
+  margin: 0 0 12px 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.transect-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.transect-item {
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background-color: white;
+  transition: all 0.2s;
+}
+
+.transect-item.selected {
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+}
+
+.transect-item.unavailable {
+  border-color: #fca5a5;
+  background-color: #fef2f2;
+}
+
+.transect-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.transect-header strong {
+  font-size: 0.875rem;
+  color: #374151;
+}
+
+.warning-icon {
+  color: #f59e0b;
+  font-size: 14px;
+}
+
+.transect-counts {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.current-count {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background-color: #e5e7eb;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.remaining-slots {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.selected-transect-info {
+  margin-top: 8px;
+  padding: 6px;
+  background-color: #dbeafe;
+  border-radius: 4px;
+}
+
+.selected-transect-info p {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #1e40af;
+  font-weight: 500;
+}
+
+.loading-transects {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  color: #6b7280;
+}
+
+.error-text {
+  font-weight: 500;
+}
+
+/* Disable styles for select options */
+select option:disabled {
+  color: #9ca3af;
+  background-color: #f3f4f6;
+}

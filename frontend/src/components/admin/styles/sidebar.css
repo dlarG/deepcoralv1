@@ -21,6 +21,159 @@
   box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
 }
 
+/* NEW: Notification Badge Styles */
+.nav-icon-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sidebar-notification-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #ef4444;
+  color: white;
+  border-radius: 50%;
+  min-width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  z-index: 10;
+}
+.notification-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #ef4444;
+  color: white;
+  border-radius: 50%;
+  min-width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  z-index: 10;
+  border: 2px solid var(--color-neutral, #ffffff);
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+  animation: notification-pulse 2s ease-in-out infinite;
+}
+
+.dark-mode .notification-badge {
+  border-color: var(--color-primary, #1e293b);
+}
+
+/* Pulsing animation for notification badge */
+@keyframes notification-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.5);
+  }
+}
+
+/* Badge variations for different counts */
+.notification-badge {
+  min-width: 18px;
+  padding: 0 4px;
+}
+
+/* For counts > 9, make badge slightly wider */
+.notification-badge:has-text {
+  min-width: 20px;
+  border-radius: 10px;
+}
+
+/* When sidebar is collapsed, adjust badge position */
+.sidebar.closed .notification-badge {
+  top: -6px;
+  right: -6px;
+  font-size: 9px;
+  min-width: 16px;
+  height: 16px;
+}
+
+/* Enhanced tooltip to show notification info */
+.sidebar.closed .nav-item-content:hover::after {
+  content: attr(data-tooltip) " (" attr(data-notification-count) " pending)";
+}
+
+/* Update nav-icon to work with container */
+.nav-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 2;
+  position: relative;
+  opacity: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: var(--text-secondary);
+}
+
+/* Active state adjustments */
+.sidebar-nav li.active .notification-badge {
+  border-color: var(--color-accent);
+  box-shadow: 0 2px 8px rgba(61, 218, 215, 0.4);
+}
+
+/* Hover effects */
+.nav-item-content:hover .notification-badge {
+  transform: scale(1.05);
+  box-shadow: 0 3px 10px rgba(239, 68, 68, 0.4);
+}
+
+/* Different badge colors for different types */
+.notification-badge.error {
+  background: #ef4444;
+}
+
+.notification-badge.warning {
+  background: #f59e0b;
+}
+
+.notification-badge.info {
+  background: #3b82f6;
+}
+
+.notification-badge.success {
+  background: #10b981;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  .notification-badge {
+    top: -6px;
+    right: -6px;
+    font-size: 9px;
+    min-width: 16px;
+    height: 16px;
+  }
+}
+
+/* Accessibility: Reduce animation for users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .notification-badge {
+    animation: none;
+  }
+
+  .nav-item-content:hover .notification-badge {
+    transform: none;
+  }
+}
+
 .sidebar.closed {
   width: 80px;
   box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);

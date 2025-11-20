@@ -37,7 +37,7 @@ const Dashboard = ({ user, setActiveTab }) => {
   };
 
   const handleViewAllActivities = () => {
-    console.log("Navigate to activities");
+    setActiveTab("Generate Report");
   };
 
   const handleViewAnalytics = () => {
@@ -182,7 +182,7 @@ const Dashboard = ({ user, setActiveTab }) => {
               <div className="users-list">
                 {recentUsers.map((user) => (
                   <div key={user.id} className="user-item">
-                    <div className="user-avatar">
+                    <div className="dashboard-user-avatar">
                       {user.profile_picture ? (
                         <img
                           src={`/profile_uploads/${user.profile_picture}`}

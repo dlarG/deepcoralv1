@@ -207,7 +207,6 @@ def get_distribution_locations():
     finally:
         if conn:
             conn.close()
-
 @distribution_bp.route('/location/<float:lat>/<float:lng>/images', methods=['GET'])
 @cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
 def get_location_images(lat, lng):
@@ -229,10 +228,10 @@ def get_location_images(lat, lng):
         with conn.cursor() as cur:
             # Build the base query conditions
             location_condition = ""
-            params = [lng, lat, tolerance]
+            params = []
             
             if scope == 'municipality':
-                # Get municipality from the clicked location first
+                # FIXED: Get municipality from the clicked location first
                 cur.execute("""
                     SELECT DISTINCT municipality 
                     FROM images 
@@ -240,14 +239,38 @@ def get_location_images(lat, lng):
                         location,
                         ST_SetSRID(ST_MakePoint(%s, %s), 4326),
                         %s
-                    ) AND municipality IS NOT NULL
+                    ) 
+                    AND municipality IS NOT NULL
+                    AND processing_status IN ('completed', 'manually_included_completed')
                     LIMIT 1
                 """, (lng, lat, tolerance))
                 
                 municipality_result = cur.fetchone()
                 if municipality_result and municipality_result[0]:
+                    municipality = municipality_result[0]
                     location_condition = "AND i.municipality = %s"
-                    params = [municipality_result[0]]
+                    params = [municipality]
+                    print(f"🔍 Municipality scope: fetching all images from '{municipality}' municipality")
+                    
+                    # Debug: Let's see what the date range is doing
+                    print(f"   Date filters: start_date={start_date}, end_date={end_date}")
+                    
+                    # Additional debug query to see all images in municipality without date filter
+                    cur.execute("""
+                        SELECT COUNT(*) as total_without_date,
+                               COUNT(*) FILTER (WHERE uploaded_at >= %s) as after_start,
+                               COUNT(*) FILTER (WHERE uploaded_at <= %s) as before_end
+                        FROM images 
+                        WHERE municipality = %s 
+                        AND processing_status IN ('completed', 'manually_included_completed')
+                        AND (upload_status = 'approved' OR upload_status IS NULL)
+                    """, [start_date if start_date else '1900-01-01', 
+                          end_date + ' 23:59:59' if end_date else '2100-12-31',
+                          municipality])
+                    
+                    debug_counts = cur.fetchone()
+                    print(f"   Debug counts - Total: {debug_counts[0]}, After start: {debug_counts[1]}, Before end: {debug_counts[2]}")
+                    
                 else:
                     # Fallback to location-based if no municipality found
                     location_condition = """AND ST_DWithin(
@@ -256,21 +279,25 @@ def get_location_images(lat, lng):
                         %s
                     )"""
                     params = [lng, lat, tolerance]
+                    print(f"⚠️ No municipality found, falling back to location-based search")
             else:
+                # Location scope - only images from this specific location
                 location_condition = """AND ST_DWithin(
                     i.location,
                     ST_SetSRID(ST_MakePoint(%s, %s), 4326),
                     %s
                 )"""
                 params = [lng, lat, tolerance]
+                print(f"🔍 Location scope: fetching images from specific coordinates ({lat}, {lng})")
             
-            # Add date filters
-            if start_date:
-                location_condition += " AND i.uploaded_at >= %s"
+            # Add date filters - FIXED: Only add if values are provided
+            date_conditions = []
+            if start_date and start_date.strip():
+                date_conditions.append(" AND i.uploaded_at >= %s")
                 params.append(start_date)
             
-            if end_date:
-                location_condition += " AND i.uploaded_at <= %s"
+            if end_date and end_date.strip():
+                date_conditions.append(" AND i.uploaded_at <= %s")
                 params.append(end_date + " 23:59:59")
             
             # Add transect filter
@@ -278,8 +305,14 @@ def get_location_images(lat, lng):
                 location_condition += " AND i.transect = %s"
                 params.append(int(transect))
             
+            # Combine all conditions
+            all_conditions = location_condition + ''.join(date_conditions)
+            
+            print(f"   Final query conditions: {all_conditions}")
+            print(f"   Parameters: {params}")
+            
             # UPDATED: Include both processing statuses and add processing_status to the SELECT
-            cur.execute(f"""
+            query = f"""
                 SELECT DISTINCT
                     i.id,
                     i.filename,
@@ -288,6 +321,8 @@ def get_location_images(lat, lng):
                     i.total_pixels,
                     i.transect,
                     i.processing_status,
+                    i.municipality,
+                    i.barangay,
                     CONCAT(u.firstname, ' ', u.lastname) as uploader_name,
                     ST_X(i.location) as longitude,
                     ST_Y(i.location) as latitude
@@ -296,12 +331,25 @@ def get_location_images(lat, lng):
                 WHERE i.location IS NOT NULL
                 AND i.processing_status IN ('completed', 'manually_included_completed')
                 AND (i.upload_status = 'approved' OR i.upload_status IS NULL)
-                {location_condition}
+                {all_conditions}
                 ORDER BY i.uploaded_at DESC
-            """, params)
+            """
+            
+            print(f"   Executing query: {query}")
+            cur.execute(query, params)
             
             images = []
+            municipalities_found = set()
+            locations_found = set()
+            
             for row in cur.fetchall():
+                if row[7]:  # municipality field
+                    municipalities_found.add(row[7])
+                
+                # Track unique locations for debugging
+                if row[10] and row[11]:  # longitude, latitude
+                    locations_found.add(f"{row[11]:.6f},{row[10]:.6f}")
+                    
                 images.append({
                     'id': row[0],
                     'filename': row[1],
@@ -309,19 +357,53 @@ def get_location_images(lat, lng):
                     'analysis_confidence': float(row[3]) if row[3] else 0,
                     'total_pixels': row[4],
                     'transect': row[5],
-                    'processing_status': row[6],  # Include for debugging
-                    'manually_included': row[6] == 'manually_included_completed',  # Derived from processing_status
-                    'uploader_name': row[7] or 'Unknown',
-                    'longitude': float(row[8]) if row[8] else lng,
-                    'latitude': float(row[9]) if row[9] else lat
+                    'processing_status': row[6],
+                    'municipality': row[7],
+                    'barangay': row[8],
+                    'manually_included': row[6] == 'manually_included_completed',
+                    'uploader_name': row[9] or 'Unknown',
+                    'longitude': float(row[10]) if row[10] else lng,
+                    'latitude': float(row[11]) if row[11] else lat
                 })
             
+            # Enhanced debug logging
             print(f"🔍 Location images query returned {len(images)} images")
             if images:
                 processing_statuses = [img['processing_status'] for img in images]
                 print(f"   Processing statuses: {set(processing_statuses)}")
                 manually_included_count = sum(1 for img in images if img.get('manually_included', False))
                 print(f"   Manually included count: {manually_included_count}")
+                print(f"   Municipalities found: {municipalities_found}")
+                print(f"   Unique locations found: {len(locations_found)} locations")
+                print(f"   Location coordinates: {list(locations_found)[:5]}...")  # Show first 5
+                
+                if scope == 'municipality' and 'municipality' in locals():
+                    print(f"   Expected municipality images for: {municipality}")
+                    
+                    # More detailed verification query
+                    cur.execute("""
+                        SELECT 
+                            COUNT(*) as total_all_time,
+                            COUNT(*) FILTER (WHERE uploaded_at >= %s AND uploaded_at <= %s) as in_date_range,
+                            COUNT(DISTINCT ST_X(location) || ',' || ST_Y(location)) as unique_locations,
+                            MIN(uploaded_at) as earliest,
+                            MAX(uploaded_at) as latest
+                        FROM images 
+                        WHERE municipality = %s 
+                        AND processing_status IN ('completed', 'manually_included_completed')
+                        AND (upload_status = 'approved' OR upload_status IS NULL)
+                    """, [
+                        start_date if start_date and start_date.strip() else '1900-01-01',
+                        (end_date + ' 23:59:59') if end_date and end_date.strip() else '2100-12-31',
+                        municipality
+                    ])
+                    
+                    verification = cur.fetchone()
+                    print(f"   📊 Municipality verification:")
+                    print(f"      - Total images all time: {verification[0]}")
+                    print(f"      - Images in date range: {verification[1]}")
+                    print(f"      - Unique locations: {verification[2]}")
+                    print(f"      - Date range in DB: {verification[3]} to {verification[4]}")
             
             return jsonify({
                 "images": images,
@@ -334,7 +416,17 @@ def get_location_images(lat, lng):
                 "debug_info": {
                     "total_images": len(images),
                     "processing_statuses": list(set([img['processing_status'] for img in images])),
-                    "manually_included_count": sum(1 for img in images if img.get('manually_included', False))
+                    "manually_included_count": sum(1 for img in images if img.get('manually_included', False)),
+                    "municipalities_found": list(municipalities_found),
+                    "unique_locations_count": len(locations_found),
+                    "scope_applied": scope,
+                    "municipality_filter": municipality if scope == 'municipality' and 'municipality' in locals() else None,
+                    "date_filters_applied": {
+                        "start_date": start_date,
+                        "end_date": end_date,
+                        "has_start": bool(start_date and start_date.strip()),
+                        "has_end": bool(end_date and end_date.strip())
+                    }
                 }
             })
             

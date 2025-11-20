@@ -10,6 +10,7 @@ import {
   FiCheckCircle,
   FiPlus,
   FiLoader,
+  FiAlertTriangle,
 } from "react-icons/fi";
 import {
   MapContainer,
@@ -93,20 +94,166 @@ const LocationSelector = ({
   const mapRef = useRef();
   const [municipality, setMunicipality] = useState("");
   const [barangay, setBarangay] = useState("");
-  const [transect, setTransect] = useState(1); // New transect state
+  const [transect, setTransect] = useState("");
+
+  // NEW: State for transect validation
+  const [transectCounts, setTransectCounts] = useState({});
+  const [loadingTransectCounts, setLoadingTransectCounts] = useState(false);
+  const [imagesToSaveCount, setImagesToSaveCount] = useState(0);
+
+  // Constants
+  const MAX_IMAGES_PER_TRANSECT = 50;
 
   const getLocationDisplayName = (location, index) => {
-    return `Location ${index + 1}`;
+    if (location.municipality && location.barangay) {
+      return `${location.municipality} - ${location.barangay}`;
+    } else if (location.municipality) {
+      return location.municipality;
+    } else if (location.barangay) {
+      return location.barangay;
+    } else {
+      return `Location ${index + 1}`;
+    }
+  };
+
+  // NEW: Function to count images to be saved
+  const countImagesToSave = () => {
+    let imageCount = 0;
+
+    // Count from batch results
+    if (batchResults?.results && Array.isArray(batchResults.results)) {
+      batchResults.results.forEach((result) => {
+        if (result.crops && Array.isArray(result.crops)) {
+          result.crops.forEach((crop) => {
+            if (crop && typeof crop === "object" && crop.image_id) {
+              imageCount++;
+            }
+          });
+        }
+      });
+    }
+
+    // Count from processed images if batch failed
+    if (imageCount === 0 && processedImages && Array.isArray(processedImages)) {
+      processedImages.forEach((img) => {
+        if (
+          img.segmentationData &&
+          img.segmentationData.crops &&
+          Array.isArray(img.segmentationData.crops)
+        ) {
+          img.segmentationData.crops.forEach((crop) => {
+            if (crop && typeof crop === "object" && crop.image_id) {
+              imageCount++;
+            }
+          });
+        }
+      });
+    }
+
+    // Remove duplicates (if any)
+    return imageCount;
+  };
+
+  // NEW: Function to load transect counts for a specific location
+  const loadTransectCounts = async (location) => {
+    if (!location) return;
+
+    try {
+      setLoadingTransectCounts(true);
+      console.log("🔢 Loading transect counts for location:", location);
+
+      const response = await fetch(
+        `http://${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/images?scope=location`
+      );
+      const data = await response.json();
+
+      if (response.ok && data.images) {
+        // Count images per transect
+        const counts = {};
+        for (let i = 1; i <= 5; i++) {
+          counts[i] = 0;
+        }
+
+        data.images.forEach((image) => {
+          if (image.transect && image.transect >= 1 && image.transect <= 5) {
+            counts[image.transect] = (counts[image.transect] || 0) + 1;
+          }
+        });
+
+        console.log("📊 Transect counts:", counts);
+        setTransectCounts(counts);
+      } else {
+        console.error("Failed to load transect counts:", data.error);
+        // Initialize with zeros if failed
+        const counts = {};
+        for (let i = 1; i <= 5; i++) {
+          counts[i] = 0;
+        }
+        setTransectCounts(counts);
+      }
+    } catch (error) {
+      console.error("Error loading transect counts:", error);
+      // Initialize with zeros if error
+      const counts = {};
+      for (let i = 1; i <= 5; i++) {
+        counts[i] = 0;
+      }
+      setTransectCounts(counts);
+    } finally {
+      setLoadingTransectCounts(false);
+    }
+  };
+
+  // NEW: Function to check if a transect is available
+  const isTransectAvailable = (transectNumber) => {
+    const currentCount = transectCounts[transectNumber] || 0;
+    const wouldExceed =
+      currentCount + imagesToSaveCount > MAX_IMAGES_PER_TRANSECT;
+    return !wouldExceed;
+  };
+
+  // NEW: Function to get transect status message
+  const getTransectStatusMessage = (transectNumber) => {
+    const currentCount = transectCounts[transectNumber] || 0;
+    const remainingSlots = MAX_IMAGES_PER_TRANSECT - currentCount;
+
+    if (remainingSlots <= 0) {
+      return `Full (${currentCount}/${MAX_IMAGES_PER_TRANSECT})`;
+    } else if (imagesToSaveCount > remainingSlots) {
+      return `Not enough space (${currentCount}/${MAX_IMAGES_PER_TRANSECT}, need ${imagesToSaveCount}, only ${remainingSlots} available)`;
+    } else {
+      return `Available (${currentCount}/${MAX_IMAGES_PER_TRANSECT}, ${remainingSlots} slots remaining)`;
+    }
   };
 
   // Load existing locations on mount
   useEffect(() => {
     if (isOpen) {
       loadExistingLocations();
+      // Count images to save
+      const count = countImagesToSave();
+      setImagesToSaveCount(count);
+      console.log(`📸 Images to save: ${count}`);
     }
-  }, [isOpen]);
+  }, [isOpen, batchResults, processedImages]);
+
+  // Load transect counts when location changes
+  useEffect(() => {
+    if (selectedLocation && !selectedLocation.isNew) {
+      loadTransectCounts(selectedLocation.data || selectedLocation);
+    } else {
+      // Reset transect counts for new locations
+      const counts = {};
+      for (let i = 1; i <= 5; i++) {
+        counts[i] = 0;
+      }
+      setTransectCounts(counts);
+    }
+  }, [selectedLocation]);
 
   const handleExistingLocationClick = (location) => {
+    console.log("Selected existing location:", location);
+
     setSelectedLocation({
       lat: location.latitude,
       lng: location.longitude,
@@ -118,8 +265,8 @@ const LocationSelector = ({
     // Load municipality and barangay from existing location
     setMunicipality(location.municipality || "");
     setBarangay(location.barangay || "");
-    // Reset transect to default for existing locations
-    setTransect(1);
+    // Reset transect selection
+    setTransect("");
 
     // Pan to location
     const newCenter = [location.latitude, location.longitude];
@@ -134,18 +281,61 @@ const LocationSelector = ({
   const loadExistingLocations = async () => {
     try {
       setLoading(true);
+      console.log("🔍 Loading existing locations...");
+
+      // FIXED: Use the distribution endpoint which has consistent data structure
       const response = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/gis/locations`
+        `http://${process.env.REACT_APP_API_URL}/distribution/locations`
       );
       const data = await response.json();
 
-      if (response.ok) {
-        setExistingLocations(data.locations);
+      console.log("📍 Raw locations response:", data);
+
+      if (response.ok && data.locations) {
+        console.log(`✅ Found ${data.locations.length} existing locations`);
+
+        // Process the locations to ensure consistent structure
+        const processedLocations = data.locations.map((loc, index) => {
+          console.log(`Processing location ${index}:`, loc);
+
+          return {
+            latitude: loc.latitude,
+            longitude: loc.longitude,
+            municipality: loc.municipality || "",
+            barangay: loc.barangay || "",
+            image_count: loc.image_count || 0,
+            coral_types: loc.coral_types || [],
+            last_update: loc.date_range || new Date().toISOString(),
+            contributor_count: loc.contributor_count || 0,
+            transects: [], // Will be populated if available
+            location_id: loc.location_id || getLocationDisplayName(loc, index),
+          };
+        });
+
+        setExistingLocations(processedLocations);
+        console.log("✅ Processed locations:", processedLocations);
+
+        // If we have locations, adjust map view to show them
+        if (processedLocations.length > 0) {
+          const avgLat =
+            processedLocations.reduce((sum, loc) => sum + loc.latitude, 0) /
+            processedLocations.length;
+          const avgLng =
+            processedLocations.reduce((sum, loc) => sum + loc.longitude, 0) /
+            processedLocations.length;
+          setMapCenter([avgLat, avgLng]);
+          setMapZoom(8);
+        }
       } else {
-        console.error("Failed to load locations:", data.error);
+        console.error(
+          "❌ Failed to load locations:",
+          data.error || "Unknown error"
+        );
+        setExistingLocations([]);
       }
     } catch (error) {
-      console.error("Error loading existing locations:", error);
+      console.error("❌ Error loading existing locations:", error);
+      setExistingLocations([]);
     } finally {
       setLoading(false);
     }
@@ -225,8 +415,8 @@ const LocationSelector = ({
       // Clear municipality and barangay for new location
       setMunicipality("");
       setBarangay("");
-      // Reset transect to default for new locations
-      setTransect(1);
+      // Reset transect selection
+      setTransect("");
     }
   };
 
@@ -240,6 +430,20 @@ const LocationSelector = ({
     // Validate transect selection
     if (!transect || transect < 1 || transect > 5) {
       alert("Please select a valid transect number (1-5).");
+      return;
+    }
+
+    // NEW: Validate transect capacity
+    if (!selectedLocation.isNew && !isTransectAvailable(transect)) {
+      const currentCount = transectCounts[transect] || 0;
+      const remainingSlots = MAX_IMAGES_PER_TRANSECT - currentCount;
+      alert(
+        `Cannot save to Transect ${transect}. ` +
+          `Current images: ${currentCount}/${MAX_IMAGES_PER_TRANSECT}. ` +
+          `Available slots: ${remainingSlots}. ` +
+          `Images to save: ${imagesToSaveCount}. ` +
+          `Please choose a different transect.`
+      );
       return;
     }
 
@@ -397,6 +601,20 @@ const LocationSelector = ({
         return;
       }
 
+      // NEW: Final validation before saving
+      if (!selectedLocation.isNew) {
+        const currentCount = transectCounts[transect] || 0;
+        if (currentCount + imageIds.length > MAX_IMAGES_PER_TRANSECT) {
+          alert(
+            `Final validation failed: Transect ${transect} would have ${
+              currentCount + imageIds.length
+            } images, ` +
+              `exceeding the limit of ${MAX_IMAGES_PER_TRANSECT}. Please choose a different transect.`
+          );
+          return;
+        }
+      }
+
       console.log(`✅ Proceeding with ${imageIds.length} image IDs:`, imageIds);
 
       const requestBody = {
@@ -433,6 +651,10 @@ const LocationSelector = ({
         alert(
           `Successfully saved ${data.updated_count} images with location data and transect ${transect}!`
         );
+
+        // Reload existing locations to show the new data
+        await loadExistingLocations();
+
         onSave(selectedLocation, data);
         onClose();
       } else {
@@ -457,6 +679,10 @@ const LocationSelector = ({
             <div>
               <h2>Select Location for Coral Data</h2>
               <p>Choose where these coral images were captured</p>
+              {/* NEW: Show images to save count */}
+              <p className="images-count-info">
+                📸 Images to save: <strong>{imagesToSaveCount}</strong>
+              </p>
             </div>
           </div>
           <button className="close-btn" onClick={onClose}>
@@ -524,14 +750,14 @@ const LocationSelector = ({
                 <FiCheckCircle size={16} />
                 <div>
                   <strong>
-                    {selectedLocation.municipality || selectedLocation.barangay
-                      ? `${selectedLocation.municipality || ""}${
-                          selectedLocation.municipality &&
-                          selectedLocation.barangay
-                            ? " - "
-                            : ""
-                        }${selectedLocation.barangay || ""}`
-                      : "Selected Location"}
+                    {selectedLocation.isNew
+                      ? municipality && barangay
+                        ? `${municipality} - ${barangay}`
+                        : "New Location"
+                      : getLocationDisplayName(
+                          selectedLocation.data || selectedLocation,
+                          0
+                        )}
                   </strong>
                   <p>
                     Lat: {selectedLocation.lat.toFixed(6)}, Lng:{" "}
@@ -548,41 +774,131 @@ const LocationSelector = ({
                       )}
                     </p>
                   )}
-                  {!selectedLocation.isNew && municipality && (
-                    <p className="location-details">
-                      Municipality: {municipality}
-                      {barangay && ` • Barangay: ${barangay}`}
-                    </p>
-                  )}
                 </div>
               </div>
             )}
 
-            {/* Transect Selection - Always show when location is selected */}
+            {/* NEW: Enhanced Transect Selection with Validation */}
             {selectedLocation && (
               <div className="transect-selection">
                 <h4>Transect Information</h4>
-                <div className="form-group">
-                  <label htmlFor="transect">Transect Number:</label>
-                  <select
-                    id="transect"
-                    value={transect}
-                    onChange={(e) => setTransect(parseInt(e.target.value))}
-                    className="transect-select"
-                    required
-                  >
-                    <option value="">Select Transect</option>
-                    <option value={1}>Transect 1</option>
-                    <option value={2}>Transect 2</option>
-                    <option value={3}>Transect 3</option>
-                    <option value={4}>Transect 4</option>
-                    <option value={5}>Transect 5</option>
-                  </select>
-                </div>
-                <p className="transect-help">
-                  Select the transect number (1-5) for this coral data
-                  collection.
-                </p>
+                {loadingTransectCounts ? (
+                  <div className="loading-transects">
+                    <FiLoader className="spinning" />
+                    <p>Loading transect information...</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="form-group">
+                      <label htmlFor="transect">Transect Number:</label>
+                      <select
+                        id="transect"
+                        value={transect}
+                        onChange={(e) =>
+                          setTransect(parseInt(e.target.value) || "")
+                        }
+                        className="transect-select"
+                        required
+                      >
+                        <option value="">Select Transect</option>
+                        {[1, 2, 3, 4, 5].map((num) => {
+                          const available =
+                            selectedLocation.isNew || isTransectAvailable(num);
+                          return (
+                            <option key={num} value={num} disabled={!available}>
+                              Transect {num} {!available ? "(Full)" : ""}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+
+                    {/* NEW: Transect Status Display */}
+                    {!selectedLocation.isNew && (
+                      <div className="transect-status">
+                        <h5>Transect Capacity Status:</h5>
+                        <div className="transect-grid">
+                          {[1, 2, 3, 4, 5].map((num) => {
+                            const available = isTransectAvailable(num);
+                            const currentCount = transectCounts[num] || 0;
+                            const remainingSlots =
+                              MAX_IMAGES_PER_TRANSECT - currentCount;
+
+                            return (
+                              <div
+                                key={num}
+                                className={`transect-item ${
+                                  !available ? "unavailable" : ""
+                                } ${transect === num ? "selected" : ""}`}
+                              >
+                                <div className="transect-header">
+                                  <strong>Transect {num}</strong>
+                                  {!available && (
+                                    <FiAlertTriangle className="warning-icon" />
+                                  )}
+                                </div>
+                                <div className="transect-counts">
+                                  <span className="current-count">
+                                    {currentCount}/{MAX_IMAGES_PER_TRANSECT}
+                                  </span>
+                                  <div className="progress-bar">
+                                    <div
+                                      className="progress-fill"
+                                      style={{
+                                        width: `${
+                                          (currentCount /
+                                            MAX_IMAGES_PER_TRANSECT) *
+                                          100
+                                        }%`,
+                                        backgroundColor:
+                                          currentCount >=
+                                          MAX_IMAGES_PER_TRANSECT
+                                            ? "#dc2626"
+                                            : currentCount + imagesToSaveCount >
+                                              MAX_IMAGES_PER_TRANSECT
+                                            ? "#f59e0b"
+                                            : "#10b981",
+                                      }}
+                                    />
+                                  </div>
+                                  <span className="remaining-slots">
+                                    {available
+                                      ? `${remainingSlots} slots`
+                                      : "Full"}
+                                  </span>
+                                </div>
+                                {transect === num && (
+                                  <div className="selected-transect-info">
+                                    <p>
+                                      After saving:{" "}
+                                      {currentCount + imagesToSaveCount}/
+                                      {MAX_IMAGES_PER_TRANSECT}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    <p className="transect-help">
+                      Select the transect number (1-5) for this coral data
+                      collection.
+                      <br />
+                      <strong>
+                        Maximum {MAX_IMAGES_PER_TRANSECT} images per transect.
+                      </strong>
+                      {!selectedLocation.isNew && (
+                        <>
+                          <br />
+                          You are about to save {imagesToSaveCount} images.
+                        </>
+                      )}
+                    </p>
+                  </>
+                )}
               </div>
             )}
 
@@ -642,61 +958,105 @@ const LocationSelector = ({
 
               <MapClickHandler onMapClick={handleMapClick} mode={mode} />
 
-              {/* Existing location markers */}
-              {existingLocations.map((location, index) => (
-                <Marker
-                  key={index}
-                  position={[location.latitude, location.longitude]}
-                  icon={createCustomIcon(
-                    "#2563eb",
-                    selectedLocation &&
-                      selectedLocation.lat === location.latitude &&
-                      selectedLocation.lng === location.longitude
-                  )}
-                  eventHandlers={{
-                    click: () => handleExistingLocationClick(location),
+              {/* Debug: Show loading state on map */}
+              {loading && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "10px",
+                    left: "10px",
+                    background: "rgba(0,0,0,0.7)",
+                    color: "white",
+                    padding: "5px 10px",
+                    borderRadius: "5px",
+                    zIndex: 1000,
                   }}
                 >
-                  <Popup>
-                    <div className="location-popup">
-                      <strong>{getLocationDisplayName(location, index)}</strong>
-                      {/* Show additional details if municipality/barangay exist */}
-                      {(location.municipality || location.barangay) && (
-                        <div className="location-address">
-                          {location.municipality && (
-                            <p className="address-line">
-                              📍 {location.municipality}
-                            </p>
-                          )}
-                          {location.barangay && (
-                            <p className="address-line">
-                              🏘️ {location.barangay}
-                            </p>
-                          )}
+                  Loading locations...
+                </div>
+              )}
+
+              {/* Debug: Show location count */}
+              {!loading && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "10px",
+                    left: "10px",
+                    background: "rgba(0,0,0,0.7)",
+                    color: "white",
+                    padding: "5px 10px",
+                    borderRadius: "5px",
+                    zIndex: 1000,
+                  }}
+                >
+                  {existingLocations.length} locations found
+                </div>
+              )}
+
+              {/* Existing location markers */}
+              {existingLocations.map((location, index) => {
+                console.log(`Rendering marker ${index}:`, location);
+                return (
+                  <Marker
+                    key={`existing-${index}`}
+                    position={[location.latitude, location.longitude]}
+                    icon={createCustomIcon(
+                      "#2563eb",
+                      selectedLocation &&
+                        selectedLocation.lat === location.latitude &&
+                        selectedLocation.lng === location.longitude
+                    )}
+                    eventHandlers={{
+                      click: () => handleExistingLocationClick(location),
+                    }}
+                  >
+                    <Popup>
+                      <div className="location-popup">
+                        <strong>
+                          {getLocationDisplayName(location, index)}
+                        </strong>
+                        {/* Show additional details if municipality/barangay exist */}
+                        {(location.municipality || location.barangay) && (
+                          <div className="location-address">
+                            {location.municipality && (
+                              <p className="address-line">
+                                📍 {location.municipality}
+                              </p>
+                            )}
+                            {location.barangay && (
+                              <p className="address-line">
+                                🏘️ {location.barangay}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        <div className="popup-stats">
+                          <p>📷 Images: {location.image_count}</p>
+                          <p>
+                            🪸 Coral Types: {location.coral_types?.length || 0}
+                          </p>
+                          <p className="coordinates">
+                            📍 {location.latitude.toFixed(4)},{" "}
+                            {location.longitude.toFixed(4)}
+                          </p>
                         </div>
-                      )}
-                      <div className="popup-stats">
-                        <p>📷 Images: {location.image_count}</p>
-                        <p>🪸 Coral Types: {location.coral_types.length}</p>
-                        <p className="coordinates">
-                          📍 {location.latitude.toFixed(4)},{" "}
-                          {location.longitude.toFixed(4)}
-                        </p>
+                        <button
+                          onClick={() => handleExistingLocationClick(location)}
+                          className="select-location-btn"
+                        >
+                          Select This Location
+                        </button>
                       </div>
-                      <button
-                        onClick={() => handleExistingLocationClick(location)}
-                        className="select-location-btn"
-                      >
-                        Select This Location
-                      </button>
-                    </div>
-                  </Popup>
-                </Marker>
-              ))}
+                    </Popup>
+                  </Marker>
+                );
+              })}
 
               {/* New location marker */}
               {selectedLocation && selectedLocation.isNew && (
                 <Marker
+                  key="new-location"
                   position={[selectedLocation.lat, selectedLocation.lng]}
                   icon={createCustomIcon("#dc2626", true)}
                 >
@@ -728,7 +1088,12 @@ const LocationSelector = ({
               Existing Locations ({existingLocations.length})
             </h3>
             <div className="locations-list">
-              {existingLocations.length === 0 ? (
+              {loading ? (
+                <div className="loading-locations">
+                  <FiLoader className="spinning" />
+                  <p>Loading locations...</p>
+                </div>
+              ) : existingLocations.length === 0 ? (
                 <div className="no-locations">
                   <p>
                     No existing locations found. Create a new one by clicking on
@@ -738,7 +1103,7 @@ const LocationSelector = ({
               ) : (
                 existingLocations.map((location, index) => (
                   <div
-                    key={index}
+                    key={`location-item-${index}`}
                     className={`location-item ${
                       selectedLocation &&
                       selectedLocation.lat === location.latitude &&
@@ -761,16 +1126,18 @@ const LocationSelector = ({
                       )}
                       <p>
                         Images: {location.image_count} | Types:{" "}
-                        {location.coral_types.length}
+                        {location.coral_types?.length || 0}
                       </p>
                       <p className="coordinates">
                         {location.latitude.toFixed(4)},{" "}
                         {location.longitude.toFixed(4)}
                       </p>
-                      <p className="last-update">
-                        Last updated:{" "}
-                        {new Date(location.last_update).toLocaleDateString()}
-                      </p>
+                      {location.last_update && (
+                        <p className="last-update">
+                          Last updated:{" "}
+                          {new Date(location.last_update).toLocaleDateString()}
+                        </p>
+                      )}
                     </div>
                     <FiInfo size={16} />
                   </div>
@@ -792,6 +1159,14 @@ const LocationSelector = ({
                 Please select a transect number
                 {selectedLocation.isNew && " and fill in location details"}{" "}
                 before saving.
+                {!selectedLocation.isNew &&
+                  transect &&
+                  !isTransectAvailable(transect) && (
+                    <span className="error-text">
+                      <br />
+                      ⚠️ Selected transect is full. Please choose another.
+                    </span>
+                  )}
               </p>
             )}
           </div>
@@ -802,7 +1177,12 @@ const LocationSelector = ({
             <button
               className="uploads-save-btn"
               onClick={handleSaveLocation}
-              disabled={!selectedLocation || !transect || loading}
+              disabled={
+                !selectedLocation ||
+                !transect ||
+                loading ||
+                (!selectedLocation.isNew && !isTransectAvailable(transect))
+              }
             >
               <FiSave size={16} />
               {loading ? "Saving..." : "Save Location"}

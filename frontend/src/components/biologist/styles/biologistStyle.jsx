@@ -901,7 +901,6 @@ const getBiologistStyle = (sidebarOpen, darkMode = false) => `
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 1.5rem 0;
 }
 
 .sidebar-header {
@@ -963,143 +962,6 @@ const getBiologistStyle = (sidebarOpen, darkMode = false) => `
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background: var(--card-background, #fff);
-  border-radius: 12px;
-  max-width: 600px;
-  max-height: 80vh;
-  overflow: hidden;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-}
-
-.researchers-modal {
-  width: 90vw;
-  max-width: 700px;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5rem;
-  border-bottom: 1px solid var(--border-color, #e5e7eb);
-}
-
-.modal-header h3 {
-  margin: 0;
-  color: var(--text-primary, #1f2937);
-}
-
-.modal-close {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--text-secondary, #6b7280);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  transition: background-color 0.2s;
-}
-
-.modal-close:hover {
-  background: var(--hover-background, #f3f4f6);
-}
-
-.modal-body {
-  padding: 1.5rem;
-  max-height: 60vh;
-  overflow-y: auto;
-}
-
-.researchers-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.researcher-card {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem;
-  border: 1px solid var(--border-color, #e5e7eb);
-  border-radius: 8px;
-  background: var(--card-background, #fff);
-  transition: box-shadow 0.2s;
-}
-
-.researcher-card:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-
-
-
-
-
-
-.researcher-stats {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  text-align: right;
-}
-
-.stat-item {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-  color: var(--text-secondary, #6b7280);
-}
-
-.last-active {
-  font-size: 0.75rem;
-  color: var(--text-tertiary, #9ca3af);
-}
-
-.no-researchers {
-  text-align: center;
-  padding: 3rem 1rem;
-  color: var(--text-secondary, #6b7280);
-}
-
-.no-researchers svg {
-  margin-bottom: 1rem;
-  opacity: 0.5;
-}
-
-@media (max-width: 768px) {
-  .researcher-card {
-    flex-direction: column;
-    text-align: center;
-  }
-  
-  .researcher-stats {
-    text-align: center;
-  }
-  
-  .stat-item {
-    justify-content: center;
-  }
-}
 
 
 .nav-section-title {
@@ -1529,9 +1391,6 @@ const getBiologistStyle = (sidebarOpen, darkMode = false) => `
   transform: translateX(4px);
 }
 
-.analysis-info {
-  flex: 1;
-}
 
 .species-name {
   font-size: 1rem;

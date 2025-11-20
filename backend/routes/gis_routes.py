@@ -80,7 +80,6 @@ def get_existing_locations():
     finally:
         if conn:
             conn.close()
-
 @gis_bp.route('/save_with_location', methods=['POST', 'OPTIONS'])
 @cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
 def save_images_with_location():
@@ -100,6 +99,13 @@ def save_images_with_location():
         municipality = data.get('municipality', '').strip()
         barangay = data.get('barangay', '').strip()
         
+        print(f"🏗️ Saving images with location:")
+        print(f"   Image IDs: {len(image_ids)} images")
+        print(f"   Location: {location}")
+        print(f"   Municipality from request: '{municipality}'")
+        print(f"   Barangay from request: '{barangay}'")
+        print(f"   Transect: {transect}")
+        
         # Validate location format
         if not isinstance(location, dict) or 'lat' not in location or 'lng' not in location:
             return jsonify({"error": "Invalid location format"}), 400
@@ -114,43 +120,116 @@ def save_images_with_location():
             
         try:
             with conn.cursor() as cur:
-                # Update images with location, municipality, barangay, and transect
+                # NEW: If municipality/barangay not provided in request, 
+                # try to get them from existing images at this location
+                if not municipality or not barangay:
+                    print(f"🔍 Municipality/Barangay not provided, checking existing location data...")
+                    
+                    tolerance = 0.0001  # Same tolerance used in other functions
+                    cur.execute("""
+                        SELECT 
+                            municipality, 
+                            barangay,
+                            COUNT(*) as image_count
+                        FROM images 
+                        WHERE ST_DWithin(
+                            location,
+                            ST_SetSRID(ST_MakePoint(%s, %s), 4326),
+                            %s
+                        )
+                        AND municipality IS NOT NULL 
+                        AND municipality != ''
+                        AND barangay IS NOT NULL 
+                        AND barangay != ''
+                        GROUP BY municipality, barangay
+                        ORDER BY image_count DESC
+                        LIMIT 1
+                    """, (location['lng'], location['lat'], tolerance))
+                    
+                    existing_location = cur.fetchone()
+                    
+                    if existing_location:
+                        # Use existing location's municipality/barangay if not provided
+                        if not municipality:
+                            municipality = existing_location[0]
+                            print(f"   📍 Using existing municipality: '{municipality}'")
+                        if not barangay:
+                            barangay = existing_location[1]
+                            print(f"   🏘️ Using existing barangay: '{barangay}'")
+                    else:
+                        print(f"   ⚠️ No existing municipality/barangay found at this location")
+                
+                print(f"   Final municipality: '{municipality}'")
+                print(f"   Final barangay: '{barangay}'")
+                
                 updated_count = 0
                 failed_updates = []
                 
                 for image_id in image_ids:
                     try:
-                        # Build the update query conditionally
-                        if municipality and barangay:
-                            # New location with municipality and barangay
-                            cur.execute("""
-                                UPDATE images 
-                                SET location = ST_SetSRID(ST_MakePoint(%s, %s), 4326),
-                                    municipality = %s,
-                                    barangay = %s,
-                                    transect = %s
-                                WHERE id = %s
-                            """, (location['lng'], location['lat'], municipality, barangay, transect, image_id))
-                        else:
-                            # Existing location, only update location and transect
-                            cur.execute("""
-                                UPDATE images 
-                                SET location = ST_SetSRID(ST_MakePoint(%s, %s), 4326),
-                                    transect = %s
-                                WHERE id = %s
-                            """, (location['lng'], location['lat'], transect, image_id))
+                        # UPDATED: Always update location and transect, 
+                        # and now always update municipality/barangay when available
+                        set_clauses = [
+                            "location = ST_SetSRID(ST_MakePoint(%s, %s), 4326)",
+                            "transect = %s"
+                        ]
+                        params = [location['lng'], location['lat'], transect]
+                        
+                        # FIXED: Always update municipality and barangay when we have values
+                        # (either from request or from existing location)
+                        if municipality:
+                            set_clauses.append("municipality = %s")
+                            params.append(municipality)
+                        
+                        if barangay:
+                            set_clauses.append("barangay = %s")
+                            params.append(barangay)
+                        
+                        # Add the WHERE clause parameter
+                        params.append(image_id)
+                        
+                        # Build the complete query
+                        query = f"""
+                            UPDATE images 
+                            SET {', '.join(set_clauses)}
+                            WHERE id = %s
+                        """
+                        
+                        print(f"   Updating image {image_id}:")
+                        print(f"     Query: {query}")
+                        print(f"     Params: {params}")
+                        
+                        cur.execute(query, params)
                         
                         if cur.rowcount > 0:
                             updated_count += 1
+                            print(f"   ✅ Successfully updated image {image_id}")
                         else:
                             failed_updates.append(image_id)
+                            print(f"   ❌ Failed to update image {image_id} - no rows affected")
                             
                     except Exception as img_error:
-                        print(f"Error updating image {image_id}: {img_error}")
+                        print(f"   ❌ Error updating image {image_id}: {img_error}")
                         failed_updates.append(image_id)
                         continue
                 
                 conn.commit()
+                print(f"🎯 Update complete: {updated_count} images updated successfully")
+                
+                # Verify the updates by checking a few images
+                if updated_count > 0:
+                    sample_ids = image_ids[:3]  # Check first 3 images
+                    cur.execute("""
+                        SELECT id, municipality, barangay, transect, 
+                               ST_X(location) as lng, ST_Y(location) as lat
+                        FROM images 
+                        WHERE id = ANY(%s)
+                    """, (sample_ids,))
+                    
+                    verification_results = cur.fetchall()
+                    print(f"🔍 Verification of updated records:")
+                    for row in verification_results:
+                        print(f"   ID {row[0]}: municipality='{row[1]}', barangay='{row[2]}', transect={row[3]}, coords=({row[5]:.6f},{row[4]:.6f})")
                 
                 response_data = {
                     "success": True,
@@ -159,7 +238,7 @@ def save_images_with_location():
                     "message": f"Successfully saved {updated_count} images with location data and transect {transect}"
                 }
                 
-                # Include municipality and barangay in response if they were provided
+                # Include the final municipality and barangay values in response
                 if municipality:
                     response_data["municipality"] = municipality
                 if barangay:
@@ -169,6 +248,7 @@ def save_images_with_location():
                 if failed_updates:
                     response_data["failed_updates"] = failed_updates
                     response_data["message"] += f". Failed to update {len(failed_updates)} images."
+                    response_data["warning"] = f"Some images could not be updated. IDs: {failed_updates}"
                 
                 return jsonify(response_data)
                 
@@ -177,7 +257,9 @@ def save_images_with_location():
             raise e
             
     except Exception as e:
-        print(f"Error saving location: {e}")
+        print(f"❌ Error saving location: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
     finally:
         if conn:

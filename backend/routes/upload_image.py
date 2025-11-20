@@ -100,7 +100,7 @@ if PYTORCH_AVAILABLE:
         print("✅ Segmentation models imported successfully")
         
         BASE_DIR = Path(__file__).parent.parent
-        MODEL_PATH = BASE_DIR.parent / "backend" / "models" / "segmentation" / "version3" / "coral_unet_best.pth"
+        MODEL_PATH = BASE_DIR.parent / "backend" / "models" / "segmentation" / "version4" / "coral_unet_best.pth"
         
         print(f"🔄 Loading segmentation model from: {MODEL_PATH}")
         print(f"📁 Model exists: {MODEL_PATH.exists()}")
@@ -128,7 +128,7 @@ if PYTORCH_AVAILABLE:
                 SEGMENTATION_AVAILABLE = True
                 
                 segmentation_transform = A.Compose([
-                    A.Resize(1024, 1024),
+                    A.Resize(512, 512),
                     A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                     ToTensorV2()
                 ])
@@ -191,7 +191,7 @@ def predict_segmentation(image):
         raise Exception("Segmentation model not available")
     
     transform = A.Compose([
-        A.Resize(1024, 1024),
+        A.Resize(512, 512),
         A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ToTensorV2()
     ])
@@ -352,7 +352,7 @@ def serve_crop(filename):
 def serve_mask(filename):
     return send_from_directory(MASKS_FOLDER, filename)
 
-def preprocess_for_segmentation(image_path, target_size=(1024, 1024)):
+def preprocess_for_segmentation(image_path, target_size=(512, 512)):
     """Preprocess image for segmentation model"""
     transform = A.Compose([
         A.Resize(target_size[0], target_size[1]),
@@ -1224,7 +1224,7 @@ def detect_crop_and_segment():
                 analysis_confidence = float(box.conf) if hasattr(box, 'conf') else 0.85
 
                 # Save to database
-                image_id = save_image_to_database(
+                image_id = save_image_to_database_with_override(
                     crop_filename, 
                     uploader_id, 
                     total_pixels, 
@@ -1432,6 +1432,9 @@ def batch_analyze_images():
         for file_index, file in enumerate(files):
             if not file or file.filename == '':
                 continue
+
+            progress_percentage = ((file_index + 1) / len(files)) * 100
+            print(f"🔄 Processing file {file_index + 1}/{len(files)} ({progress_percentage:.1f}%): {file.filename}")
                 
             # Check if this file was manually included
             is_manually_included = file_index in manually_included_indices

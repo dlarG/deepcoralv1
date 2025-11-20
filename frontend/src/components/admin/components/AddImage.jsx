@@ -1240,31 +1240,6 @@ function AddImage() {
             );
           })}
         </div>
-
-        {/* Enhanced Analysis Readiness Indicator */}
-        {validImagesCount + manuallyIncludedCount > 0 && (
-          <div className="analysis-readiness">
-            <div className="readiness-content">
-              <FiCheckCircle size={16} className="ready-icon" />
-              <span className="ready-text">
-                {validImagesCount + manuallyIncludedCount} image
-                {validImagesCount + manuallyIncludedCount > 1 ? "s" : ""} ready
-                for batch analysis
-              </span>
-              {manuallyIncludedCount > 0 && (
-                <span className="manual-text">
-                  ({manuallyIncludedCount} manually included)
-                </span>
-              )}
-              {invalidImagesCount > 0 && (
-                <span className="skip-text">
-                  ({invalidImagesCount} invalid image
-                  {invalidImagesCount > 1 ? "s" : ""} will be skipped)
-                </span>
-              )}
-            </div>
-          </div>
-        )}
       </div>
     );
   };
