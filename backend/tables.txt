@@ -61,7 +61,8 @@ CREATE INDEX idx_activities_type ON activities(activity_type);
 CREATE INDEX idx_activities_created_at ON activities(created_at);
 CREATE INDEX idx_activities_user_type ON activities(user_id, activity_type);
 
-
+ALTER TABLE IF EXISTS public.coral_information
+    ADD COLUMN coral_class_code character varying(20);
 
 
 -- Run this once in your database to enable PostGIS

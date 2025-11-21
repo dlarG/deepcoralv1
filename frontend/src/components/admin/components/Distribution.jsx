@@ -37,6 +37,7 @@ import {
   Legend,
 } from "chart.js";
 import { Bar, Line, Pie } from "react-chartjs-2";
+import CoralCoverageTable from "./CoralCoverageTable";
 import "../styles/distributionStyle.css";
 
 // Register Chart.js components
@@ -59,44 +60,119 @@ L.Icon.Default.mergeOptions({
   iconUrl: markerIcon,
   shadowUrl: markerShadow,
 });
+const createLocationIcon = (
+  imageCount = 0,
+  isSelected = false,
+  isInComparison = false
+) => {
+  // Base size calculation based on image count
+  const baseSize = 35;
+  const maxSize = 55;
+  const size = Math.min(baseSize + imageCount * 2, maxSize);
 
-// Custom location marker with image count
-const createLocationIcon = (imageCount, isSelected = false) => {
-  const size = Math.min(30 + imageCount * 3, 50);
-  const color = isSelected ? "#dc2626" : "#2563eb";
+  // Color based on image count ranges
+  let color = "#6B7280"; // Gray for no images
+  if (imageCount > 0) {
+    if (imageCount >= 20) color = "#10B981"; // Green - Many images
+    else if (imageCount >= 10) color = "#F59E0B"; // Yellow - Medium images
+    else if (imageCount >= 5) color = "#EF4444"; // Red - Some images
+    else color = "#8B5CF6"; // Purple - Few images
+  }
+
+  // Override color for selection states
+  if (isInComparison) {
+    color = "#10B981"; // Green for comparison selection
+  } else if (isSelected) {
+    color = "#DC2626"; // Red for regular selection
+  }
 
   return L.divIcon({
-    className: "custom-location-marker",
+    className: "custom-image-marker",
     html: `
-      <div style="
-        background: linear-gradient(135deg, ${color}, ${color}dd);
+      <div class="marker-container" style="
+        position: relative;
         width: ${size}px;
         height: ${size}px;
-        border-radius: 50%;
-        border: 3px solid white;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-weight: bold;
-        font-size: ${Math.min(size / 3, 16)}px;
-        position: relative;
-        transform: none !important;
-        margin: 0;
-        padding: 0;
+        cursor: pointer;
+        transform: translate(-50%, -50%);
       ">
-        ${imageCount}
-        <div style="
-          position: absolute;
-          top: -2px;
-          right: -2px;
-          width: 8px;
-          height: 8px;
-          background: #10b981;
+        <!-- Selection Ring -->
+        ${
+          isSelected
+            ? `
+          <div class="selection-ring" style="
+            position: absolute;
+            top: -3px;
+            left: -3px;
+            width: ${size + 6}px;
+            height: ${size + 6}px;
+            border: 2px solid #3B82F6;
+            border-radius: 50%;
+            animation: pulse 1.5s ease-in-out infinite;
+          "></div>
+        `
+            : ""
+        }
+        
+        <!-- Main Marker Circle -->
+        <div class="marker-circle" style="
+          width: ${size}px;
+          height: ${size}px;
+          background: linear-gradient(135deg, ${color}, ${color}dd);
           border-radius: 50%;
-          border: 1px solid white;
-        "></div>
+          border: 3px solid white;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          font-weight: bold;
+          font-size: ${Math.min(size / 3.5, 16)}px;
+          line-height: 1;
+          text-align: center;
+          position: relative;
+        ">
+          <!-- Image Count -->
+          <div class="image-count-display" style="
+            font-size: ${Math.min(size / 2.5, 18)}px;
+            font-weight: 700;
+          ">
+            ${imageCount}
+          </div>
+          
+          <!-- Comparison Check Mark -->
+          ${
+            isInComparison
+              ? `
+            <div class="comparison-indicator" style="
+              position: absolute;
+              top: -4px;
+              right: -4px;
+              width: 16px;
+              height: 16px;
+              background: #F59E0B;
+              border-radius: 50%;
+              border: 2px solid white;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 10px;
+              font-weight: bold;
+              color: white;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            ">✓</div>
+          `
+              : ""
+          }
+        </div>
+        
+        <style>
+          @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.7; }
+          }
+        </style>
       </div>
     `,
     iconSize: [size, size],
@@ -137,16 +213,208 @@ function Distribution() {
       return location.location_id; // Fallback to the generated location_id from backend
     }
   };
+  const [coverageDiversityData, setCoverageDiversityData] = useState(null);
 
   const [activeScope, setActiveScope] = useState("location"); // location, municipality
   const [activeTransect, setActiveTransect] = useState("all"); // all, 1, 2, 3, 4, 5
   const [availableTransects, setAvailableTransects] = useState([]);
-
+  const [comparisonMode, setComparisonMode] = useState(false);
+  const [selectedLocationsForComparison, setSelectedLocationsForComparison] =
+    useState([]);
+  const [comparisonData, setComparisonData] = useState(null);
   const getScopeDisplayText = () => {
     if (activeScope === "municipality" && selectedLocation?.municipality) {
       return `${selectedLocation.municipality} Municipality`;
     }
     return getLocationDisplayName(selectedLocation);
+  };
+
+  const handleLocationComparison = (location) => {
+    if (!comparisonMode) {
+      // Normal selection
+      handleLocationClick(location);
+      return;
+    }
+
+    // Comparison mode - toggle location selection
+    setSelectedLocationsForComparison((prev) => {
+      const isSelected = prev.some(
+        (loc) => loc.location_id === location.location_id
+      );
+
+      if (isSelected) {
+        // Remove location
+        return prev.filter((loc) => loc.location_id !== location.location_id);
+      } else {
+        // Add location (max 4 locations for comparison)
+        if (prev.length >= 4) {
+          alert("Maximum 4 locations can be compared at once");
+          return prev;
+        }
+        return [...prev, location];
+      }
+    });
+  };
+
+  const loadComparisonData = async () => {
+    if (selectedLocationsForComparison.length < 2) return;
+
+    try {
+      setLoading(true);
+
+      const params = new URLSearchParams();
+      if (dateRange.start && dateRange.start.trim() !== "") {
+        params.append("start_date", dateRange.start);
+      }
+      if (dateRange.end && dateRange.end.trim() !== "") {
+        params.append("end_date", dateRange.end);
+      }
+
+      // Send location coordinates for comparison
+      const locationCoords = selectedLocationsForComparison
+        .map((loc) => `${loc.latitude},${loc.longitude}`)
+        .join(";");
+
+      params.append("locations", locationCoords);
+
+      const comparisonUrl = `http://${
+        process.env.REACT_APP_API_URL
+      }/distribution/compare?${params.toString()}`;
+
+      const response = await fetch(comparisonUrl);
+      const data = await response.json();
+
+      if (response.ok) {
+        setComparisonData(data);
+      }
+    } catch (error) {
+      console.error("Error loading comparison data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderComparisonCharts = () => {
+    if (!comparisonData) return null;
+
+    // Coverage comparison chart
+    const coverageData = {
+      labels: comparisonData.coral_types,
+      datasets: comparisonData.locations.map((location, index) => ({
+        label: location.location_name || getLocationDisplayName(location),
+        data: comparisonData.coral_types.map((coralType) => {
+          const coverage = location.coral_coverage.find(
+            (c) => c.class_name === coralType
+          );
+          return coverage ? coverage.coverage_percent : 0;
+        }),
+        backgroundColor: `hsla(${index * 90}, 70%, 50%, 0.7)`,
+        borderColor: `hsl(${index * 90}, 70%, 50%)`,
+        borderWidth: 2,
+      })),
+    };
+
+    const coverageOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "top" },
+        title: {
+          display: true,
+          text: "Coral Coverage Comparison",
+          font: { size: 16, weight: "bold" },
+        },
+        tooltip: {
+          callbacks: {
+            label: function (context) {
+              return `${context.dataset.label}: ${context.parsed.y.toFixed(
+                2
+              )}%`;
+            },
+          },
+        },
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: 100,
+          ticks: { callback: (value) => value + "%" },
+        },
+      },
+    };
+
+    return (
+      <div className="comparison-charts">
+        <div className="chart-wrapper">
+          <Bar data={coverageData} options={coverageOptions} />
+        </div>
+
+        <div className="comparison-stats">
+          <h4>Location Statistics</h4>
+          <div className="stats-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Location</th>
+                  <th>Images</th>
+                  <th>Species Count</th>
+                  <th>Avg Coverage</th>
+                  <th>Shannon Index</th>
+                </tr>
+              </thead>
+              <tbody>
+                {comparisonData.locations.map((location, index) => (
+                  <tr key={index}>
+                    <td>
+                      {location.location_name ||
+                        getLocationDisplayName(location)}
+                    </td>
+                    <td>{location.image_count}</td>
+                    <td>{location.species_count}</td>
+                    <td>{location.avg_coverage?.toFixed(2)}%</td>
+                    <td>{location.shannon_index?.toFixed(3)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Summary Statistics */}
+        <div className="comparison-summary">
+          <h4>Comparison Summary</h4>
+          <div className="summary-grid">
+            <div className="summary-item">
+              <span className="summary-label">Total Locations:</span>
+              <span className="summary-value">
+                {comparisonData.comparison_summary.total_locations}
+              </span>
+            </div>
+            <div className="summary-item">
+              <span className="summary-label">Locations with Data:</span>
+              <span className="summary-value">
+                {comparisonData.comparison_summary.locations_with_data}
+              </span>
+            </div>
+            <div className="summary-item">
+              <span className="summary-label">Unique Coral Types:</span>
+              <span className="summary-value">
+                {comparisonData.comparison_summary.total_coral_types}
+              </span>
+            </div>
+            <div className="summary-item">
+              <span className="summary-label">Average Coverage:</span>
+              <span className="summary-value">
+                {comparisonData.comparison_summary.avg_coverage_across_locations?.toFixed(
+                  2
+                )}
+                %
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   const handleScopeChange = async (newScope) => {
@@ -224,17 +492,212 @@ function Distribution() {
         setLocationAnalytics(analyticsData);
       }
 
-      // FIXED: Only pan map to location if we're in map view and map is available
-      if (viewMode === "map" && mapRef.current) {
+      // FIXED: Better map panning with error handling
+      if (
+        viewMode === "map" &&
+        mapRef.current &&
+        typeof mapRef.current.setView === "function"
+      ) {
         try {
-          mapRef.current.setView([location.latitude, location.longitude], 15);
+          // Add a small delay to ensure map is fully rendered
+          setTimeout(() => {
+            if (
+              mapRef.current &&
+              typeof mapRef.current.setView === "function"
+            ) {
+              mapRef.current.setView(
+                [location.latitude, location.longitude],
+                15
+              );
+            }
+          }, 100);
         } catch (mapError) {
           console.warn("Could not pan map to location:", mapError);
-          // Don't throw error, just log it
         }
       }
     } catch (error) {
       console.error("Error loading location details:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderDiversityMetrics = () => {
+    if (!coverageDiversityData) {
+      return (
+        <div className="no-data-message">
+          <FiPieChart size={48} />
+          <h3>No Diversity Data Available</h3>
+          <p>No diversity metrics found for the selected filters.</p>
+        </div>
+      );
+    }
+
+    const diversityMetrics = coverageDiversityData.diversity_metrics;
+
+    return (
+      <div className="diversity-metrics-container">
+        <div className="diversity-overview">
+          <h4>Biodiversity Overview</h4>
+          <div className="metrics-grid">
+            <div className="metric-card">
+              <div className="metric-icon">
+                <FiTrendingUp size={20} />
+              </div>
+              <div className="metric-content">
+                <div className="metric-value">
+                  {diversityMetrics.species_count}
+                </div>
+                <div className="metric-label">Species Count</div>
+              </div>
+            </div>
+
+            <div className="metric-card">
+              <div className="metric-icon">
+                <FiPieChart size={20} />
+              </div>
+              <div className="metric-content">
+                <div className="metric-value">
+                  {diversityMetrics.shannon_index?.toFixed(3)}
+                </div>
+                <div className="metric-label">Shannon Index</div>
+              </div>
+            </div>
+
+            <div className="metric-card">
+              <div className="metric-icon">
+                <FiBarChart2 size={20} />
+              </div>
+              <div className="metric-content">
+                <div className="metric-value">
+                  {diversityMetrics.simpson_index?.toFixed(3)}
+                </div>
+                <div className="metric-label">Simpson Index</div>
+              </div>
+            </div>
+
+            <div className="metric-card">
+              <div className="metric-icon">
+                <FiGrid size={20} />
+              </div>
+              <div className="metric-content">
+                <div className="metric-value">
+                  {diversityMetrics.evenness?.toFixed(3)}
+                </div>
+                <div className="metric-label">Evenness</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Species Distribution Chart */}
+        <div className="species-distribution-chart">
+          <h4>Species Coverage Distribution</h4>
+          {renderSpeciesDistributionChart()}
+        </div>
+
+        {/* Dominance Analysis */}
+        <div className="dominance-analysis">
+          <h4>Dominance Analysis</h4>
+          <div className="dominance-list">
+            {coverageDiversityData.species_coverage?.map((species, index) => (
+              <div key={index} className="dominance-item">
+                <div className="species-info">
+                  <span className="species-name">{species.class_name}</span>
+                  <span className="species-coverage">
+                    {species.coverage_percent?.toFixed(2)}%
+                  </span>
+                </div>
+                <div className="coverage-bar">
+                  <div
+                    className="coverage-fill"
+                    style={{
+                      width: `${species.coverage_percent}%`,
+                      backgroundColor: species.color_hex || "#3b82f6",
+                    }}
+                  ></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderSpeciesDistributionChart = () => {
+    if (!coverageDiversityData?.species_coverage) return null;
+
+    const data = {
+      labels: coverageDiversityData.species_coverage.map(
+        (species) => species.class_name
+      ),
+      datasets: [
+        {
+          data: coverageDiversityData.species_coverage.map(
+            (species) => species.coverage_percent
+          ),
+          backgroundColor: coverageDiversityData.species_coverage.map(
+            (species) => species.color_hex || "#3b82f6"
+          ),
+          borderWidth: 2,
+          borderColor: "#ffffff",
+        },
+      ],
+    };
+
+    const options = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: "right",
+          labels: {
+            boxWidth: 12,
+            font: { size: 11 },
+          },
+        },
+        title: {
+          display: true,
+          text: "Species Coverage Distribution",
+          font: { size: 14, weight: "bold" },
+        },
+      },
+    };
+
+    return <Pie data={data} options={options} />;
+  };
+
+  const loadCoverageDiversity = async (location, scope, transect) => {
+    try {
+      setLoading(true);
+
+      const params = new URLSearchParams();
+      if (dateRange.start && dateRange.start.trim() !== "") {
+        params.append("start_date", dateRange.start);
+      }
+      if (dateRange.end && dateRange.end.trim() !== "") {
+        params.append("end_date", dateRange.end);
+      }
+      params.append("scope", scope);
+      if (transect !== "all") {
+        params.append("transect", transect);
+      }
+
+      const diversityUrl = `http://${
+        process.env.REACT_APP_API_URL
+      }/distribution/location/${location.latitude}/${
+        location.longitude
+      }/diversity?${params.toString()}`;
+
+      const response = await fetch(diversityUrl);
+      const data = await response.json();
+
+      if (response.ok) {
+        setCoverageDiversityData(data);
+      }
+    } catch (error) {
+      console.error("Error loading coverage diversity:", error);
     } finally {
       setLoading(false);
     }
@@ -724,14 +1187,34 @@ function Distribution() {
                       <p>Loading analytics...</p>
                     </div>
                   ) : (
-                    <div className="charts-container-horizontal">
-                      <div className="chart-wrapper full-width">
-                        {renderCoralDistributionChart()}
+                    <div className="analytics-content">
+                      {/* Charts Section */}
+                      <div className="charts-container">
+                        <div className="chart-wrapper">
+                          {renderCoralDistributionChart()}
+                        </div>
+                        <div className="chart-wrapper full-width">
+                          {renderTrendChart()}
+                        </div>
                       </div>
 
-                      <div className="chart-wrapper full-width">
-                        {renderTrendChart()}
-                      </div>
+                      {/* Coverage Table Section */}
+                      <CoralCoverageTable
+                        coralAnalytics={
+                          locationAnalytics?.coral_analytics || []
+                        }
+                        locationInfo={{
+                          lat: selectedLocation?.latitude,
+                          lng: selectedLocation?.longitude,
+                          name: getScopeDisplayText(),
+                        }}
+                        filters={{
+                          scope: activeScope,
+                          transect: activeTransect,
+                          start_date: dateRange.start,
+                          end_date: dateRange.end,
+                        }}
+                      />
                     </div>
                   )}
                 </div>
@@ -1161,7 +1644,9 @@ function Distribution() {
     const map = useMap();
 
     useEffect(() => {
-      mapRef.current = map;
+      if (map) {
+        mapRef.current = map;
+      }
     }, [map]);
 
     return null;
@@ -1188,6 +1673,8 @@ function Distribution() {
 
             <div className="header-right">
               <div className="distribution-header-actions">
+                {/* Comparison Mode Toggle */}
+
                 {/* View Toggle */}
                 <div className="view-toggle-group">
                   <span className="toggle-label">View Mode</span>
@@ -1257,6 +1744,40 @@ function Distribution() {
                   <FiFilter size={14} />
                   {loading ? "Applying..." : "Apply Filters"}
                 </button>
+                <div className="comparison-toggle-group">
+                  <button
+                    className={`comparison-toggle-btn ${
+                      comparisonMode ? "active" : ""
+                    }`}
+                    onClick={() => {
+                      setComparisonMode(!comparisonMode);
+                      setSelectedLocationsForComparison([]);
+                      if (comparisonMode) {
+                        setComparisonData(null);
+                      }
+                    }}
+                  >
+                    <FiBarChart2 size={16} />
+                    {comparisonMode ? "Exit Comparison" : "Compare Locations"}
+                  </button>
+
+                  {comparisonMode &&
+                    selectedLocationsForComparison.length > 0 && (
+                      <div className="comparison-info">
+                        <span className="selected-count">
+                          {selectedLocationsForComparison.length} selected
+                        </span>
+                        {selectedLocationsForComparison.length >= 2 && (
+                          <button
+                            className="compare-btn"
+                            onClick={loadComparisonData}
+                          >
+                            Compare Now
+                          </button>
+                        )}
+                      </div>
+                    )}
+                </div>
               </div>
             </div>
           </div>
@@ -1360,17 +1881,20 @@ function Distribution() {
                     key={index}
                     position={[location.latitude, location.longitude]}
                     icon={createLocationIcon(
-                      location.image_count || 0,
-                      selectedLocation?.location_id === location.location_id
+                      location.image_count || 0, // Just pass image count
+                      selectedLocation?.location_id === location.location_id,
+                      comparisonMode &&
+                        selectedLocationsForComparison.some(
+                          (loc) => loc.location_id === location.location_id
+                        )
                     )}
                     eventHandlers={{
-                      click: () => handleLocationClick(location),
+                      click: () => handleLocationComparison(location),
                     }}
                   >
                     <Popup>
                       <div className="location-popup">
                         <h4>📍 {getLocationDisplayName(location)}</h4>
-                        {/* Show additional location details if available */}
                         {(location.municipality || location.barangay) && (
                           <div className="location-address-details">
                             {location.municipality && (
@@ -1416,6 +1940,34 @@ function Distribution() {
                 ))}
               </MapContainer>
             </div>
+
+            {comparisonMode &&
+              selectedLocationsForComparison.length >= 2 &&
+              comparisonData && (
+                <div className="comparison-panel">
+                  <div className="comparison-header">
+                    <h3>
+                      <FiBarChart2 size={20} />
+                      Location Comparison (
+                      {selectedLocationsForComparison.length} locations)
+                    </h3>
+                    <button
+                      className="close-panel-btn"
+                      onClick={() => {
+                        setComparisonMode(false);
+                        setSelectedLocationsForComparison([]);
+                        setComparisonData(null);
+                      }}
+                    >
+                      <FiX size={18} />
+                    </button>
+                  </div>
+
+                  <div className="comparison-content">
+                    {renderComparisonCharts()}
+                  </div>
+                </div>
+              )}
 
             {/* Location Details Sidebar */}
             {selectedLocation && (
@@ -1624,6 +2176,22 @@ function Distribution() {
                           <div className="chart-wrapper full-width">
                             {renderTrendChart()}
                           </div>
+                          <CoralCoverageTable
+                            coralAnalytics={
+                              locationAnalytics?.coral_analytics || []
+                            }
+                            locationInfo={{
+                              lat: selectedLocation?.latitude,
+                              lng: selectedLocation?.longitude,
+                              name: getScopeDisplayText(),
+                            }}
+                            filters={{
+                              scope: activeScope,
+                              transect: activeTransect,
+                              start_date: dateRange.start,
+                              end_date: dateRange.end,
+                            }}
+                          />
                         </div>
                       )}
                     </div>

@@ -57,13 +57,6 @@ function UserManagement() {
         </div>
         <div className="header-actions-fixed">
           <button
-            className="export-btn"
-            onClick={() => alert("Export functionality coming soon!")}
-          >
-            <FiDownload size={18} />
-            Export
-          </button>
-          <button
             className="add-user-btn primary"
             onClick={() => openUserModal("create")}
           >
@@ -127,36 +120,6 @@ function UserManagement() {
           </div>
         </div>
       </div>
-
-      {/* User Stats */}
-      {/* <div className="user-stats">
-        <div className="stat-item">
-          <span className="stat-number">{users.length}</span>
-          <span className="stat-label">Total Users</span>
-        </div>
-        <div className="stat-item">
-          <span className="stat-number">
-            {users.filter((u) => u.roletype === "admin").length}
-          </span>
-          <span className="stat-label">Admins</span>
-        </div>
-        <div className="stat-item">
-          <span className="stat-number">
-            {users.filter((u) => u.roletype === "biologist").length}
-          </span>
-          <span className="stat-label">Biologists</span>
-        </div>
-        <div className="stat-item">
-          <span className="stat-number">
-            {users.filter((u) => u.roletype === "guest").length}
-          </span>
-          <span className="stat-label">Guests</span>
-        </div>
-        <div className="stat-item">
-          <span className="stat-number">{filteredUsers.length}</span>
-          <span className="stat-label">Filtered Results</span>
-        </div>
-      </div> 
 
       {/* Users Table */}
       {loading ? (

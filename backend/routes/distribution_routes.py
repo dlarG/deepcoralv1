@@ -123,7 +123,7 @@ def get_locations_with_images():
 @distribution_bp.route('/distribution/locations', methods=['GET', 'OPTIONS'])
 @cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
 def get_distribution_locations():
-    """Get all locations with image counts including manually included images"""
+    """Get all locations with CORRECTED total coverage percentages for map display"""
     if request.method == "OPTIONS":
         return jsonify({}), 200
     
@@ -147,9 +147,9 @@ def get_distribution_locations():
             
             if end_date:
                 date_condition += " AND i.uploaded_at <= %s"
-                params.append(end_date + " 23:59:59")  # Include entire end date
+                params.append(end_date + " 23:59:59")
             
-            # UPDATED: Include both 'completed' and 'manually_included_completed' processing statuses
+            # FIXED: Use the working query from your test, but format it for the endpoint
             cur.execute(f"""
                 SELECT 
                     ST_X(i.location) as longitude,
@@ -169,7 +169,13 @@ def get_distribution_locations():
                             CONCAT('Location_', ROUND(ST_X(i.location)::numeric, 4), '_', ROUND(ST_Y(i.location)::numeric, 4))
                         ELSE '' END
                     ) as location_id,
-                    STRING_AGG(DISTINCT i.processing_status, ', ') as processing_statuses
+                    STRING_AGG(DISTINCT i.processing_status, ', ') as processing_statuses,
+                    -- FIXED: Use the exact same calculation that works in your test query
+                    CASE 
+                        WHEN SUM(i.total_pixels) > 0 AND SUM(sr.area_px) > 0 THEN
+                            (SUM(sr.area_px)::FLOAT / SUM(i.total_pixels)::FLOAT) * 100
+                        ELSE 0 
+                    END as total_coverage_percent
                 FROM images i
                 LEFT JOIN segmentation_results sr ON i.id = sr.image_id
                 LEFT JOIN coral_lifeforms cl ON sr.class_id = cl.id
@@ -179,11 +185,20 @@ def get_distribution_locations():
                 {date_condition}
                 GROUP BY ST_X(i.location), ST_Y(i.location), i.municipality, i.barangay
                 HAVING COUNT(DISTINCT i.id) > 0
-                ORDER BY latest_date DESC
+                ORDER BY total_coverage_percent DESC
             """, params)
             
             locations = []
             for row in cur.fetchall():
+                coverage_value = float(row[11]) if row[11] else 0
+                
+                # DEBUG: Print detailed info for first few locations
+                if len(locations) < 3:
+                    print(f"🔍 Location {len(locations)+1}:")
+                    print(f"   Coordinates: {row[1]:.6f}, {row[0]:.6f}")
+                    print(f"   Image count: {row[4]}")
+                    print(f"   Coverage: {coverage_value:.2f}%")
+                
                 locations.append({
                     'longitude': float(row[0]),
                     'latitude': float(row[1]),
@@ -194,8 +209,16 @@ def get_distribution_locations():
                     'date_range': f"{row[6].strftime('%Y-%m-%d')} to {row[7].strftime('%Y-%m-%d')}" if row[6] and row[7] else '',
                     'coral_types': row[8] if row[8] else [],
                     'location_id': row[9],
-                    'processing_statuses': row[10]  # Debug info to see what statuses are included
+                    'processing_statuses': row[10],
+                    'total_coverage_percent': coverage_value  # This should now work correctly
                 })
+            
+            print(f"🔍 Found {len(locations)} locations with coverage data")
+            if locations:
+                coverage_values = [loc['total_coverage_percent'] for loc in locations]
+                non_zero_count = len([c for c in coverage_values if c > 0])
+                print(f"   Coverage range: {min(coverage_values):.2f}% to {max(coverage_values):.2f}%")
+                print(f"   Locations with coverage > 0: {non_zero_count}/{len(locations)}")
             
             return jsonify({"locations": locations})
             
@@ -207,6 +230,355 @@ def get_distribution_locations():
     finally:
         if conn:
             conn.close()
+
+@distribution_bp.route('/debug/location-data', methods=['GET'])
+@cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
+def debug_location_data():
+    """Debug endpoint to see what coverage data we're actually getting"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({"error": "Database connection failed"}), 500
+            
+        with conn.cursor() as cur:
+            # Check if we have segmentation results with area_px data
+            cur.execute("""
+                SELECT 
+                    COUNT(*) as total_segmentation_results,
+                    COUNT(DISTINCT image_id) as images_with_segmentation,
+                    AVG(area_px) as avg_area_px,
+                    MAX(area_px) as max_area_px,
+                    AVG(coverage_percent) as avg_coverage_percent,
+                    MAX(coverage_percent) as max_coverage_percent
+                FROM segmentation_results 
+                WHERE area_px > 0
+            """)
+            
+            seg_stats = cur.fetchone()
+            
+            # Check images with total_pixels
+            cur.execute("""
+                SELECT 
+                    COUNT(*) as total_images,
+                    COUNT(*) FILTER (WHERE total_pixels > 0) as images_with_pixels,
+                    AVG(total_pixels) as avg_total_pixels,
+                    MIN(total_pixels) as min_total_pixels,
+                    MAX(total_pixels) as max_total_pixels
+                FROM images 
+                WHERE processing_status IN ('completed', 'manually_included_completed')
+                AND location IS NOT NULL
+            """)
+            
+            img_stats = cur.fetchone()
+            
+            # Test the coverage calculation on a few sample locations
+            cur.execute("""
+                SELECT 
+                    ST_X(i.location) as longitude,
+                    ST_Y(i.location) as latitude,
+                    COUNT(DISTINCT i.id) as image_count,
+                    SUM(i.total_pixels) as sum_total_pixels,
+                    SUM(sr.area_px) as sum_area_px,
+                    CASE 
+                        WHEN SUM(i.total_pixels) > 0 THEN
+                            (SUM(sr.area_px)::FLOAT / SUM(i.total_pixels)::FLOAT) * 100
+                        ELSE 0 
+                    END as calculated_coverage
+                FROM images i
+                LEFT JOIN segmentation_results sr ON i.id = sr.image_id
+                WHERE i.location IS NOT NULL 
+                AND i.processing_status IN ('completed', 'manually_included_completed')
+                AND (i.upload_status = 'approved' OR i.upload_status IS NULL)
+                GROUP BY ST_X(i.location), ST_Y(i.location)
+                HAVING COUNT(DISTINCT i.id) > 0
+                ORDER BY calculated_coverage DESC
+                LIMIT 5
+            """)
+            
+            sample_locations = cur.fetchall()
+            
+        conn.close()
+        
+        return jsonify({
+            "segmentation_stats": {
+                "total_results": seg_stats[0] or 0,
+                "images_with_segmentation": seg_stats[1] or 0,
+                "avg_area_px": float(seg_stats[2]) if seg_stats[2] else 0,
+                "max_area_px": float(seg_stats[3]) if seg_stats[3] else 0,
+                "avg_coverage_percent": float(seg_stats[4]) if seg_stats[4] else 0,
+                "max_coverage_percent": float(seg_stats[5]) if seg_stats[5] else 0
+            },
+            "image_stats": {
+                "total_images": img_stats[0] or 0,
+                "images_with_pixels": img_stats[1] or 0,
+                "avg_total_pixels": float(img_stats[2]) if img_stats[2] else 0,
+                "min_total_pixels": img_stats[3] or 0,
+                "max_total_pixels": img_stats[4] or 0
+            },
+            "sample_locations": [
+                {
+                    "longitude": float(loc[0]),
+                    "latitude": float(loc[1]),
+                    "image_count": loc[2],
+                    "sum_total_pixels": loc[3],
+                    "sum_area_px": loc[4],
+                    "calculated_coverage": float(loc[5]) if loc[5] else 0
+                }
+                for loc in sample_locations
+            ]
+        })
+        
+    except Exception as e:
+        print(f"Debug error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@distribution_bp.route('/debug/coverage-data', methods=['GET'])
+@cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
+def debug_coverage_data():
+    """Debug endpoint to check coverage data"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({"error": "Database connection failed"}), 500
+            
+        with conn.cursor() as cur:
+            # Check raw segmentation results
+            cur.execute("""
+                SELECT 
+                    COUNT(*) as total_segmentation_results,
+                    AVG(coverage_percent) as avg_coverage,
+                    MIN(coverage_percent) as min_coverage,
+                    MAX(coverage_percent) as max_coverage,
+                    COUNT(DISTINCT image_id) as images_with_results
+                FROM segmentation_results
+                WHERE coverage_percent > 0
+            """)
+            
+            seg_stats = cur.fetchone()
+            
+            # Check images with results
+            cur.execute("""
+                SELECT 
+                    i.id,
+                    i.filename,
+                    ST_X(i.location) as lng,
+                    ST_Y(i.location) as lat,
+                    i.processing_status,
+                    COUNT(sr.id) as segment_count,
+                    AVG(sr.coverage_percent) as avg_coverage,
+                    SUM(sr.coverage_percent) as total_coverage
+                FROM images i
+                LEFT JOIN segmentation_results sr ON i.id = sr.image_id
+                WHERE i.location IS NOT NULL 
+                AND i.processing_status IN ('completed', 'manually_included_completed')
+                GROUP BY i.id, i.filename, i.location, i.processing_status
+                HAVING COUNT(sr.id) > 0
+                ORDER BY total_coverage DESC
+                LIMIT 10
+            """)
+            
+            sample_images = cur.fetchall()
+            
+            # Check coral lifeforms
+            cur.execute("""
+                SELECT COUNT(*) as coral_types_count
+                FROM coral_lifeforms
+            """)
+            
+            coral_count = cur.fetchone()
+            
+        conn.close()
+        
+        return jsonify({
+            "segmentation_stats": {
+                "total_results": seg_stats[0],
+                "avg_coverage": float(seg_stats[1]) if seg_stats[1] else 0,
+                "min_coverage": float(seg_stats[2]) if seg_stats[2] else 0,
+                "max_coverage": float(seg_stats[3]) if seg_stats[3] else 0,
+                "images_with_results": seg_stats[4]
+            },
+            "sample_images": [
+                {
+                    "id": img[0],
+                    "filename": img[1],
+                    "lng": float(img[2]) if img[2] else 0,
+                    "lat": float(img[3]) if img[3] else 0,
+                    "status": img[4],
+                    "segment_count": img[5],
+                    "avg_coverage": float(img[6]) if img[6] else 0,
+                    "total_coverage": float(img[7]) if img[7] else 0
+                }
+                for img in sample_images
+            ],
+            "coral_types_count": coral_count[0]
+        })
+        
+    except Exception as e:
+        print(f"Debug error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@distribution_bp.route('/compare', methods=['GET'])
+@cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
+def compare_locations():
+    """Compare coral coverage across multiple locations"""
+    try:
+        locations_param = request.args.get('locations')
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        
+        if not locations_param:
+            return jsonify({"error": "Locations parameter is required"}), 400
+        
+        # Parse location coordinates
+        location_coords = []
+        for loc_str in locations_param.split(';'):
+            try:
+                lat, lng = map(float, loc_str.split(','))
+                location_coords.append((lat, lng))
+            except ValueError:
+                return jsonify({"error": f"Invalid location format: {loc_str}"}), 400
+        
+        if len(location_coords) < 2:
+            return jsonify({"error": "At least 2 locations required for comparison"}), 400
+        
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({"error": "Database connection failed"}), 500
+        
+        tolerance = 0.0001
+        comparison_results = []
+        all_coral_types = set()
+        
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            for lat, lng in location_coords:
+                # Build date filter
+                date_conditions = []
+                params = [lng, lat, tolerance]
+                
+                if start_date:
+                    date_conditions.append(" AND i.uploaded_at >= %s")
+                    params.append(start_date)
+                
+                if end_date:
+                    date_conditions.append(" AND i.uploaded_at <= %s")
+                    params.append(end_date + ' 23:59:59')
+                
+                date_clause = ''.join(date_conditions)
+                
+                # Get location info and coral coverage
+                cur.execute(f"""
+                    SELECT 
+                        ST_X(i.location) as longitude,
+                        ST_Y(i.location) as latitude,
+                        COALESCE(i.municipality, '') as municipality,
+                        COALESCE(i.barangay, '') as barangay,
+                        COUNT(DISTINCT i.id) as image_count,
+                        COUNT(DISTINCT cl.class_name) as species_count,
+                        AVG(sr.coverage_percent) as avg_coverage,
+                        -- Calculate Shannon diversity index
+                        -SUM(
+                            (sr.coverage_percent / 100.0) * 
+                            LN(NULLIF(sr.coverage_percent / 100.0, 0))
+                        ) as shannon_index,
+                        -- Get coral coverage by type
+                        JSON_AGG(
+                            JSON_BUILD_OBJECT(
+                                'class_name', cl.class_name,
+                                'coverage_percent', sr.coverage_percent,
+                                'color_hex', cl.color_hex
+                            )
+                        ) as coral_coverage
+                    FROM images i
+                    INNER JOIN segmentation_results sr ON i.id = sr.image_id
+                    INNER JOIN coral_lifeforms cl ON sr.class_id = cl.id
+                    WHERE ST_DWithin(
+                        i.location,
+                        ST_SetSRID(ST_MakePoint(%s, %s), 4326),
+                        %s
+                    )
+                    AND i.processing_status IN ('completed', 'manually_included_completed')
+                    {date_clause}
+                    GROUP BY ST_X(i.location), ST_Y(i.location), i.municipality, i.barangay
+                """, params)
+                
+                location_data = cur.fetchone()
+                
+                if location_data:
+                    # Extract coral types for this location
+                    coral_coverage = location_data['coral_coverage'] or []
+                    for coral in coral_coverage:
+                        if coral and coral.get('class_name'):
+                            all_coral_types.add(coral['class_name'])
+                    
+                    # Generate location display name
+                    if location_data['municipality'] and location_data['barangay']:
+                        location_name = f"{location_data['municipality']} - {location_data['barangay']}"
+                    elif location_data['municipality']:
+                        location_name = location_data['municipality']
+                    elif location_data['barangay']:
+                        location_name = location_data['barangay']
+                    else:
+                        location_name = f"Location ({lat:.4f}, {lng:.4f})"
+                    
+                    comparison_results.append({
+                        'location_name': location_name,
+                        'latitude': float(location_data['latitude']),
+                        'longitude': float(location_data['longitude']),
+                        'municipality': location_data['municipality'],
+                        'barangay': location_data['barangay'],
+                        'image_count': location_data['image_count'],
+                        'species_count': location_data['species_count'],
+                        'avg_coverage': float(location_data['avg_coverage']) if location_data['avg_coverage'] else 0,
+                        'shannon_index': float(location_data['shannon_index']) if location_data['shannon_index'] else 0,
+                        'coral_coverage': coral_coverage
+                    })
+                else:
+                    # No data found for this location
+                    comparison_results.append({
+                        'location_name': f"Location ({lat:.4f}, {lng:.4f})",
+                        'latitude': lat,
+                        'longitude': lng,
+                        'municipality': '',
+                        'barangay': '',
+                        'image_count': 0,
+                        'species_count': 0,
+                        'avg_coverage': 0,
+                        'shannon_index': 0,
+                        'coral_coverage': []
+                    })
+        
+        conn.close()
+        
+        # Sort coral types for consistent ordering
+        sorted_coral_types = sorted(list(all_coral_types))
+        
+        return jsonify({
+            "locations": comparison_results,
+            "coral_types": sorted_coral_types,
+            "comparison_summary": {
+                "total_locations": len(comparison_results),
+                "locations_with_data": len([loc for loc in comparison_results if loc['image_count'] > 0]),
+                "total_coral_types": len(sorted_coral_types),
+                "total_images": sum(loc['image_count'] for loc in comparison_results),
+                "avg_coverage_across_locations": sum(loc['avg_coverage'] for loc in comparison_results) / len(comparison_results) if comparison_results else 0
+            },
+            "filters_applied": {
+                "start_date": start_date,
+                "end_date": end_date,
+                "location_coordinates": location_coords
+            }
+        })
+        
+    except Exception as e:
+        print(f"Error in location comparison: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
 @distribution_bp.route('/location/<float:lat>/<float:lng>/images', methods=['GET'])
 @cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
 def get_location_images(lat, lng):
@@ -475,7 +847,6 @@ def get_location_analytics(lat, lng):
             
             where_conditions = [
                 "i.municipality = %s",
-                # FIXED: Include both processing statuses
                 "i.processing_status IN ('completed', 'manually_included_completed')"
             ]
             params = [municipality]
@@ -483,7 +854,6 @@ def get_location_analytics(lat, lng):
             # Default: location scope
             where_conditions = [
                 "ST_DWithin(i.location, ST_SetSRID(ST_MakePoint(%s, %s), 4326), %s)",
-                # FIXED: Include both processing statuses
                 "i.processing_status IN ('completed', 'manually_included_completed')"
             ]
             params = [lng, lat, tolerance]
@@ -496,23 +866,37 @@ def get_location_analytics(lat, lng):
             where_conditions.append("i.uploaded_at <= %s")
             params.append(end_date + ' 23:59:59')
             
-        if transect_filter and transect_filter != 'all':
-            where_conditions.append("i.transect = %s")
-            params.append(int(transect_filter))
+        # FIXED: Transect filter handling
+        if transect_filter and transect_filter != 'all' and transect_filter.strip():
+            try:
+                transect_int = int(transect_filter)
+                where_conditions.append("i.transect = %s")
+                params.append(transect_int)
+                print(f"🔍 Applying transect filter: {transect_int}")
+            except ValueError:
+                print(f"⚠️ Invalid transect filter value: {transect_filter}")
         
         where_clause = " AND ".join(where_conditions)
         
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            # Get coral analytics with filtering
+            # Get coral analytics with filtering - ADDED class_code
             cur.execute(f"""
                 SELECT 
                     cl.class_name,
+                    cl.class_code,
                     cl.scientific_name,
                     cl.category,
                     cl.color_hex,
                     COUNT(sr.id) as occurrence_count,
                     SUM(sr.area_px) as total_area_px,
+                    -- INDIVIDUAL coral type average (keep this for per-type analysis)
                     AVG(sr.coverage_percent) as avg_coverage_percent,
+                    -- CORRECTED: Total coverage for this coral type across all location images
+                    CASE 
+                        WHEN SUM(i.total_pixels) > 0 THEN
+                            (SUM(sr.area_px)::FLOAT / SUM(i.total_pixels)::FLOAT) * 100
+                        ELSE 0 
+                    END as location_coverage_percent,
                     AVG(sr.avg_confidence) as avg_confidence,
                     COUNT(DISTINCT i.id) as image_count,
                     COUNT(DISTINCT i.transect) as transect_count
@@ -520,12 +904,32 @@ def get_location_analytics(lat, lng):
                 INNER JOIN segmentation_results sr ON i.id = sr.image_id
                 INNER JOIN coral_lifeforms cl ON sr.class_id = cl.id
                 WHERE {where_clause}
-                GROUP BY cl.id, cl.class_name, cl.scientific_name, cl.category, cl.color_hex
-                HAVING AVG(sr.coverage_percent) > 0
-                ORDER BY avg_coverage_percent DESC
+                GROUP BY cl.id, cl.class_name, cl.class_code, cl.scientific_name, cl.category, cl.color_hex
+                HAVING SUM(sr.area_px) > 0  -- Changed from AVG > 0 to SUM > 0
+                ORDER BY location_coverage_percent DESC  -- Order by corrected calculation
             """, params)
             
             coral_analytics = cur.fetchall()
+            
+            # CORRECTED: Get overall location coverage statistics
+            cur.execute(f"""
+                SELECT 
+                    -- Total coverage: sum of all coral areas / sum of all image pixels
+                    CASE 
+                        WHEN SUM(i.total_pixels) > 0 THEN
+                            (SUM(sr.area_px)::FLOAT / SUM(i.total_pixels)::FLOAT) * 100
+                        ELSE 0 
+                    END as total_coral_coverage,
+                    COUNT(DISTINCT i.id) as total_images_analyzed,
+                    SUM(i.total_pixels) as total_pixels_analyzed,
+                    SUM(sr.area_px) as total_coral_area_px
+                FROM images i
+                INNER JOIN segmentation_results sr ON i.id = sr.image_id
+                INNER JOIN coral_lifeforms cl ON sr.class_id = cl.id
+                WHERE {where_clause}
+            """, params)
+            
+            coverage_stats = cur.fetchone()
             
             # Get time series data for trends
             cur.execute(f"""
@@ -589,12 +993,15 @@ def get_location_analytics(lat, lng):
         for coral in coral_analytics:
             analytics_result.append({
                 'class_name': coral['class_name'],
+                'class_code': coral['class_code'],
                 'scientific_name': coral['scientific_name'],
                 'category': coral['category'],
                 'color_hex': coral['color_hex'],
                 'occurrence_count': coral['occurrence_count'],
                 'total_area_px': coral['total_area_px'],
-                'avg_coverage_percent': float(coral['avg_coverage_percent']) if coral['avg_coverage_percent'] else 0,
+               
+                'avg_coverage_percent': float(coral['location_coverage_percent']) if coral['location_coverage_percent'] else 0,
+                'individual_avg_coverage': float(coral['avg_coverage_percent']) if coral['avg_coverage_percent'] else 0,  # Keep original for reference
                 'avg_confidence': float(coral['avg_confidence']) if coral['avg_confidence'] else 0,
                 'image_count': coral['image_count'],
                 'transect_count': coral['transect_count']
@@ -624,6 +1031,12 @@ def get_location_analytics(lat, lng):
             "coral_analytics": analytics_result,
             "trend_data": trend_result,
             "transect_statistics": transect_result,
+            "coverage_statistics": {
+                'total_coral_coverage': float(coverage_stats['total_coral_coverage']) if coverage_stats['total_coral_coverage'] else 0,
+                'total_images_analyzed': coverage_stats['total_images_analyzed'] or 0,
+                'total_pixels_analyzed': coverage_stats['total_pixels_analyzed'] or 0,
+                'total_coral_area_px': coverage_stats['total_coral_area_px'] or 0
+            },
             "statistics": {
                 'total_images': stats['total_images'] or 0,
                 'total_contributors': stats['total_contributors'] or 0,
@@ -632,7 +1045,7 @@ def get_location_analytics(lat, lng):
                 'unique_coral_types': stats['unique_coral_types'] or 0,
                 'unique_transects': stats['unique_transects'] or 0,
                 'unique_municipalities': stats['unique_municipalities'] or 0,
-                'manually_included_count': stats['manually_included_count'] or 0  # Add this
+                'manually_included_count': stats['manually_included_count'] or 0
             },
             "location": {"lat": lat, "lng": lng},
             "filters_applied": {
