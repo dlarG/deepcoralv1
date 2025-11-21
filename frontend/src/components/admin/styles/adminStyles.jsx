@@ -2491,7 +2491,7 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
 .report-content {
   display: grid;
   grid-template-columns: 320px 1fr;
-  gap: 2rem;
+  gap: 1rem;
   flex: 1;
   min-height: 0;
   animation: fadeInUp 0.6s ease-out 0.2s both;
@@ -2633,13 +2633,13 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
 .report-main {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1rem;
   min-height: 0;
   overflow: auto;
 }
 
 /* Report Summary */
-.report-summary {
+.report-summarys {
   background: ${
     darkMode
       ? "linear-gradient(145deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%)"
@@ -2654,7 +2654,7 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
 }
 
-.report-summary h3 {
+.report-summarys h3 {
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -3051,7 +3051,7 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
   }
   
   .report-filters,
-  .report-summary,
+  .report-summarys,
   .report-table-container {
     padding: 1.25rem;
   }
@@ -3127,13 +3127,13 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
   }
   
   .report-filters,
-  .report-summary,
+  .report-summarys,
   .report-table-container {
     padding: 1rem;
   }
   
   .report-filters h3,
-  .report-summary h3 {
+  .report-summarys h3 {
     font-size: 1rem;
   }
   

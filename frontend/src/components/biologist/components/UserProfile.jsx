@@ -61,7 +61,7 @@ function BiologistUserProfile() {
 
   const handleGoBack = () => {
     navigate("/biologist-dashboard", {
-      state: { activeTab: "User" },
+      state: { activeTab: "Dashboard" },
     });
   };
 
@@ -145,7 +145,7 @@ function BiologistUserProfile() {
           <p className="userprofile-error-message">{error}</p>
           <button onClick={handleGoBack} className="userprofile-back-button">
             <FiArrowLeft size={20} />
-            <span>Back to User Management</span>
+            <span>Back to Dashboard</span>
           </button>
         </div>
       </div>
@@ -174,7 +174,7 @@ function BiologistUserProfile() {
       <div className="userprofile-navigation">
         <button onClick={handleGoBack} className="userprofile-nav-back-button">
           <FiArrowLeft size={18} />
-          <span>Back to Users</span>
+          <span>Back to Dashboard</span>
         </button>
 
         <div className="userprofile-actions">

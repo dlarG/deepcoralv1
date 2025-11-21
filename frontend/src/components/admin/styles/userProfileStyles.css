@@ -772,6 +772,165 @@
   flex-wrap: wrap;
 }
 
+.action-btn.dangers {
+  background: linear-gradient(
+    135deg,
+    var(--color-secondary),
+    var(--btn-secondary-hover)
+  );
+  color: white;
+  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+}
+
+.export-dropdown {
+  position: relative;
+  display: inline-block;
+  margin-left: auto;
+  background: var(--color-primary);
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  z-index: 100;
+}
+
+.profile-export-btn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  background: var(--color-primary);
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.export-dropdown .dropdown-trigger {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--accent-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: white;
+  z-index: 10;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.export-dropdown .dropdown-trigger:hover {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+.export-dropdown .dropdown-trigger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.export-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--color-accent);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  min-width: 250px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px);
+  transition: all 0.2s ease;
+}
+
+.trend-text {
+  color: var(--text-secondary);
+}
+
+.summary-subtitle {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.export-dropdown:hover .export-dropdown-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.export-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  border-radius: 0;
+}
+
+.export-option:first-child {
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+
+.export-option:last-child {
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+
+.export-option:hover {
+  background: var(--hover-background);
+}
+
+.export-option:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.export-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.export-option-text span {
+  font-weight: 500;
+  color: var(--text-color);
+}
+
+.export-option-text small {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+/* Dark mode adjustments */
+.dark-mode .export-dropdown-menu {
+  background: var(--dark-card-background);
+  border-color: var(--dark-border-color);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.dark-mode .export-option:hover {
+  background: var(--dark-hover-background);
+}
+
+.dark-mode .export-option-text span {
+  color: var(--dark-text-color);
+}
+
+.dark-mode .export-option-text small {
+  color: var(--dark-text-muted);
+}
+
 .activity-title {
   margin: 0;
   font-size: 1rem;

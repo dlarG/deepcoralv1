@@ -80,12 +80,6 @@ function Sidebar({ activeTab, setActiveTab, sidebarOpen }) {
       icon: FiCamera,
     },
     {
-      id: "User",
-      label: "Users",
-      description: "User Management",
-      icon: FiUsers,
-    },
-    {
       id: "Coral Database",
       label: "Coral Database",
       description: "Species Information",

@@ -4,7 +4,6 @@ import { useAuth } from "../context/AuthContext";
 import TopNavigation from "./biologist/components/TopNavigation";
 import Sidebar from "./biologist/components/Sidebar";
 import Dashboard from "./biologist/components/Dashboard";
-import UserManagement from "./biologist/components/UserManagement";
 import ProfileManagement from "./biologist/components/ProfileManagement";
 import ImageUpload from "./biologist/components/ImageUpload";
 import CoralDatabase from "./biologist/components/CoralDatabase";
@@ -75,8 +74,6 @@ function BiologistDashboard() {
             onNavigate={handleNavigate}
           />
         );
-      case "User":
-        return <UserManagement />;
       case "Validate":
         return <ValidateUsers />;
       case "Coral Distribution":

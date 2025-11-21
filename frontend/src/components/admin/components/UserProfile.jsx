@@ -96,6 +96,170 @@ function UserProfile({ darkMode }) {
     }
   };
 
+  // Fixed: Fetch user activities with proper filter application
+  const fetchUserActivities = async (userId, filters = activityFilters) => {
+    setActivitiesLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: filters.page.toString(),
+        per_page: filters.per_page.toString(),
+      });
+
+      // Only add filter params if they're not "all"
+      if (filters.activity_type && filters.activity_type !== "all") {
+        params.append("activity_type", filters.activity_type);
+      }
+
+      if (filters.category && filters.category !== "all") {
+        params.append("category", filters.category);
+      }
+
+      const response = await axios.get(
+        `http://${process.env.REACT_APP_API_URL}/admin/users/${userId}/activities?${params}`,
+        { withCredentials: true }
+      );
+
+      setActivities(response.data.activities);
+      setActivitiesSummary(response.data.summary);
+      setActivityPagination(response.data.pagination);
+    } catch (err) {
+      console.error("Error fetching user activities:", err);
+      setActivities([]);
+      setActivitiesSummary({});
+      setActivityPagination({});
+    } finally {
+      setActivitiesLoading(false);
+    }
+  };
+
+  const exportFilteredActivitiesToCSV = async () => {
+    try {
+      setActivitiesLoading(true);
+
+      // Get ALL activities with current filters (no pagination limit)
+      const params = new URLSearchParams({
+        per_page: "1000", // Get a large number of activities
+        page: "1",
+      });
+
+      // Only add filter params if they're not "all"
+      if (
+        activityFilters.activity_type &&
+        activityFilters.activity_type !== "all"
+      ) {
+        params.append("activity_type", activityFilters.activity_type);
+      }
+
+      if (activityFilters.category && activityFilters.category !== "all") {
+        params.append("category", activityFilters.category);
+      }
+
+      const decodedEncryptedId = decodeURIComponent(encodedUserId);
+      const decryptedId = decryptId(decodedEncryptedId);
+
+      if (!decryptedId) {
+        alert("Invalid user ID");
+        return;
+      }
+
+      const response = await axios.get(
+        `http://${process.env.REACT_APP_API_URL}/admin/users/${decryptedId}/activities?${params}`,
+        { withCredentials: true }
+      );
+
+      const allActivities = response.data.activities;
+
+      if (!allActivities || allActivities.length === 0) {
+        alert("No activities found with the current filters");
+        return;
+      }
+
+      // Prepare CSV headers
+      const headers = [
+        "ID",
+        "Activity Type",
+        "Description",
+        "Category",
+        "Date & Time",
+        "Date (ISO)",
+        "IP Address",
+        "User Agent",
+        "Metadata",
+      ];
+
+      // Prepare CSV data with more detailed information
+      const csvData = allActivities.map((activity) => [
+        activity.id,
+        activity.activity_type,
+        activity.activity_description,
+        activity.category || "N/A",
+        new Date(activity.created_at).toLocaleString(),
+        activity.created_at, // ISO format for sorting
+        activity.ip_address || "N/A",
+        activity.user_agent || "N/A",
+        activity.metadata ? JSON.stringify(activity.metadata) : "N/A",
+      ]);
+
+      // Create CSV content
+      const csvContent = [
+        headers.join(","),
+        ...csvData.map((row) =>
+          row
+            .map((field) =>
+              // Escape commas, quotes, and newlines in CSV fields
+              typeof field === "string" &&
+              (field.includes(",") ||
+                field.includes('"') ||
+                field.includes("\n"))
+                ? `"${field.replace(/"/g, '""').replace(/\n/g, " ")}"`
+                : field
+            )
+            .join(",")
+        ),
+      ].join("\n");
+
+      // Create and download file
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+
+      // Generate filename with filters info and timestamp
+      const timestamp = new Date()
+        .toISOString()
+        .slice(0, 19)
+        .replace(/[:.]/g, "-");
+      const filterSuffix = [];
+
+      if (activityFilters.category !== "all") {
+        filterSuffix.push(activityFilters.category);
+      }
+      if (activityFilters.activity_type !== "all") {
+        filterSuffix.push(activityFilters.activity_type);
+      }
+
+      const filterString =
+        filterSuffix.length > 0 ? `_${filterSuffix.join("_")}` : "_all";
+      const filename = `${user.firstname}_${user.lastname}_activities${filterString}_${timestamp}.csv`;
+      link.setAttribute("download", filename);
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      // Show success message with count
+      alert(
+        `Successfully exported ${allActivities.length} activities to ${filename}`
+      );
+    } catch (error) {
+      console.error("Export failed:", error);
+      alert("Failed to export activities. Please try again.");
+    } finally {
+      setActivitiesLoading(false);
+    }
+  };
+
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -114,7 +278,7 @@ function UserProfile({ darkMode }) {
         setUser(response.data.user);
 
         // Fetch activities after user is loaded
-        await fetchUserActivities(decryptedId);
+        await fetchUserActivities(decryptedId, activityFilters);
       } catch (err) {
         console.error("Error fetching user:", err);
         setError(err.response?.data?.error || "Failed to fetch user details");
@@ -131,37 +295,8 @@ function UserProfile({ darkMode }) {
     }
   }, [encodedUserId]);
 
-  const fetchUserActivities = async (userId) => {
-    setActivitiesLoading(true);
-    try {
-      const params = new URLSearchParams({
-        page: activityFilters.page.toString(),
-        per_page: activityFilters.per_page.toString(),
-        ...(activityFilters.activity_type !== "all" && {
-          activity_type: activityFilters.activity_type,
-        }),
-        ...(activityFilters.category !== "all" && {
-          category: activityFilters.category,
-        }),
-      });
-
-      const response = await axios.get(
-        `http://${process.env.REACT_APP_API_URL}/admin/users/${userId}/activities?${params}`,
-        { withCredentials: true }
-      );
-
-      setActivities(response.data.activities);
-      setActivitiesSummary(response.data.summary);
-      setActivityPagination(response.data.pagination);
-    } catch (err) {
-      console.error("Error fetching user activities:", err);
-    } finally {
-      setActivitiesLoading(false);
-    }
-  };
-
-  // Handle activity filter changes
-  const handleFilterChange = (key, value) => {
+  // Fixed: Handle activity filter changes with proper refresh
+  const handleFilterChange = async (key, value) => {
     const newFilters = { ...activityFilters, [key]: value, page: 1 };
     setActivityFilters(newFilters);
 
@@ -169,33 +304,168 @@ function UserProfile({ darkMode }) {
       const decodedEncryptedId = decodeURIComponent(encodedUserId);
       const decryptedId = decryptId(decodedEncryptedId);
       if (decryptedId) {
-        fetchUserActivities(decryptedId);
+        await fetchUserActivities(decryptedId, newFilters);
       }
     }
   };
 
-  // Handle pagination
-  const handlePageChange = (newPage) => {
-    setActivityFilters((prev) => ({ ...prev, page: newPage }));
+  // Fixed: Handle pagination with current filters
+  const handlePageChange = async (newPage) => {
+    const newFilters = { ...activityFilters, page: newPage };
+    setActivityFilters(newFilters);
 
     if (user) {
       const decodedEncryptedId = decodeURIComponent(encodedUserId);
       const decryptedId = decryptId(decodedEncryptedId);
       if (decryptedId) {
-        fetchUserActivities(decryptedId);
+        await fetchUserActivities(decryptedId, newFilters);
       }
     }
   };
 
-  // Refresh activities
-  const refreshActivities = () => {
+  // Refresh activities with current filters
+  const refreshActivities = async () => {
     if (user) {
       const decodedEncryptedId = decodeURIComponent(encodedUserId);
       const decryptedId = decryptId(decodedEncryptedId);
       if (decryptedId) {
-        fetchUserActivities(decryptedId);
+        await fetchUserActivities(decryptedId, activityFilters);
       }
     }
+  };
+
+  // NEW: Export activities to CSV
+  const exportCurrentPageToCSV = () => {
+    if (!activities || activities.length === 0) {
+      alert("No activities to export on current page");
+      return;
+    }
+
+    // Prepare CSV headers
+    const headers = [
+      "ID",
+      "Activity Type",
+      "Description",
+      "Category",
+      "Date & Time",
+      "IP Address",
+      "Metadata",
+    ];
+
+    // Prepare CSV data
+    const csvData = activities.map((activity) => [
+      activity.id,
+      activity.activity_type,
+      activity.activity_description,
+      activity.category || "N/A",
+      new Date(activity.created_at).toLocaleString(),
+      activity.ip_address || "N/A",
+      activity.metadata ? JSON.stringify(activity.metadata) : "N/A",
+    ]);
+
+    // Create CSV content
+    const csvContent = [
+      headers.join(","),
+      ...csvData.map((row) =>
+        row
+          .map((field) =>
+            typeof field === "string" &&
+            (field.includes(",") || field.includes('"'))
+              ? `"${field.replace(/"/g, '""')}"`
+              : field
+          )
+          .join(",")
+      ),
+    ].join("\n");
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+
+    const timestamp = new Date()
+      .toISOString()
+      .slice(0, 19)
+      .replace(/[:.]/g, "-");
+    const filename = `${user.firstname}_${user.lastname}_activities_page${activityFilters.page}_${timestamp}.csv`;
+    link.setAttribute("download", filename);
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // NEW: Export user profile data to CSV
+  const exportUserDataToCSV = () => {
+    if (!user) {
+      alert("No user data to export");
+      return;
+    }
+
+    // Prepare user data for CSV
+    const userData = [
+      ["Field", "Value"],
+      ["User ID", user.id],
+      ["Username", user.username],
+      ["First Name", user.firstname],
+      ["Last Name", user.lastname],
+      ["Role", user.roletype],
+      ["Created At", new Date(user.created_at).toLocaleString()],
+      [
+        "Last Updated",
+        user.updated_at ? new Date(user.updated_at).toLocaleString() : "N/A",
+      ],
+      [
+        "Last Login",
+        user.last_login ? new Date(user.last_login).toLocaleString() : "Never",
+      ],
+      ["Profile Image", user.profile_image ? "Yes" : "No"],
+      ["Bio", user.bio || "N/A"],
+      // Add summary data
+      ["Total Activities", activitiesSummary.total_activities || 0],
+      ["Unique Activity Types", activitiesSummary.unique_activity_types || 0],
+      ["Unique Categories", activitiesSummary.unique_categories || 0],
+      [
+        "Last Activity",
+        activitiesSummary.last_activity
+          ? new Date(activitiesSummary.last_activity).toLocaleString()
+          : "N/A",
+      ],
+    ];
+
+    // Create CSV content
+    const csvContent = userData
+      .map((row) =>
+        row
+          .map((field) =>
+            typeof field === "string" &&
+            (field.includes(",") || field.includes('"'))
+              ? `"${field.replace(/"/g, '""')}"`
+              : field
+          )
+          .join(",")
+      )
+      .join("\n");
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+
+    const timestamp = new Date()
+      .toISOString()
+      .slice(0, 19)
+      .replace(/[:.]/g, "-");
+    const filename = `${user.firstname}_${user.lastname}_profile_${timestamp}.csv`;
+    link.setAttribute("download", filename);
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleGoBack = () => {
@@ -409,9 +679,12 @@ function UserProfile({ darkMode }) {
                   <FiEdit2 size={16} />
                   <span>Edit Profile</span>
                 </button>
-                <button className="userprofile-dropdown-item export">
+                <button
+                  onClick={exportUserDataToCSV}
+                  className="userprofile-dropdown-item export"
+                >
                   <FiDownload size={16} />
-                  <span>Export Data</span>
+                  <span>Export Profile Data</span>
                 </button>
                 <div className="userprofile-dropdown-divider"></div>
                 <button
@@ -696,13 +969,66 @@ function UserProfile({ darkMode }) {
               <button
                 onClick={() => setFiltersOpen(!filtersOpen)}
                 className={`filter-toggle ${filtersOpen ? "active" : ""}`}
+                title="Toggle Filters"
               >
                 <FiFilter size={16} />
               </button>
+
+              {/* NEW: Dropdown for export options */}
+              <div className="export-dropdown">
+                <button
+                  className="profile-export-btn dropdown-trigger"
+                  disabled={activitiesLoading}
+                  title="Export Options"
+                >
+                  <FiDownload size={16} />
+                  <FiChevronDown size={12} />
+                </button>
+
+                <div className="export-dropdown-menu">
+                  <button
+                    onClick={exportFilteredActivitiesToCSV}
+                    className="export-option"
+                    disabled={
+                      activitiesLoading ||
+                      (activitiesSummary.total_activities || 0) === 0
+                    }
+                  >
+                    <FiDownload size={14} />
+                    <div className="export-option-text">
+                      <span>Export All Filtered</span>
+                      <small>
+                        {activityFilters.category !== "all" ||
+                        activityFilters.activity_type !== "all"
+                          ? `${
+                              activitiesSummary.total_activities || 0
+                            } activities with filters`
+                          : `${
+                              activitiesSummary.total_activities || 0
+                            } total activities`}
+                      </small>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={exportCurrentPageToCSV}
+                    className="export-option"
+                    disabled={activitiesLoading || activities.length === 0}
+                  >
+                    <FiEye size={14} />
+                    <div className="export-option-text">
+                      <span>Export Current Page</span>
+                      <small>{activities.length} activities on this page</small>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
               <button
                 onClick={refreshActivities}
                 className="profile-refresh-btn"
                 disabled={activitiesLoading}
+                title="Refresh Activities"
               >
                 <FiRefreshCw
                   size={16}
@@ -891,7 +1217,7 @@ function UserProfile({ darkMode }) {
 
                   <span className="pagination-info">
                     Page {activityPagination.current_page} of{" "}
-                    {activityPagination.total_pages}(
+                    {activityPagination.total_pages} (
                     {activityPagination.total_count} total)
                   </span>
 
@@ -937,13 +1263,34 @@ function UserProfile({ darkMode }) {
                 </div>
               </button>
 
-              <button className="action-btn neutral">
+              <button
+                onClick={exportUserDataToCSV}
+                className="action-btn neutral"
+              >
                 <div className="action-icon">
                   <FiDownload size={20} />
                 </div>
                 <div className="action-content">
-                  <h3>Export Data</h3>
+                  <h3>Export Profile</h3>
                   <p>Download user info</p>
+                </div>
+              </button>
+
+              {/* NEW: Export activities action */}
+              <button
+                onClick={exportFilteredActivitiesToCSV}
+                className="action-btn info"
+                disabled={
+                  activitiesLoading ||
+                  (activitiesSummary.total_activities || 0) === 0
+                }
+              >
+                <div className="action-icon">
+                  <FiActivity size={20} />
+                </div>
+                <div className="action-content">
+                  <h3>Export Activities</h3>
+                  <p>Download activity logs</p>
                 </div>
               </button>
 
