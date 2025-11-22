@@ -203,14 +203,14 @@ function UploadImage() {
             <div className="upload-summary">
               <h4>Upload Summary</h4>
               <div className="summary-stats">
-                <div className="stat-item success">
+                <div className="up-stat-items success">
                   <FiCheckCircle size={20} />
                   <span>
                     {uploadStatus.successfulImages} Images Successfully
                     Processed
                   </span>
                 </div>
-                <div className="stat-item info">
+                <div className="up-stat-items info">
                   <FiImage size={20} />
                   <span>
                     {uploadStatus.uploadedImages.reduce(
@@ -230,7 +230,7 @@ function UploadImage() {
             </div>
 
             {/* Show cropped quadrats preview */}
-            {uploadStatus.uploadedImages.length > 0 && (
+            {/* {uploadStatus.uploadedImages.length > 0 && (
               <div className="cropped-preview">
                 <h5>Cropped Quadrats Created:</h5>
                 <div className="crops-preview-grid">
@@ -267,7 +267,7 @@ function UploadImage() {
                     ))}
                 </div>
               </div>
-            )}
+            )} */}
 
             {uploadStatus.successfulImages > 0 && (
               <div className="status-details">
@@ -318,29 +318,9 @@ function UploadImage() {
   };
 
   return (
-    <div className="content-section guest-upload">
-      {/* Guest Upload Header */}
-      <div className="upload-header">
-        <h2>Upload Coral Images</h2>
-        <p>Upload your coral quadrat images for expert review and analysis</p>
-        <div className="upload-info">
-          <div className="info-item">
-            <FiCheckCircle size={16} />
-            <span>Images are reviewed by coral experts</span>
-          </div>
-          <div className="info-item">
-            <FiClock size={16} />
-            <span>Review process takes 24-48 hours</span>
-          </div>
-          <div className="info-item">
-            <FiEye size={16} />
-            <span>Approved images can be analyzed</span>
-          </div>
-        </div>
-      </div>
-
+    <>
       {images.length === 0 ? (
-        <div className="upload-section">
+        <div className="upload-section-empty">
           <div
             className={`file-upload-area ${dragActive ? "drag-active" : ""}`}
             onDragEnter={handleDrag}
@@ -348,32 +328,34 @@ function UploadImage() {
             onDragOver={handleDrag}
             onDrop={handleDrop}
           >
-            <div className="upload-icon">
-              <FiUpload size={40} />
-            </div>
+            <div className="upload-content">
+              <div className="upload-icon">
+                <FiUpload size={40} />
+              </div>
 
-            <div className="upload-text">
-              <h3>Drag & drop coral images here</h3>
-              <p>
-                Upload coral quadrat images for expert review • JPG, PNG, WEBP
-                formats • Up to 50 images
-              </p>
+              <div className="upload-text">
+                <h3>Drag & drop coral images or folders here</h3>
+                <p>
+                  Images will be validated for coral quadrats • JPG, PNG, WEBP
+                  formats • Up to 50 images
+                </p>
+              </div>
 
               <div className="upload-buttons">
                 <button
-                  className="upload-button"
+                  className="up-button pri"
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <FiFile size={20} />
-                  Select Images
+                  <FiFile size={18} />
+                  <span>Select Images</span>
                 </button>
 
                 <button
-                  className="upload-button folder"
+                  className="upload-button secondary"
                   onClick={() => folderInputRef.current?.click()}
                 >
-                  <FiFolder size={20} />
-                  Select Folder
+                  <FiFolder size={18} />
+                  <span>Select Folder</span>
                 </button>
               </div>
             </div>
@@ -398,11 +380,11 @@ function UploadImage() {
             />
           </div>
 
-          <div className="controls-section">
+          <div className="controls-section-empty">
             <div className="intensity-control">
               <label className="intensity-label">
-                <FiSettings size={20} />
-                Cropping Intensity:
+                <FiSettings size={18} />
+                <span>Cropping Intensity:</span>
               </label>
               <select
                 value={cropIntensity}
@@ -416,96 +398,11 @@ function UploadImage() {
                 <option value="aggressive">Aggressive (18% crop)</option>
                 <option value="smart">Smart (Edge Detection)</option>
               </select>
-              <p className="intensity-help">
-                This setting will be applied when your images are processed
-                after approval
-              </p>
             </div>
           </div>
         </div>
       ) : (
         <>
-          {/* Controls */}
-          <div className="upload-section">
-            <div className="controls-section">
-              <div className="intensity-control">
-                <label className="intensity-label">
-                  <FiSettings size={20} />
-                  Cropping Intensity:
-                </label>
-                <select
-                  value={cropIntensity}
-                  onChange={(e) => setCropIntensity(e.target.value)}
-                  className="intensity-select"
-                >
-                  <option value="conservative">
-                    Conservative (5% crop) - Recommended
-                  </option>
-                  <option value="moderate">Moderate (12% crop)</option>
-                  <option value="aggressive">Aggressive (18% crop)</option>
-                  <option value="smart">Smart (Edge Detection)</option>
-                </select>
-              </div>
-
-              <div className="upload-actions">
-                <button
-                  onClick={handleGuestUpload}
-                  disabled={images.length === 0 || loading}
-                  className="upload-btn primary"
-                >
-                  {loading ? (
-                    <>
-                      <FiLoader size={20} className="spinning" />
-                      Uploading...
-                    </>
-                  ) : (
-                    <>
-                      <FiUpload size={20} />
-                      Upload for Review
-                    </>
-                  )}
-                </button>
-
-                <button onClick={clearImages} className="clear-btn secondary">
-                  <FiTrash2 size={20} />
-                  Clear All
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Image Gallery */}
-          <div className="gallery-section">
-            <div className="gallery-header">
-              <div className="gallery-title">
-                <FiImage size={24} />
-                Selected Images ({images.length})
-              </div>
-            </div>
-
-            <div className="image-gallery guest-gallery">
-              {images.map((image, index) => (
-                <div key={index} className="gallery-item guest-item">
-                  <div className="item-thumbnail">
-                    <img src={image.preview} alt={`Thumbnail ${index}`} />
-                    <button
-                      className="remove-btn"
-                      onClick={() => removeImage(index)}
-                    >
-                      <FiX size={12} />
-                    </button>
-                  </div>
-                  <div className="item-info">
-                    <span className="filename">{image.file.name}</span>
-                    <span className="file-size">
-                      {(image.file.size / 1024 / 1024).toFixed(2)} MB
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
           {/* Upload Instructions */}
           <div className="upload-instructions">
             <h4>What happens next?</h4>
@@ -539,6 +436,56 @@ function UploadImage() {
                 </div>
               </div>
             </div>
+            <div className="upload-actions">
+              <button
+                onClick={handleGuestUpload}
+                disabled={images.length === 0 || loading}
+                className="upload-btn primary"
+              >
+                {loading ? (
+                  <>
+                    <FiLoader size={20} className="spinning" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <FiUpload size={20} />
+                    Upload for Review
+                  </>
+                )}
+              </button>
+
+              <button onClick={clearImages} className="clear-btn secondary">
+                <FiTrash2 size={20} />
+                Clear All
+              </button>
+            </div>
+          </div>
+
+          {/* Image Gallery */}
+          <div className="gallery-section">
+            <div className="gallery-header">
+              <div className="gallery-title">
+                <FiImage size={24} />
+                Selected Images ({images.length})
+              </div>
+            </div>
+
+            <div className="image-gallery guest-gallery">
+              {images.map((image, index) => (
+                <div key={index} className="gallery-item guest-item">
+                  <div className="item-thumbnail">
+                    <img src={image.preview} alt={`Thumbnail ${index}`} />
+                  </div>
+                  <div className="item-info">
+                    <span className="filename">{image.file.name}</span>
+                    <span className="file-size">
+                      {(image.file.size / 1024 / 1024).toFixed(2)} MB
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </>
       )}
@@ -563,7 +510,7 @@ function UploadImage() {
         }}
         uploadStatus={uploadStatus}
       />
-    </div>
+    </>
   );
 }
 export default UploadImage;

@@ -37,7 +37,7 @@ def manage_image_uploads():
             if not user_result or user_result[0].lower() != 'admin':
                 return jsonify({"error": "Admin access required"}), 403
             
-            new_status = 'approved' if action == 'approve' else 'rejected'
+            new_status = 'pending_approved' if action == 'approve' else 'rejected'
             
             # Get image details before updating for logging
             placeholders = ','.join(['%s'] * len(image_ids))

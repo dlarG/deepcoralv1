@@ -54,6 +54,8 @@ def create_app():
                 'approved.analyze_approved_image',   
                 'approved.batch_analyze_approved',   
                 'approved.delete_guest_images',      
+                'approved.analyze_pending_approved_image',  
+                'approved.batch_analyze_pending_approved',  
                 'image.guest_upload_only',
                 'philippine_locations.get_regions',
                 'philippine_locations.get_provinces',
