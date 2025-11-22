@@ -7,10 +7,9 @@ import TopNavigation from "./guest/components/TopNavigation";
 import CoralLifeForms from "./guest/components/CoralLifeForms";
 import UploadImage from "./guest/components/UploadImage";
 import ViewMap from "./guest/components/ViewMap";
-import ViewResults from "./guest/components/ViewResults";
 import ProfileManagement from "./guest/components/ProfileManagement";
 import { getGuestStyles } from "./guest/styles/GuestStyles";
-import ApprovedImage from "./guest/components/ApprovedImage";
+import PendingApprovedImages from "./guest/components/PendingApproved";
 
 function GuestDashboard() {
   const navigate = useNavigate();
@@ -74,11 +73,9 @@ function GuestDashboard() {
       case "Upload Image":
         return <UploadImage />;
       case "Approved Image":
-        return <ApprovedImage />;
+        return <PendingApprovedImages />;
       case "View Map":
         return <ViewMap />;
-      case "View Results":
-        return <ViewResults />;
       case "Coral LifeForms":
       default:
         return <CoralLifeForms />;

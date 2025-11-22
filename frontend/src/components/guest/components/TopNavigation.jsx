@@ -20,13 +20,13 @@ function TopNavigation({ user, sidebarOpen, setSidebarOpen, handleLogout }) {
             <span className="portal-tag">Guest</span>
           </div>
         </div>
-        <div className="user-actions">
+        <div className="user-action">
           {user && (
             <div className="user-profile">
               <div className="user-avatar">
                 {user.firstname?.charAt(0) || user.username?.charAt(0)}
               </div>
-              <div className="user-details">
+              <div className="user-detail">
                 <span className="welcome-text">Welcome back,</span>
                 <span className="username">
                   {user.firstname} {user.lastname}

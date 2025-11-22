@@ -1006,7 +1006,7 @@ def manage_image_uploads():
             return jsonify({'error': 'Database connection failed'}), 500
 
         with conn.cursor() as cur:
-            new_status = 'approved' if action == 'approve' else 'rejected'
+            new_status = 'pending_approved' if action == 'approve' else 'rejected'
             
             # Update image status (same logic as admin)
             cur.execute("""
@@ -1019,7 +1019,7 @@ def manage_image_uploads():
             updated_images = cur.fetchall()
             conn.commit()
             
-            action_text = 'approved' if action == 'approve' else 'rejected'
+            action_text = 'pending_approved' if action == 'approve' else 'rejected'
             
             return jsonify({
                 'message': f'Successfully {action_text} {len(updated_images)} image(s)',

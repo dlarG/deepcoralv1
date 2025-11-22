@@ -16,7 +16,7 @@ function Sidebar({ activeTab, setActiveTab, sidebarOpen }) {
     { icon: FiUpload, label: "Upload Image", value: "Upload Image" },
     { icon: FiImage, label: "Approved Image", value: "Approved Image" },
     { icon: FiMap, label: "View Map", value: "View Map" },
-    { icon: FiFileText, label: "View Results", value: "View Results" },
+
     { icon: FiUser, label: "Profile Management", value: "Profile Management" },
   ];
 
