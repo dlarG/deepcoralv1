@@ -33,6 +33,9 @@ class Config:
     SESSION_COOKIE_SAMESITE = 'None'  # Required for cross-origin requests
     SESSION_COOKIE_DOMAIN = '.deepcoral.site'  # Share cookies across subdomains
     
+    # File upload configuration
+    MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # 50MB max upload size
+    
     # Database configuration
     DB_HOST = os.getenv('DB_HOST') 
     DB_PORT = os.getenv('DB_PORT')     
