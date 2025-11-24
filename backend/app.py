@@ -11,7 +11,7 @@ def create_app():
     # Set debug mode from config
     app.debug = Config.DEBUG
     
-    # Simple CORS configuration that actually works
+    # Simple CORS configuration
     CORS(app,
          origins=['https://deepcoral.site', 'https://www.deepcoral.site'],
          supports_credentials=True,
@@ -19,6 +19,18 @@ def create_app():
          expose_headers=['Set-Cookie'],
          methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
          max_age=3600)
+    
+    # Backup CORS handler in case Flask-CORS doesn't work
+    @app.after_request
+    def after_request_cors(response):
+        origin = request.headers.get('Origin')
+        if origin in ['https://deepcoral.site', 'https://www.deepcoral.site']:
+            response.headers['Access-Control-Allow-Origin'] = origin
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-CSRF-Token, x-csrf-token'
+            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+            response.headers['Access-Control-Expose-Headers'] = 'Set-Cookie'
+        return response
     
     # Initialize routes
     init_routes(app)
