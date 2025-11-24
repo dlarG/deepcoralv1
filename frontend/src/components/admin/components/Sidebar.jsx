@@ -23,7 +23,7 @@ function Sidebar({ activeTab, setActiveTab, sidebarOpen, darkMode }) {
   const fetchNotifications = async () => {
     try {
       const response = await axios.get(
-        `${process.env.REACT_APP_API_URL || "localhost:5000"}/notifications`,
+        `${process.env.REACT_APP_API_URL || "https://api.deepcoral.site"}/notifications`,
         {
           withCredentials: true,
           timeout: 10000, // 10 second timeout
