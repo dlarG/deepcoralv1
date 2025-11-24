@@ -11,23 +11,14 @@ def create_app():
     # Set debug mode from config
     app.debug = Config.DEBUG
     
-    # Initialize CORS - ONLY ONE CONFIGURATION
-    # Allow all header variations to avoid case sensitivity issues
+    # Initialize CORS - Let Flask-CORS handle everything
     CORS(app, 
          supports_credentials=True, 
          origins=Config.CORS_ORIGINS,
-         allow_headers='*',  # Allow all headers to avoid case sensitivity issues
+         allow_headers='*',
          methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-         expose_headers=['Set-Cookie'])
-    
-    # Ensure cookies are set with correct attributes for cross-origin
-    @app.after_request
-    def after_request(response):
-        origin = request.headers.get('Origin')
-        if origin in Config.CORS_ORIGINS:
-            response.headers['Access-Control-Allow-Origin'] = origin
-            response.headers['Access-Control-Allow-Credentials'] = 'true'
-        return response
+         expose_headers=['Set-Cookie'],
+         max_age=3600)  # Cache preflight for 1 hour
     
     # Initialize routes
     init_routes(app)
