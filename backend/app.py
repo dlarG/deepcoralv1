@@ -11,14 +11,16 @@ def create_app():
     # Set debug mode from config
     app.debug = Config.DEBUG
     
-    # Initialize CORS - Let Flask-CORS handle everything
+    # Initialize CORS - comprehensive configuration
     CORS(app, 
-         supports_credentials=True, 
-         origins=Config.CORS_ORIGINS,
-         allow_headers='*',
-         methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-         expose_headers=['Set-Cookie'],
-         max_age=3600)  # Cache preflight for 1 hour
+         resources={r"/*": {
+             "origins": Config.CORS_ORIGINS,
+             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+             "allow_headers": ["Content-Type", "Authorization", "X-CSRF-Token", "x-csrf-token"],
+             "expose_headers": ["Set-Cookie"],
+             "supports_credentials": True,
+             "max_age": 3600
+         }})
     
     # Initialize routes
     init_routes(app)
