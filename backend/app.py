@@ -18,7 +18,14 @@ def create_app():
          allow_headers=['Content-Type', 'X-CSRF-Token', 'Authorization'],
          methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
     
-    # REMOVE the after_request function - it's causing duplicates
+    # Ensure cookies are set with correct attributes for cross-origin
+    @app.after_request
+    def after_request(response):
+        origin = request.headers.get('Origin')
+        if origin in Config.CORS_ORIGINS:
+            response.headers['Access-Control-Allow-Origin'] = origin
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
+        return response
     
     # Initialize routes
     init_routes(app)
