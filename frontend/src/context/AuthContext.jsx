@@ -3,7 +3,7 @@ import axios from "axios";
 
 const AuthContext = createContext();
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE || "http://localhost:5000";
+const API_BASE_URL = process.env.REACT_APP_API_URL || "https://api.deepcoral.site";
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
