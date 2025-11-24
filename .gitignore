@@ -9,3 +9,8 @@ backend/coral_uploads/*
 
 backend/models/segmentation/version2/*
 backend/models/*
+
+# Elastic Beanstalk
+.elasticbeanstalk/
+backend/.elasticbeanstalk/
+**/.elasticbeanstalk/
