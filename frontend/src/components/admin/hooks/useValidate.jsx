@@ -53,7 +53,7 @@ export default function useValidate() {
     setLoading(true);
     try {
       const response = await axios.get(
-        `http://${process.env.REACT_APP_API_URL}/admin/pending-users`,
+        `${process.env.REACT_APP_API_URL}/admin/pending-users`,
         {
           withCredentials: true,
         }
@@ -134,7 +134,7 @@ export default function useValidate() {
     try {
       const csrfToken = await fetchCsrfToken();
       await axios.put(
-        `http://${process.env.REACT_APP_API_URL}/admin/users/${userId}/approve`,
+        `${process.env.REACT_APP_API_URL}/admin/users/${userId}/approve`,
         {},
         {
           headers: {
@@ -210,7 +210,7 @@ export default function useValidate() {
     try {
       const csrfToken = await fetchCsrfToken();
       await axios.delete(
-        `http://${process.env.REACT_APP_API_URL}/admin/users/${userId}/reject`,
+        `${process.env.REACT_APP_API_URL}/admin/users/${userId}/reject`,
         {
           headers: {
             "X-CSRF-Token": csrfToken,

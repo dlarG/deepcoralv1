@@ -3,11 +3,23 @@ from dotenv import load_dotenv
 import secrets
 
 # Determine environment and load appropriate .env file
-env = os.getenv('FLASK_ENV', 'development')
-if env == 'production':
+env = os.getenv('FLASK_ENV', 'production')
+local_prod = os.getenv('LOCAL_PRODUCTION', 'False').lower() == 'true'
+
+if local_prod:
+    load_dotenv('.env.local-production')
+elif env == 'production':
     load_dotenv('.env.production')
 else:
     load_dotenv('.env.development')
+
+
+# Determine environment and load appropriate .env file
+# env = os.getenv('FLASK_ENV', 'production')
+# if env == 'production':
+#     load_dotenv('.env.production')
+# else:
+#     load_dotenv('.env.development')
 
 class Config:
     # App configuration

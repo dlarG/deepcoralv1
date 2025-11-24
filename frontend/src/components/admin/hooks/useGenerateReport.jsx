@@ -65,11 +65,11 @@ export default function useGenerateReport() {
 
       console.log(
         "Making request to:",
-        `http://${process.env.REACT_APP_API_URL}${endpoint}?${params}`
+        `${process.env.REACT_APP_API_URL}${endpoint}?${params}`
       );
 
       const response = await axios.get(
-        `http://${process.env.REACT_APP_API_URL}${endpoint}?${params}`,
+        `${process.env.REACT_APP_API_URL}${endpoint}?${params}`,
         {
           withCredentials: true,
         }
@@ -103,7 +103,7 @@ export default function useGenerateReport() {
     try {
       const csrfToken = await fetchCsrfToken();
       const response = await axios.post(
-        `http://${process.env.REACT_APP_API_URL}/admin/reports/export/${activeReportType}`,
+        `${process.env.REACT_APP_API_URL}/admin/reports/export/${activeReportType}`,
         {
           format: format,
           filters: filters,

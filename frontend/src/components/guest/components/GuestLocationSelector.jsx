@@ -148,7 +148,7 @@ const GuestLocationSelector = ({
       console.log("🔢 Loading transect counts for location:", location);
 
       const response = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/images?scope=location`
+        `${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/images?scope=location`
       );
       const data = await response.json();
 
@@ -220,7 +220,7 @@ const GuestLocationSelector = ({
       console.log("🔍 Loading existing locations for guest...");
 
       const response = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/distribution/locations`,
+        `${process.env.REACT_APP_API_URL}/distribution/locations`,
         {
           method: "GET",
           credentials: "include",
@@ -521,7 +521,7 @@ const GuestLocationSelector = ({
       console.log("Request body:", requestBody);
 
       const response = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/gis/save_with_location`,
+        `${process.env.REACT_APP_API_URL}/gis/save_with_location`,
         {
           method: "POST",
           credentials: "include",

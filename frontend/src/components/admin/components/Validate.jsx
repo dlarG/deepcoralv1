@@ -59,13 +59,13 @@ function Validate() {
     try {
       // Fetch pending users count
       const usersResponse = await fetch(
-        "http://localhost:5000/admin/pending-users",
+        `${process.env.REACT_APP_API_URL}/admin/pending-users`,
         { method: "GET", credentials: "include" }
       );
 
       // Fetch pending images count
       const imagesResponse = await fetch(
-        "http://localhost:5000/admin/pending-image-uploads",
+        `${process.env.REACT_APP_API_URL}/admin/pending-image-uploads`,
         { method: "GET", credentials: "include" }
       );
 
@@ -142,7 +142,7 @@ function Validate() {
     setLoading(true);
     try {
       const response = await fetch(
-        "http://localhost:5000/admin/pending-image-uploads",
+        `${process.env.REACT_APP_API_URL}/admin/pending-image-uploads`,
         {
           method: "GET",
           credentials: "include",
@@ -167,7 +167,7 @@ function Validate() {
     setLoading(true);
     try {
       const response = await fetch(
-        "http://localhost:5000/admin/pending-users",
+        `${process.env.REACT_APP_API_URL}/admin/pending-users`,
         {
           method: "GET",
           credentials: "include",
@@ -322,10 +322,13 @@ function Validate() {
 
     try {
       // Get CSRF token first
-      const csrfResponse = await fetch("http://localhost:5000/csrf-token", {
-        method: "GET",
-        credentials: "include",
-      });
+      const csrfResponse = await fetch(
+        `${process.env.REACT_APP_API_URL}/csrf-token`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
 
       if (!csrfResponse.ok) {
         throw new Error("Failed to get CSRF token");
@@ -339,17 +342,15 @@ function Validate() {
 
       if (isUserAction) {
         // User validation endpoints
-        endpoint = "http://localhost:5000/admin/manage-user-validation";
+        endpoint = `${process.env.REACT_APP_API_URL}/admin/manage-user-validation`;
         requestData = { user_ids: itemIds, action };
       } else {
         // Image validation endpoints
         if (action === "delete") {
-          endpoint =
-            "http://localhost:5000/validation/admin/delete-pending-images";
+          endpoint = `${process.env.REACT_APP_API_URL}/validation/admin/delete-pending-images`;
           requestData = { image_ids: itemIds };
         } else {
-          endpoint =
-            "http://localhost:5000/validation/admin/manage-image-uploads";
+          endpoint = `${process.env.REACT_APP_API_URL}/validation/admin/manage-image-uploads`;
           requestData = { image_ids: itemIds, action };
         }
       }
@@ -901,7 +902,7 @@ function Validate() {
 
                                 <div className="validate-image-preview">
                                   <img
-                                    src={`http://localhost:5000/crops/${image.filename}`}
+                                    src={`${process.env.REACT_APP_API_URL}/crops/${image.filename}`}
                                     alt={image.filename}
                                     onError={(e) => {
                                       e.target.style.display = "none";
@@ -952,7 +953,7 @@ function Validate() {
                                     className="validate-action-btn view"
                                     onClick={() =>
                                       window.open(
-                                        `http://localhost:5000/crops/${image.filename}`,
+                                        `${process.env.REACT_APP_API_URL}/crops/${image.filename}`,
                                         "_blank"
                                       )
                                     }

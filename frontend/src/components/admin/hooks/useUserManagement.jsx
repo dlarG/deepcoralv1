@@ -75,7 +75,7 @@ export default function useUserManagement() {
     const fetchUsers = async () => {
       try {
         const response = await axios.get(
-          `http://${process.env.REACT_APP_API_URL}/admin/users`,
+          `${process.env.REACT_APP_API_URL}/admin/users`,
           {
             withCredentials: true,
           }
@@ -204,7 +204,7 @@ export default function useUserManagement() {
 
       if (userModalMode === "create") {
         response = await axios.post(
-          `http://${process.env.REACT_APP_API_URL}/admin/users`,
+          `${process.env.REACT_APP_API_URL}/admin/users`,
           formData,
           {
             withCredentials: true,
@@ -228,7 +228,7 @@ export default function useUserManagement() {
         }
 
         response = await axios.put(
-          `http://${process.env.REACT_APP_API_URL}/admin/users/${selectedUser.id}`,
+          `${process.env.REACT_APP_API_URL}/admin/users/${selectedUser.id}`,
           updateData,
           {
             withCredentials: true,
@@ -329,7 +329,7 @@ export default function useUserManagement() {
 
     try {
       const csrfResponse = await axios.get(
-        `http://${process.env.REACT_APP_API_URL}/csrf-token`,
+        `${process.env.REACT_APP_API_URL}/csrf-token`,
         {
           withCredentials: true,
         }
@@ -337,7 +337,7 @@ export default function useUserManagement() {
       const csrfToken = csrfResponse.data.csrf_token;
 
       await axios.delete(
-        `http://${process.env.REACT_APP_API_URL}/admin/users/${userId}`,
+        `${process.env.REACT_APP_API_URL}/admin/users/${userId}`,
         {
           withCredentials: true,
           headers: {
