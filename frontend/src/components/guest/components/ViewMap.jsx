@@ -276,7 +276,7 @@ function CoralDistribution() {
 
       params.append("locations", locationCoords);
 
-      const comparisonUrl = `http://${
+      const comparisonUrl = `${
         process.env.REACT_APP_API_URL
       }/distribution/compare?${params.toString()}`;
 
@@ -457,7 +457,7 @@ function CoralDistribution() {
       const paramString = params.toString();
 
       // Load images for this location with filtering
-      const imagesUrl = `http://${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/images?${paramString}`;
+      const imagesUrl = `${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/images?${paramString}`;
 
       console.log("Loading images from:", imagesUrl);
 
@@ -481,7 +481,7 @@ function CoralDistribution() {
       }
 
       // Load analytics for this location with filtering
-      const analyticsUrl = `http://${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/analytics?${paramString}`;
+      const analyticsUrl = `${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/analytics?${paramString}`;
 
       const analyticsResponse = await fetch(analyticsUrl);
       const analyticsData = await analyticsResponse.json();
@@ -957,7 +957,7 @@ function CoralDistribution() {
                         >
                           <div className="image-thumbnail">
                             <img
-                              src={`http://${process.env.REACT_APP_API_URL}/crops/${image.filename}`}
+                              src={`${process.env.REACT_APP_API_URL}/crops/${image.filename}`}
                               alt={image.filename}
                               onError={(e) => {
                                 e.target.src =
@@ -1070,7 +1070,7 @@ function CoralDistribution() {
 
       // FIXED: Use the correct distribution endpoint
       const response = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/distribution/images/${imageToDelete.id}`,
+        `${process.env.REACT_APP_API_URL}/distribution/images/${imageToDelete.id}`,
         {
           method: "DELETE",
           credentials: "include",
@@ -1147,7 +1147,7 @@ function CoralDistribution() {
 
       // Load  date range
       const dateRangeResponse = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/distribution/date-range`
+        `${process.env.REACT_APP_API_URL}/distribution/date-range`
       );
       const dateRangeData = await dateRangeResponse.json();
 
@@ -1190,8 +1190,8 @@ function CoralDistribution() {
       }
 
       const url = params.toString()
-        ? `http://${process.env.REACT_APP_API_URL}/distribution/locations?${params}`
-        : `http://${process.env.REACT_APP_API_URL}/distribution/locations`;
+        ? `${process.env.REACT_APP_API_URL}/distribution/locations?${params}`
+        : `${process.env.REACT_APP_API_URL}/distribution/locations`;
 
       console.log("Loading locations from:", url); // Debug log
 
@@ -1234,8 +1234,8 @@ function CoralDistribution() {
 
       // Load images for this location
       const imagesUrl = paramString
-        ? `http://${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/images?${paramString}`
-        : `http://${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/images`;
+        ? `${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/images?${paramString}`
+        : `${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/images`;
 
       console.log("Loading images from:", imagesUrl); // Debug log
 
@@ -1249,8 +1249,8 @@ function CoralDistribution() {
 
       // Load analytics for this location
       const analyticsUrl = paramString
-        ? `http://${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/analytics?${paramString}`
-        : `http://${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/analytics`;
+        ? `${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/analytics?${paramString}`
+        : `${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/analytics`;
 
       const analyticsResponse = await fetch(analyticsUrl);
       const analyticsData = await analyticsResponse.json();
@@ -1903,7 +1903,7 @@ function CoralDistribution() {
                             >
                               <div className="image-thumbnail">
                                 <img
-                                  src={`http://${process.env.REACT_APP_API_URL}/crops/${image.filename}`}
+                                  src={`${process.env.REACT_APP_API_URL}/crops/${image.filename}`}
                                   alt={image.filename}
                                   onError={(e) => {
                                     e.target.src =
@@ -2076,7 +2076,7 @@ function CoralDistribution() {
                 <div className="image-display-container">
                   <div className="main-image-wrapper">
                     <img
-                      src={`http://${process.env.REACT_APP_API_URL}/crops/${locationImages[currentImageIndex].filename}`}
+                      src={`${process.env.REACT_APP_API_URL}/crops/${locationImages[currentImageIndex].filename}`}
                       alt={locationImages[currentImageIndex].filename}
                       className="main-display-image"
                       onError={(e) => {

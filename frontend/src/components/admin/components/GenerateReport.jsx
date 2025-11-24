@@ -210,7 +210,7 @@ function GenerateReport() {
           : `/admin/reports/activities?${params}`;
 
       const response = await fetch(
-        `http://${process.env.REACT_APP_API_URL}${endpoint}`,
+        `${process.env.REACT_APP_API_URL}${endpoint}`,
         {
           credentials: "include",
         }
