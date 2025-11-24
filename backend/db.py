@@ -5,11 +5,7 @@ Create a PostgreSQL database on pgAdmin4 named 'deep_coral_ai' before running th
 
 import psycopg2
 import os
-from dotenv import load_dotenv
 from config import Config
-
-# Load environment variables
-load_dotenv()
 
 def get_db_connection():
     """

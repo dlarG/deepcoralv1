@@ -52,7 +52,7 @@ if PYTORCH_AVAILABLE:
         print(f"✅ Ultralytics imported successfully")
         
         # Try to load the YOLO model
-        model_path = "./models/autocrop_yolov11_best.pt"
+        model_path = "/app/models/autocrop_yolov11_best.pt" # /app/ path is for docker
         
         print(f"🔄 Attempting to load YOLO model from: {model_path}")
         
@@ -100,7 +100,7 @@ if PYTORCH_AVAILABLE:
         print("✅ Segmentation models imported successfully")
         
         BASE_DIR = Path(__file__).parent.parent
-        MODEL_PATH = BASE_DIR.parent / "backend" / "models" / "segmentation" / "version4" / "coral_unet_best.pth"
+        MODEL_PATH = BASE_DIR / "models" / "segmentation" / "version4" / "coral_unet_best.pth"
         
         print(f"🔄 Loading segmentation model from: {MODEL_PATH}")
         print(f"📁 Model exists: {MODEL_PATH.exists()}")
