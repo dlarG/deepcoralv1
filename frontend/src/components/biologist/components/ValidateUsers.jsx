@@ -59,13 +59,13 @@ function ValidateUsers() {
     try {
       // Fetch pending users count
       const usersResponse = await fetch(
-        "http://localhost:5000/biologist/pending-users",
+        `${process.env.REACT_APP_API_URL}/biologist/pending-users`,
         { method: "GET", credentials: "include" }
       );
 
       // Fetch pending images count
       const imagesResponse = await fetch(
-        "http://localhost:5000/biologist/pending-image-uploads",
+        `${process.env.REACT_APP_API_URL}/biologist/pending-image-uploads`,
         { method: "GET", credentials: "include" }
       );
 
@@ -142,7 +142,7 @@ function ValidateUsers() {
     setLoading(true);
     try {
       const response = await fetch(
-        "http://localhost:5000/biologist/pending-image-uploads",
+        `${process.env.REACT_APP_API_URL}/biologist/pending-image-uploads`,
         {
           method: "GET",
           credentials: "include",
@@ -167,7 +167,7 @@ function ValidateUsers() {
     setLoading(true);
     try {
       const response = await fetch(
-        "http://localhost:5000/biologist/pending-users",
+        `${process.env.REACT_APP_API_URL}/biologist/pending-users`,
         {
           method: "GET",
           credentials: "include",
@@ -322,10 +322,13 @@ function ValidateUsers() {
 
     try {
       // Get CSRF token first
-      const csrfResponse = await fetch("http://localhost:5000/csrf-token", {
-        method: "GET",
-        credentials: "include",
-      });
+      const csrfResponse = await fetch(
+        `${process.env.REACT_APP_API_URL}/csrf-token`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
 
       if (!csrfResponse.ok) {
         throw new Error("Failed to get CSRF token");
@@ -339,17 +342,15 @@ function ValidateUsers() {
 
       if (isUserAction) {
         // User validation endpoints
-        endpoint = "http://localhost:5000/biologist/manage-user-validation";
+        endpoint = `${process.env.REACT_APP_API_URL}/biologist/manage-user-validation`;
         requestData = { user_ids: itemIds, action };
       } else {
         // Image validation endpoints
         if (action === "delete") {
-          endpoint =
-            "http://localhost:5000/validation/biologist/delete-pending-images";
+          endpoint = `${process.env.REACT_APP_API_URL}/validation/biologist/delete-pending-images`;
           requestData = { image_ids: itemIds };
         } else {
-          endpoint =
-            "http://localhost:5000/validation/biologist/manage-image-uploads";
+          endpoint = `${process.env.REACT_APP_API_URL}/validation/biologist/manage-image-uploads`;
           requestData = { image_ids: itemIds, action };
         }
       }
@@ -634,7 +635,7 @@ function ValidateUsers() {
 
                                 <div className="validate-image-preview">
                                   <img
-                                    src={`http://localhost:5000/crops/${image.filename}`}
+                                    src={`${process.env.REACT_APP_API_URL}/crops/${image.filename}`}
                                     alt={image.filename}
                                     onError={(e) => {
                                       e.target.style.display = "none";
@@ -685,7 +686,7 @@ function ValidateUsers() {
                                     className="validate-action-btn view"
                                     onClick={() =>
                                       window.open(
-                                        `http://localhost:5000/crops/${image.filename}`,
+                                        `${process.env.REACT_APP_API_URL}/crops/${image.filename}`,
                                         "_blank"
                                       )
                                     }

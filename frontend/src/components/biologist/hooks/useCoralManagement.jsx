@@ -222,7 +222,7 @@ export default function useCoralManagement() {
 
       if (coralModalMode === "add") {
         response = await axios.post(
-          `http://${process.env.REACT_APP_API_URL}/biologist/corals`,
+          `${process.env.REACT_APP_API_URL}/biologist/corals`,
           formData,
           {
             headers: {
@@ -243,7 +243,7 @@ export default function useCoralManagement() {
         );
       } else if (coralModalMode === "edit") {
         response = await axios.put(
-          `http://${process.env.REACT_APP_API_URL}/biologist/corals/${currentCoral.id}`,
+          `${process.env.REACT_APP_API_URL}/biologist/corals/${currentCoral.id}`,
           formData,
           {
             headers: {
@@ -313,7 +313,7 @@ export default function useCoralManagement() {
     try {
       const csrfToken = await fetchCsrfToken();
       await axios.delete(
-        `http://${process.env.REACT_APP_API_URL}/biologist/corals/${coralId}`,
+        `${process.env.REACT_APP_API_URL}/biologist/corals/${coralId}`,
         {
           headers: { "X-CSRF-Token": csrfToken },
           withCredentials: true,

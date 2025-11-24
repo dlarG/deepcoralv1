@@ -39,7 +39,7 @@ function BiologistUserProfile() {
         }
 
         const response = await axios.get(
-          `http://${process.env.REACT_APP_API_URL}/biologist/users/${decryptedId}`,
+          `${process.env.REACT_APP_API_URL}/biologist/users/${decryptedId}`,
           { withCredentials: true }
         );
         setUser(response.data.user);
@@ -93,7 +93,7 @@ function BiologistUserProfile() {
         }
 
         const csrfResponse = await axios.get(
-          `http://${process.env.REACT_APP_API_URL}/csrf-token`,
+          `${process.env.REACT_APP_API_URL}/csrf-token`,
           {
             withCredentials: true,
           }
@@ -101,7 +101,7 @@ function BiologistUserProfile() {
         const csrfToken = csrfResponse.data.csrf_token;
 
         await axios.delete(
-          `http://${process.env.REACT_APP_API_URL}/biologist/users/${decryptedId}`,
+          `${process.env.REACT_APP_API_URL}/biologist/users/${decryptedId}`,
           {
             withCredentials: true,
             headers: {

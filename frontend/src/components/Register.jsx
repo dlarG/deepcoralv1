@@ -16,6 +16,7 @@ import {
 import ReCAPTCHA from "react-google-recaptcha";
 import Logo from "./Logo";
 import "../styles/register.css";
+// import {API_BASE_URL} from "../config/api";
 
 // Configure axios to send credentials with requests
 axios.defaults.withCredentials = true;
@@ -126,7 +127,9 @@ function Register() {
   useEffect(() => {
     const fetchCsrfToken = async () => {
       try {
-        const response = await axios.get("http://localhost:5000/csrf-token");
+        const response = await axios.get(
+          `${process.env.REACT_APP_API_URL}/csrf-token`
+        );
         setCsrfToken(response.data.csrf_token);
       } catch (err) {
         console.error("Error fetching CSRF token:", err);
@@ -183,7 +186,7 @@ function Register() {
 
     try {
       axios.post(
-        "http://localhost:5000/register",
+        "{API_BASE_URL}/register",
         {
           username: form.username,
           password: form.password,

@@ -20,8 +20,6 @@ export default function useDashboardData() {
   const [error, setError] = useState(null);
 
   // API base URL
-  const API_BASE_URL = "http://localhost:5000";
-
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
@@ -64,7 +62,7 @@ export default function useDashboardData() {
   const fetchStats = async () => {
     try {
       const response = await axios.get(
-        `${API_BASE_URL}/admin/dashboard/stats`,
+        `${process.env.REACT_APP_API_URL}/admin/dashboard/stats`,
         {
           withCredentials: true,
         }
@@ -86,7 +84,7 @@ export default function useDashboardData() {
   const fetchRecentUsers = async () => {
     try {
       const response = await axios.get(
-        `${API_BASE_URL}/admin/dashboard/recent-users`,
+        `${process.env.REACT_APP_API_URL}/admin/dashboard/recent-users`,
         {
           withCredentials: true,
         }
@@ -101,7 +99,7 @@ export default function useDashboardData() {
   const fetchRecentActivities = async () => {
     try {
       const response = await axios.get(
-        `${API_BASE_URL}/admin/dashboard/recent-activities`,
+        `${process.env.REACT_APP_API_URL}/admin/dashboard/recent-activities`,
         {
           withCredentials: true,
         }
@@ -115,7 +113,7 @@ export default function useDashboardData() {
   const fetchChartData = async () => {
     try {
       const response = await axios.get(
-        `${API_BASE_URL}/admin/dashboard/chart-data`,
+        `${process.env.REACT_APP_API_URL}/admin/dashboard/chart-data`,
         {
           withCredentials: true,
         }

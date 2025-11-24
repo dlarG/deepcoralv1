@@ -13,7 +13,7 @@ const useApprovedImage = () => {
     setLoading(true);
     try {
       const response = await fetch(
-        "http://localhost:5000/approved/guest/approved-images",
+        `${process.env.REACT_APP_API_URL}/approved/guest/approved-images`,
         {
           method: "GET",
           credentials: "include",
@@ -55,7 +55,7 @@ const useApprovedImage = () => {
     setLoading(true);
     try {
       const response = await fetch(
-        "http://localhost:5000/approved/guest/analyzed-images",
+        `${process.env.REACT_APP_API_URL}/approved/guest/analyzed-images`,
         {
           method: "GET",
           credentials: "include",
@@ -82,7 +82,7 @@ const useApprovedImage = () => {
     try {
       // Get CSRF token first
       const csrfResponse = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/csrf-token`,
+        `${process.env.REACT_APP_API_URL}/csrf-token`,
         {
           method: "GET",
           credentials: "include",
@@ -96,7 +96,7 @@ const useApprovedImage = () => {
       const csrfData = await csrfResponse.json();
 
       const response = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/approved/guest/batch-analyze-approved`,
+        `${process.env.REACT_APP_API_URL}/approved/guest/batch-analyze-approved`,
         {
           method: "POST",
           headers: {
@@ -129,7 +129,7 @@ const useApprovedImage = () => {
     try {
       // Get CSRF token first
       const csrfResponse = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/csrf-token`,
+        `${process.env.REACT_APP_API_URL}/csrf-token`,
         {
           method: "GET",
           credentials: "include",
@@ -143,7 +143,7 @@ const useApprovedImage = () => {
       const csrfData = await csrfResponse.json();
 
       const response = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/approved/guest/analyze-approved-image/${imageId}`,
+        `${process.env.REACT_APP_API_URL}/approved/guest/analyze-approved-image/${imageId}`,
         {
           method: "POST",
           headers: {

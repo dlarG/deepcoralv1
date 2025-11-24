@@ -12,7 +12,7 @@ const usePendingApproved = () => {
     try {
       // Fixed URL - add /approved prefix
       const response = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/approved/guest/pending-approved-images`,
+        `${process.env.REACT_APP_API_URL}/approved/guest/pending-approved-images`,
         {
           method: "GET",
           credentials: "include",
@@ -45,7 +45,7 @@ const usePendingApproved = () => {
     try {
       // Fixed URL - add /approved prefix
       const response = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/approved/guest/analyze-pending-approved/${imageId}`,
+        `${process.env.REACT_APP_API_URL}/approved/guest/analyze-pending-approved/${imageId}`,
         {
           method: "POST",
           credentials: "include",
@@ -88,7 +88,7 @@ const usePendingApproved = () => {
     try {
       // Fixed URL - add /approved prefix
       const response = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/approved/guest/batch-analyze-pending-approved`,
+        `${process.env.REACT_APP_API_URL}/approved/guest/batch-analyze-pending-approved`,
         {
           method: "POST",
           credentials: "include",

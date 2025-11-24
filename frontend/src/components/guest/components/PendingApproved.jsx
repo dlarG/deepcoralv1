@@ -249,7 +249,7 @@ function PendingApprovedImages() {
 
         <div className="image-preview">
           <img
-            src={`http://${process.env.REACT_APP_API_URL}/${image.image_url}`}
+            src={`${process.env.REACT_APP_API_URL}/${image.image_url}`}
             alt={image.filename}
             onError={(e) => {
               e.target.style.display = "none";
@@ -369,7 +369,7 @@ function PendingApprovedImages() {
             className="view-btn secondary"
             onClick={() =>
               window.open(
-                `http://${process.env.REACT_APP_API_URL}/${image.image_url}`,
+                `${process.env.REACT_APP_API_URL}/${image.image_url}`,
                 "_blank"
               )
             }
