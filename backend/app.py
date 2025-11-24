@@ -12,10 +12,11 @@ def create_app():
     app.debug = Config.DEBUG
     
     # Initialize CORS - ONLY ONE CONFIGURATION
+    # Allow all header variations to avoid case sensitivity issues
     CORS(app, 
          supports_credentials=True, 
          origins=Config.CORS_ORIGINS,
-         allow_headers=['Content-Type', 'X-CSRF-Token', 'x-csrf-token', 'Authorization'],
+         allow_headers='*',  # Allow all headers to avoid case sensitivity issues
          methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
          expose_headers=['Set-Cookie'])
     
