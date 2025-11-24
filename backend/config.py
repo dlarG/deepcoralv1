@@ -30,7 +30,8 @@ class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', secrets.token_hex(32))
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SECURE = os.getenv('SESSION_COOKIE_SECURE', 'False').lower() == 'true'
-    SESSION_COOKIE_SAMESITE = 'Lax'
+    SESSION_COOKIE_SAMESITE = 'None'  # Required for cross-origin requests
+    SESSION_COOKIE_DOMAIN = '.deepcoral.site'  # Share cookies across subdomains
     
     # Database configuration
     DB_HOST = os.getenv('DB_HOST') 
