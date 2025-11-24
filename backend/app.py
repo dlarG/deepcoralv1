@@ -11,16 +11,14 @@ def create_app():
     # Set debug mode from config
     app.debug = Config.DEBUG
     
-    # Initialize CORS - comprehensive configuration
-    CORS(app, 
-         resources={r"/*": {
-             "origins": Config.CORS_ORIGINS,
-             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-             "allow_headers": ["Content-Type", "Authorization", "X-CSRF-Token", "x-csrf-token"],
-             "expose_headers": ["Set-Cookie"],
-             "supports_credentials": True,
-             "max_age": 3600
-         }})
+    # Simple CORS configuration that actually works
+    CORS(app,
+         origins=['https://deepcoral.site', 'https://www.deepcoral.site'],
+         supports_credentials=True,
+         allow_headers=['Content-Type', 'Authorization', 'X-CSRF-Token', 'x-csrf-token'],
+         expose_headers=['Set-Cookie'],
+         methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+         max_age=3600)
     
     # Initialize routes
     init_routes(app)
