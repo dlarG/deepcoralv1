@@ -185,8 +185,8 @@ function Register() {
     }
 
     try {
-      axios.post(
-        "{API_BASE_URL}/register",
+      const response = await axios.post(
+        `${process.env.REACT_APP_API_URL}/register`,
         {
           username: form.username,
           password: form.password,
@@ -196,13 +196,17 @@ function Register() {
           captcha: captchaValue,
         },
         {
+          withCredentials: true,
           headers: {
             "X-CSRF-Token": csrfToken,
+            "Content-Type": "application/json",
           },
         }
       );
 
+      console.log("Registration response:", response.data);
       setMessage("Registration successful! Redirecting to login...");
+      
       // Clear form on successful registration
       setForm({
         username: "",
@@ -215,6 +219,7 @@ function Register() {
 
       setTimeout(() => navigate("/login"), 2000);
     } catch (err) {
+      console.error("Registration error:", err.response || err);
       const errorMsg = err.response?.data?.error || "Registration failed";
       setMessage(errorMsg);
     } finally {
