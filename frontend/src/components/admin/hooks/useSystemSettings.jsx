@@ -23,9 +23,6 @@ export default function useSystemSettings() {
     maxConcurrentAnalysis: "5",
   });
 
-  // API base URL
-  const API_BASE_URL = `http://${process.env.REACT_APP_API_URL}`;
-
   // Clear message after 5 seconds
   useEffect(() => {
     if (message.text) {
@@ -39,9 +36,12 @@ export default function useSystemSettings() {
   // Fetch current models
   const fetchCurrentModels = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/admin/models/current`, {
-        withCredentials: true,
-      });
+      const response = await axios.get(
+        `${process.env.REACT_APP_API_URL}/admin/models/current`,
+        {
+          withCredentials: true,
+        }
+      );
       setCurrentModels(response.data.models);
       return response.data.models;
     } catch (error) {
@@ -78,7 +78,7 @@ export default function useSystemSettings() {
   const fetchSystemSettings = async () => {
     try {
       const response = await axios.get(
-        `${API_BASE_URL}/admin/system/settings`,
+        `${process.env.REACT_APP_API_URL}/admin/system/settings`,
         {
           withCredentials: true,
         }
@@ -163,12 +163,16 @@ export default function useSystemSettings() {
       formData.append("model", file);
       formData.append("model_type", modelType);
 
-      await axios.post(`${API_BASE_URL}/admin/models/upload`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-        withCredentials: true,
-      });
+      await axios.post(
+        `${process.env.REACT_APP_API_URL}/admin/models/upload`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+          withCredentials: true,
+        }
+      );
 
       setMessage({
         type: "success",
@@ -218,12 +222,16 @@ export default function useSystemSettings() {
       formData.append("autocrop_model", modelFiles.autocrop);
       formData.append("unet_model", modelFiles.unet);
 
-      await axios.post(`${API_BASE_URL}/admin/models/upload-both`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-        withCredentials: true,
-      });
+      await axios.post(
+        `${process.env.REACT_APP_API_URL}/admin/models/upload-both`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+          withCredentials: true,
+        }
+      );
 
       setMessage({
         type: "success",
@@ -259,9 +267,13 @@ export default function useSystemSettings() {
   const handleSystemSettingsUpdate = async () => {
     setLoading(true);
     try {
-      await axios.put(`${API_BASE_URL}/admin/system/settings`, systemSettings, {
-        withCredentials: true,
-      });
+      await axios.put(
+        `${process.env.REACT_APP_API_URL}/admin/system/settings`,
+        systemSettings,
+        {
+          withCredentials: true,
+        }
+      );
 
       setMessage({
         type: "success",
@@ -297,9 +309,12 @@ export default function useSystemSettings() {
 
     setLoading(true);
     try {
-      await axios.delete(`${API_BASE_URL}/admin/models/${modelType}`, {
-        withCredentials: true,
-      });
+      await axios.delete(
+        `${process.env.REACT_APP_API_URL}/admin/models/${modelType}`,
+        {
+          withCredentials: true,
+        }
+      );
 
       setMessage({
         type: "success",

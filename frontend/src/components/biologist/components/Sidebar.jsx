@@ -23,7 +23,7 @@ function Sidebar({ activeTab, setActiveTab, sidebarOpen }) {
   const fetchNotifications = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:5000/biologist/notifications",
+        `${process.env.REACT_APP_API_URL}/biologist/notifications`,
         {
           withCredentials: true,
           timeout: 10000, // 10 second timeout

@@ -112,7 +112,7 @@ function UploadImage() {
 
     try {
       const csrfResponse = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/csrf-token`,
+        `${process.env.REACT_APP_API_URL}/csrf-token`,
         {
           method: "GET",
           credentials: "include",
@@ -136,7 +136,7 @@ function UploadImage() {
       formData.append("csrf_token", csrfData.csrf_token);
 
       const res = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/guest_upload_only`,
+        `${process.env.REACT_APP_API_URL}/guest_upload_only`,
         {
           method: "POST",
           body: formData,

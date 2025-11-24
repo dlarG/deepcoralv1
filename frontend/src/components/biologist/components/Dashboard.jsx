@@ -338,7 +338,7 @@ function Dashboard({ user, darkMode, onNavigate }) {
     try {
       setLoading(true);
       const response = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/biologist/dashboard/stats`,
+        `${process.env.REACT_APP_API_URL}/biologist/dashboard/stats`,
         {
           method: "GET",
           credentials: "include",
@@ -570,7 +570,7 @@ function Dashboard({ user, darkMode, onNavigate }) {
           <div className="card-header">
             <h2>Coral Lifeform Distribution</h2>
             <p>
-              Most frequently identified coral lifeforms across all analyses
+              Most frequently identified coral lifeforms across all analysis
             </p>
           </div>
           <div className="card-content">

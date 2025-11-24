@@ -97,7 +97,7 @@ function AddImage() {
       formData.append("intensity", intensity);
 
       const csrfResponse = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/csrf-token`,
+        `${process.env.REACT_APP_API_URL}/csrf-token`,
         {
           method: "GET",
           credentials: "include",
@@ -107,7 +107,7 @@ function AddImage() {
       formData.append("csrf_token", csrfData.csrf_token);
 
       const response = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/detect_custom`,
+        `${process.env.REACT_APP_API_URL}/detect_custom`,
         {
           method: "POST",
           body: formData,
@@ -297,7 +297,7 @@ function AddImage() {
 
   const downloadSegmentationMask = (maskUrl, index) => {
     const link = document.createElement("a");
-    link.href = `http://${process.env.REACT_APP_API_URL}/${maskUrl}`;
+    link.href = `${process.env.REACT_APP_API_URL}/${maskUrl}`;
     link.download = `segmentation_${index + 1}_${
       images[currentImageIndex].file.name
     }`;
@@ -308,7 +308,7 @@ function AddImage() {
 
   const downloadSegmentationOverlay = (overlayUrl, index) => {
     const link = document.createElement("a");
-    link.href = `http://${process.env.REACT_APP_API_URL}/${overlayUrl}`;
+    link.href = `${process.env.REACT_APP_API_URL}/${overlayUrl}`;
     link.download = `coral_overlay_${index + 1}_${
       images[currentImageIndex].file.name
     }`;
@@ -420,7 +420,7 @@ function AddImage() {
 
   const downloadCrop = (cropUrl, index) => {
     const link = document.createElement("a");
-    link.href = `http://${process.env.REACT_APP_API_URL}/${cropUrl}`;
+    link.href = `${process.env.REACT_APP_API_URL}/${cropUrl}`;
     link.download = `crop_${index + 1}_${images[currentImageIndex].file.name}`;
     document.body.appendChild(link);
     link.click();
@@ -434,7 +434,7 @@ function AddImage() {
       formData.append("intensity", "conservative");
 
       const csrfResponse = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/csrf-token`,
+        `${process.env.REACT_APP_API_URL}/csrf-token`,
         {
           method: "GET",
           credentials: "include",
@@ -444,7 +444,7 @@ function AddImage() {
       formData.append("csrf_token", csrfData.csrf_token);
 
       const response = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/detect_custom`,
+        `${process.env.REACT_APP_API_URL}/detect_custom`,
         {
           method: "POST",
           body: formData,
@@ -595,7 +595,7 @@ function AddImage() {
         image.crops.forEach((crop, cropIndex) => {
           setTimeout(() => {
             const link = document.createElement("a");
-            link.href = `http://${process.env.REACT_APP_API_URL}/${crop}`;
+            link.href = `${process.env.REACT_APP_API_URL}/${crop}`;
             link.download = `img_${imgIndex + 1}_crop_${cropIndex + 1}_${
               image.file.name
             }`;
@@ -708,7 +708,7 @@ function AddImage() {
 
     try {
       const csrfResponse = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/csrf-token`,
+        `${process.env.REACT_APP_API_URL}/csrf-token`,
         {
           method: "GET",
           credentials: "include",
@@ -767,7 +767,7 @@ function AddImage() {
       const progressInterval = simulateProgress();
 
       const res = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/batch_analyze`,
+        `${process.env.REACT_APP_API_URL}/batch_analyze`,
         {
           method: "POST",
           body: formData,
@@ -1585,7 +1585,7 @@ function AddImage() {
                   <div className="quadrat-visuals">
                     <div className="visual-item">
                       <img
-                        src={`http://${process.env.REACT_APP_API_URL}/${cropData.crop_url}`}
+                        src={`${process.env.REACT_APP_API_URL}/${cropData.crop_url}`}
                         alt={`Crop ${cropIndex + 1}`}
                         className="analysis-image"
                       />
@@ -1593,7 +1593,7 @@ function AddImage() {
                     </div>
                     <div className="visual-item">
                       <img
-                        src={`http://${process.env.REACT_APP_API_URL}/${
+                        src={`${process.env.REACT_APP_API_URL}/${
                           cropData.overlay_url || cropData.visualization_url
                         }`}
                         alt={`Segmentation Overlay ${cropIndex + 1}`}
@@ -1604,7 +1604,7 @@ function AddImage() {
                     {cropData.mask_url && (
                       <div className="visual-item">
                         <img
-                          src={`http://${process.env.REACT_APP_API_URL}/${cropData.mask_url}`}
+                          src={`${process.env.REACT_APP_API_URL}/${cropData.mask_url}`}
                           alt={`Segmentation Mask ${cropIndex + 1}`}
                           className="analysis-image"
                         />

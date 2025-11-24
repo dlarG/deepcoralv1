@@ -163,7 +163,7 @@ const LocationSelector = ({
       console.log("🔢 Loading transect counts for location:", location);
 
       const response = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/images?scope=location`
+        `${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/images?scope=location`
       );
       const data = await response.json();
 
@@ -285,7 +285,7 @@ const LocationSelector = ({
 
       // FIXED: Use the distribution endpoint which has consistent data structure
       const response = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/distribution/locations`
+        `${process.env.REACT_APP_API_URL}/distribution/locations`
       );
       const data = await response.json();
 
@@ -635,7 +635,7 @@ const LocationSelector = ({
       console.log("Request body:", requestBody);
 
       const response = await fetch(
-        `http://${process.env.REACT_APP_API_URL}/gis/save_with_location`,
+        `${process.env.REACT_APP_API_URL}/gis/save_with_location`,
         {
           method: "POST",
           headers: {
