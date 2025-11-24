@@ -15,8 +15,9 @@ def create_app():
     CORS(app, 
          supports_credentials=True, 
          origins=Config.CORS_ORIGINS,
-         allow_headers=['Content-Type', 'X-CSRF-Token', 'Authorization'],
-         methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
+         allow_headers=['Content-Type', 'X-CSRF-Token', 'x-csrf-token', 'Authorization'],
+         methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+         expose_headers=['Set-Cookie'])
     
     # Ensure cookies are set with correct attributes for cross-origin
     @app.after_request
