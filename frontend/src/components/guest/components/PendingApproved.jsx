@@ -397,10 +397,10 @@ function PendingApprovedImages() {
     <div className="pending-approved-container">
       {/* Header */}
       <div className="page-header">
-        <div className="header-left">
-          <h1 className="page-title">Pending Approved Images</h1>
+        <div className="header-lefts">
+          <h1 className="page-title">Approved Images</h1>
           <p className="page-subtitle">
-            Analyze your approved coral quadrat images and save with location
+            Analyze your approved coral quaddrat images and save with location
           </p>
         </div>
       </div>

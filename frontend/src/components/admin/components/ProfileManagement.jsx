@@ -154,6 +154,10 @@ function ProfileManagement({ user }) {
               <span className="label">User ID</span>
               <span className="value">#{user.id}</span>
             </div>
+            <div className="info-row">
+              <span className="label">Email</span>
+              <span className="value">{user.email}</span>
+            </div>
           </div>
         </div>
 
@@ -178,7 +182,7 @@ function ProfileManagement({ user }) {
             </div>
             <div className="info-row">
               <span className="label">Last Login</span>
-              <span className="value">Recently Active</span>
+              <span className="value">Active Now</span>
             </div>
           </div>
         </div>
@@ -348,7 +352,6 @@ function ProfileManagement({ user }) {
                         />
                       </div>
                     </div>
-
                     <div className="form-row">
                       <div className="form-group">
                         <label>First Name *</label>
@@ -371,7 +374,17 @@ function ProfileManagement({ user }) {
                         />
                       </div>
                     </div>
-
+                    <div className="form-group">
+                      <label>Email Address *</label>
+                      <input
+                        type="email"
+                        name="new_email"
+                        value={profileFormData.email}
+                        onChange={handleProfileInputChange}
+                        required
+                        placeholder="Enter your email address"
+                      />
+                    </div>
                     <div className="form-group">
                       <label>Biography</label>
                       <textarea

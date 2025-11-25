@@ -35,6 +35,14 @@ def create_app():
     # Initialize routes
     init_routes(app)
     
+    # Serve static files for profile images
+    @app.route('/profile_uploads/<path:filename>')
+    def serve_profile_image(filename):
+        from flask import send_from_directory
+        import os
+        profile_uploads_path = os.path.join(app.root_path, 'profile_uploads')
+        return send_from_directory(profile_uploads_path, filename)
+    
     # CSRF token endpoint
     @app.route('/csrf-token', methods=['GET'])
     def get_csrf_token():

@@ -147,6 +147,7 @@ export default function useUserManagement() {
         password: "",
         firstname: "",
         lastname: "",
+        email: "",
         roletype: "guest",
       });
     } else {
@@ -155,6 +156,7 @@ export default function useUserManagement() {
         password: "",
         firstname: user.firstname,
         lastname: user.lastname,
+        email: user.email,
         roletype: user.roletype,
       });
     }
@@ -170,6 +172,7 @@ export default function useUserManagement() {
       password: "",
       firstname: "",
       lastname: "",
+      email: "",
       roletype: "guest",
     });
   };
