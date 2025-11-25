@@ -186,7 +186,7 @@ function Register() {
 
     try {
       axios.post(
-        "{API_BASE_URL}/register",
+        `${process.env.REACT_APP_API_URL}/register`,
         {
           username: form.username,
           password: form.password,
