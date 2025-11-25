@@ -1,5 +1,5 @@
 # upload_image.py - UPDATED MODEL LOADING
-from flask import Blueprint, Flask, request, jsonify, send_from_directory
+from flask import Blueprint, Flask, request, jsonify, send_from_directory, Response
 from flask_cors import CORS, cross_origin
 from PIL import Image, ImageEnhance
 import cv2
@@ -9,6 +9,8 @@ import uuid
 import warnings
 import json
 import psycopg2
+import threading
+import time
 from pathlib import Path
 from db import get_db_connection
 from datetime import datetime
@@ -16,6 +18,19 @@ from flask import session
 from routes.activity_log import (
     log_image_upload, log_system_action, ActivityLogger
 )
+
+progress_tracker = {}
+
+def send_progress_update(session_id, current, total, message="Processing"):
+    """Send progress update to the progress tracker"""
+    progress_tracker[session_id] = {
+        'current': current,
+        'total': total,
+        'percentage': round((current / total) * 100, 1) if total > 0 else 0,
+        'message': message,
+        'timestamp': time.time()
+    }
+
 
 warnings.filterwarnings("ignore")
 
@@ -250,6 +265,28 @@ print(f"   PyTorch: {'✅ Available' if PYTORCH_AVAILABLE else '❌ Not Availabl
 print(f"   YOLO Detection: {'✅ Available' if YOLO_AVAILABLE else '❌ Not Available'}")
 print(f"   Coral Segmentation: {'✅ Available' if SEGMENTATION_AVAILABLE else '❌ Not Available'}")
 
+
+@image_bp.route("/batch_progress/<session_id>")
+def batch_progress_stream(session_id):
+    """Stream progress updates for a specific batch session"""
+    def generate():
+        while True:
+            if session_id in progress_tracker:
+                progress = progress_tracker[session_id]
+                yield f"data: {json.dumps(progress)}\n\n"
+                
+                # Clean up completed sessions
+                if progress['current'] >= progress['total']:
+                    time.sleep(2)  # Give client time to receive final update
+                    if session_id in progress_tracker:
+                        del progress_tracker[session_id]
+                    break
+            else:
+                yield f"data: {json.dumps({'current': 0, 'total': 0, 'message': 'Waiting...'})}\n\n"
+            
+            time.sleep(0.5)  # Update every 500ms
+    
+    return Response(generate(), mimetype='text/event-stream')
 
 # Add system status endpoints
 @image_bp.route("/system_status", methods=["GET"])
@@ -1365,11 +1402,10 @@ def save_segmentation_results(image_id, coverage_data, mask_path):
     finally:
         conn.close()
 
-
 @image_bp.route("/batch_analyze", methods=["POST", "OPTIONS"])
 @cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
 def batch_analyze_images():
-    """Enhanced batch analysis with proper manual override support and shorter filenames"""
+    """Enhanced batch analysis with real-time progress updates and proper manual override support"""
     if request.method == "OPTIONS":
         return jsonify({}), 200
     
@@ -1380,6 +1416,13 @@ def batch_analyze_images():
         if not files:
             return jsonify({"error": "No image files provided"}), 400
 
+        # Generate unique session ID for this batch
+        import uuid
+        session_id = str(uuid.uuid4())[:12]
+        
+        # Initialize progress
+        send_progress_update(session_id, 0, len(files), "Starting batch analysis...")
+        
         # Get manual override information from form data
         manually_included = request.form.get('manually_included', '[]')
         debug_info = request.form.get('debug_info', '{}')
@@ -1395,7 +1438,7 @@ def batch_analyze_images():
         crop_intensity = request.form.get('intensity', 'conservative')
         
         # Enhanced debugging
-        print(f"\n🔍 BATCH ANALYSIS DEBUG:")
+        print(f"\n🔍 BATCH ANALYSIS DEBUG (Session: {session_id}):")
         print(f"   📁 Total files received: {len(files)}")
         print(f"   🔧 Manually included indices: {manually_included_indices}")
         print(f"   📊 Debug info from frontend: {debug_data}")
@@ -1409,8 +1452,9 @@ def batch_analyze_images():
         log_system_action(
             user_id=user_id,
             action='batch_upload_started',
-            description=f"Started batch analysis of {len(files)} images ({len(manually_included_indices)} manually included)",
+            description=f"Started batch analysis of {len(files)} images (Session: {session_id})",
             details={
+                'session_id': session_id,
                 'file_count': len(files),
                 'crop_intensity': crop_intensity,
                 'manually_included_count': len(manually_included_indices),
@@ -1429,12 +1473,14 @@ def batch_analyze_images():
         
         CONFIDENCE_THRESHOLD = 0.87
         
+        # Process each file with real-time updates
         for file_index, file in enumerate(files):
             if not file or file.filename == '':
                 continue
 
-            progress_percentage = ((file_index + 1) / len(files)) * 100
-            print(f"🔄 Processing file {file_index + 1}/{len(files)} ({progress_percentage:.1f}%): {file.filename}")
+            # Send progress update for file start
+            progress_message = f"Processing {file.filename} ({file_index + 1}/{len(files)})"
+            send_progress_update(session_id, file_index, len(files), progress_message)
                 
             # Check if this file was manually included
             is_manually_included = file_index in manually_included_indices
@@ -1457,7 +1503,19 @@ def batch_analyze_images():
             safe_filename = f"b{file_index}_{unique_id}.{ext}"  # Shortened batch filename
             image_path = os.path.join(UPLOAD_FOLDER, safe_filename)
             
-            file.save(image_path)
+            try:
+                file.save(image_path)
+            except Exception as e:
+                print(f"❌ Failed to save file {file.filename}: {e}")
+                rejected_images.append({
+                    'filename': file.filename,
+                    'reason': f'Failed to save file: {str(e)}',
+                    'file_index': file_index
+                })
+                continue
+            
+            # Update progress - detection phase
+            send_progress_update(session_id, file_index + 0.2, len(files), f"Detecting quadrats in {file.filename}")
             
             # Detection and processing
             try:
@@ -1475,6 +1533,9 @@ def batch_analyze_images():
                     pass
                 continue
             
+            # Update progress - processing detections
+            send_progress_update(session_id, file_index + 0.4, len(files), f"Processing detections in {file.filename}")
+            
             # Enhanced detection handling for manual overrides
             valid_detections = []
             low_confidence_detections = []
@@ -1490,22 +1551,19 @@ def batch_analyze_images():
                     
                     if label.lower() in ['full_quadrat', 'half_quadrat']:
                         if confidence >= CONFIDENCE_THRESHOLD:
-                            print(f"      ✅ Valid detection (>= {CONFIDENCE_THRESHOLD})")
                             valid_detections.append(box)
                         elif confidence >= 0.4:
-                            print(f"      ⚠️ Low confidence detection (>= 0.4)")
                             if is_manually_included:
-                                print(f"      🔧 Including due to manual override")
+                                print(f"      ✅ Including low-confidence detection due to manual override")
                                 valid_detections.append(box)
                             else:
-                                print(f"      ❌ Skipping (not manually included)")
                                 low_confidence_detections.append(box)
                         else:
                             print(f"      ❌ Very low confidence (< 0.4) - ignoring")
             else:
                 print(f"   ❌ No detections found")
             
-            # Handle different scenarios
+            # Handle no detections case
             if len(valid_detections) == 0:
                 if is_manually_included:
                     print(f"   🔧 Manual override: No valid detections, processing full image")
@@ -1514,7 +1572,7 @@ def batch_analyze_images():
                     if img is not None:
                         height, width = img.shape[:2]
                         
-                        # Create a mock detection for the entire image
+                        # Create a mock detection for the entire image with small margin
                         class MockBox:
                             def __init__(self, width, height):
                                 margin_x = width * 0.05
@@ -1561,6 +1619,9 @@ def batch_analyze_images():
                         pass
                     continue
             
+            # Update progress - cropping and segmentation
+            send_progress_update(session_id, file_index + 0.6, len(files), f"Cropping and segmenting {file.filename}")
+            
             print(f"   🔬 Processing {len(valid_detections)} detections")
             
             # Process valid detections
@@ -1568,6 +1629,11 @@ def batch_analyze_images():
             
             for i, box in enumerate(valid_detections):
                 try:
+                    # Update progress for each crop within the file
+                    crop_progress = file_index + 0.6 + (0.3 * (i + 1) / len(valid_detections))
+                    send_progress_update(session_id, crop_progress, len(files), 
+                                       f"Processing crop {i+1}/{len(valid_detections)} in {file.filename}")
+                    
                     print(f"      Processing detection {i+1}/{len(valid_detections)}")
                     
                     x1, y1, x2, y2 = box.xyxy[0].tolist() if hasattr(box.xyxy[0], 'tolist') else box.xyxy[0]
@@ -1577,16 +1643,16 @@ def batch_analyze_images():
                         cls = int(box.cls)
                         label = detection_model.names[cls]
                     else:
-                        label = "manual"  # Shortened
+                        label = "manual"  # For mock detections
                     
                     # Get confidence
                     confidence = float(box.conf) if hasattr(box, 'conf') else 0.5
 
-                    # Crop and segment
+                    # Crop and enhance
                     cropped = enhanced_crop_inside_quadrat(image_path, [x1, y1, x2, y2], crop_intensity)
                     cropped = enhance_cropped_image(cropped)
 
-                    # FIXED: Much shorter filename generation
+                    # Generate short filename
                     label_short = "fq" if label == "full_quadrat" else "hq" if label == "half_quadrat" else "m"
                     manual_suffix = "_m" if is_manually_included else ""
                     confidence_suffix = "_l" if confidence < CONFIDENCE_THRESHOLD else ""
@@ -1598,7 +1664,6 @@ def batch_analyze_images():
                     
                     crop_path = os.path.join(OUTPUT_FOLDER, crop_filename)
                     cropped.save(crop_path, quality=95)
-
                     print(f"         💾 Saved crop: {crop_filename}")
 
                     # Segment the cropped image
@@ -1717,11 +1782,14 @@ def batch_analyze_images():
             else:
                 print(f"   ❌ No crops generated")
             
-            # Clean up
+            # Clean up temporary file
             try:
                 os.remove(image_path)
             except:
                 pass
+        
+        # Final progress update
+        send_progress_update(session_id, len(files), len(files), "Analysis completed!")
         
         # Calculate batch percentages
         for class_name in batch_coverage_data:
@@ -1733,7 +1801,7 @@ def batch_analyze_images():
         total_crops = sum(len(result['crops']) for result in all_results)
         manually_included_count = sum(1 for result in all_results if result.get('manually_included', False))
 
-        print(f"\n🎯 BATCH ANALYSIS SUMMARY:")
+        print(f"\n🎯 BATCH ANALYSIS SUMMARY (Session: {session_id}):")
         print(f"   📊 Total files: {len(files)}")
         print(f"   ✅ Processed: {successful_images}")
         print(f"   🔧 Manually included: {manually_included_count}")
@@ -1745,6 +1813,7 @@ def batch_analyze_images():
             manual_status = "(MANUAL)" if result.get('manually_included', False) else ""
             print(f"      ✅ {result['filename']} -> {len(result['crops'])} crops {manual_status}")
 
+        # Log batch completion
         log_batch_analysis_activity(
             user_id=user_id,
             total_images=len(files),
@@ -1753,7 +1822,21 @@ def batch_analyze_images():
             total_crops=total_crops
         )
 
+        # Clean up progress tracker for this session after a delay
+        def cleanup_progress():
+            import threading
+            import time
+            def delayed_cleanup():
+                time.sleep(5)  # Wait 5 seconds before cleanup
+                if session_id in progress_tracker:
+                    del progress_tracker[session_id]
+            thread = threading.Thread(target=delayed_cleanup)
+            thread.start()
+        
+        cleanup_progress()
+
         return jsonify({
+            "session_id": session_id,  # Return session ID for frontend
             "results": all_results,
             "rejected_images": rejected_images,
             "batch_statistics": {
@@ -1779,6 +1862,10 @@ def batch_analyze_images():
         })
 
     except Exception as e:
+        # Clean up progress tracker on error
+        if 'session_id' in locals() and session_id in progress_tracker:
+            del progress_tracker[session_id]
+            
         log_system_action(
             user_id=user_id,
             action='batch_analysis_error',
@@ -1788,7 +1875,7 @@ def batch_analyze_images():
         print(f"❌ Batch analysis error: {str(e)}")
         import traceback
         traceback.print_exc()
-        return jsonify({"error": f"Batch analysis failed: {str(e)}"}), 500    
+        return jsonify({"error": f"Batch analysis failed: {str(e)}"}), 500
     
 def save_image_to_database_with_override(filename, uploader_id, total_pixels, analyzed_area_px, analysis_confidence, manually_included=False, original_filename=None):
     """Enhanced save function with manual override support"""
