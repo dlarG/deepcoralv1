@@ -38,7 +38,7 @@ def get_all_users():
     try:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT id, username, firstname, lastname, roletype, profile_image, created_at, status, last_login 
+                SELECT id, username, firstname, lastname, roletype, profile_image, created_at, status, last_login, email 
                 FROM users 
                 WHERE users.id != %s AND status = 'approved' 
                 ORDER BY created_at DESC
@@ -55,7 +55,9 @@ def get_all_users():
                     'roletype': user[4],
                     'profile_image': user[5],  
                     'created_at': user[6],     
-                    'status': user[7]          
+                    'status': user[7],
+                    'last_login': user[8],
+                    'email': user[9],          
                 })
             
             return jsonify({"users": users_list}), 200
@@ -74,7 +76,7 @@ def create_user():
     if not data:
         return jsonify({"error": "No data provided"}), 400
     
-    required_fields = ['username', 'password', 'firstname', 'lastname', 'roletype']
+    required_fields = ['username', 'password', 'firstname', 'lastname', 'roletype', 'email']
     if not all(field in data for field in required_fields):
         return jsonify({"error": "Missing required fields"}), 400
     
@@ -89,17 +91,22 @@ def create_user():
             if cur.fetchone():
                 return jsonify({"error": "Username already exists"}), 400
             
+            #check if email already exists
+            cur.execute("SELECT id FROM users WHERE email = %s", (data['email'],))
+            if cur.fetchone():
+                return jsonify({"error": "Email already exists"}), 400
+
             # Hash password
             hashed_password = generate_password_hash(data['password'])
             
             # Insert new user and return profile_image field
             cur.execute(
                 """INSERT INTO users 
-                (username, password, firstname, lastname, roletype, status) 
-                VALUES (%s, %s, %s, %s, %s, %s) 
-                RETURNING id, username, firstname, lastname, roletype, profile_image, created_at, status""",
+                (username, password, firstname, lastname, roletype, status, email) 
+                VALUES (%s, %s, %s, %s, %s, %s, %s) 
+                RETURNING id, username, firstname, lastname, roletype, profile_image, created_at, status, email""",
                 (data['username'], hashed_password, data['firstname'], 
-                 data['lastname'], data['roletype'], status)
+                 data['lastname'], data['roletype'], status, data['email'])
             )
             
             new_user = cur.fetchone()
@@ -123,7 +130,8 @@ def create_user():
                     'roletype': new_user[4],
                     'profile_image': new_user[5],  # Add this field
                     'created_at': new_user[6],      # Add this field
-                    'status': new_user[7],           # Add status field
+                    'status': new_user[7],           # Add status field,
+                    'email': new_user[8]            # Add email field
                 }
             }), 201
     except psycopg2.Error as e:
@@ -184,6 +192,15 @@ def update_user(user_id):
                 update_fields.append("roletype = %s")
                 update_values.append(data['roletype'])
             
+            if 'email' in data:
+                # Check if new email is available
+                cur.execute("SELECT id FROM users WHERE email = %s AND id != %s", 
+                          (data['email'], user_id))
+                if cur.fetchone():
+                    return jsonify({"error": "Email already taken"}), 400
+                update_fields.append("email = %s")
+                update_values.append(data['email'])
+            
             if not update_fields:
                 return jsonify({"error": "No valid fields to update"}), 400
             
@@ -195,7 +212,7 @@ def update_user(user_id):
                 UPDATE users 
                 SET {', '.join(update_fields)} 
                 WHERE id = %s
-                RETURNING id, username, firstname, lastname, roletype, profile_image, created_at, status
+                RETURNING id, username, firstname, lastname, roletype, profile_image, created_at, status, email
             """
             
             cur.execute(update_query, update_values)
@@ -219,7 +236,8 @@ def update_user(user_id):
                     'roletype': updated_user[4],
                     'profile_image': updated_user[5],  # Add this field
                     'created_at': updated_user[6],      # Add this field
-                    'status': updated_user[7]           # Add status field
+                    'status': updated_user[7],           # Add status field
+                    'email': updated_user[8]            # Add email field
                 }
             }), 200
     except psycopg2.Error as e:

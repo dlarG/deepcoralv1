@@ -14,6 +14,7 @@ export default function useProfileManagement(user) {
     firstname: "",
     lastname: "",
     bio: "",
+    email: "",
     profile_image: null,
     current_password: "",
     new_password: "",
@@ -102,15 +103,17 @@ export default function useProfileManagement(user) {
   };
 
   const openProfileModal = () => {
+    console.log("User data:", user); // Debug line
     setProfileFormData({
-      username: user.username,
-      firstname: user.firstname,
-      lastname: user.lastname,
+      username: user.username || "",
+      firstname: user.firstname || "",
+      lastname: user.lastname || "",
       bio: user.bio || "",
       profile_image: null,
       current_password: "",
       new_password: "",
       confirm_password: "",
+      email: user.email || "",
     });
     setProfileImagePreview(
       user.profile_image ? `/profile_uploads/${user.profile_image}` : null
@@ -130,6 +133,7 @@ export default function useProfileManagement(user) {
       current_password: "",
       new_password: "",
       confirm_password: "",
+      email: "",
     });
     setProfileImagePreview(null);
     setProfileTab("info");
@@ -159,6 +163,13 @@ export default function useProfileManagement(user) {
     }
     if (!profileFormData.lastname?.trim()) {
       errors.push("Last name is required");
+    }
+
+    // Add email validation
+    if (!profileFormData.email?.trim()) {
+      errors.push("Email is required");
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileFormData.email)) {
+      errors.push("Please enter a valid email address");
     }
 
     if (profileFormData.new_password) {
@@ -198,6 +209,7 @@ export default function useProfileManagement(user) {
       formData.append("firstname", profileFormData.firstname);
       formData.append("lastname", profileFormData.lastname);
       formData.append("bio", profileFormData.bio);
+      formData.append("email", profileFormData.email);
 
       if (profileFormData.new_password) {
         formData.append("current_password", profileFormData.current_password);
