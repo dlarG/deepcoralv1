@@ -653,7 +653,6 @@ export const getGuestStyles = (sidebarOpen) => `
     overflow-y: auto;
     margin-left: ${sidebarOpen ? "280px" : "80px"};
     transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    height: calc(100vh - 70px);
   }
 
   .content-section {
@@ -2583,7 +2582,6 @@ export const getGuestStyles = (sidebarOpen) => `
 
 
 .pending-approved-container {
-  padding: 2rem;
   max-width: 1400px;
   margin: 0 auto;
   background: #f8fafc;
@@ -3337,9 +3335,6 @@ export const getGuestStyles = (sidebarOpen) => `
 
 /* Responsive Design */
 @media (max-width: 1024px) {
-  .pending-approved-container {
-    padding: 1rem;
-  }
   
   .images-grid.grid {
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));

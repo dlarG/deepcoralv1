@@ -394,6 +394,26 @@ function UserManagement() {
                       </div>
 
                       <div className="form-group-new">
+                        <label htmlFor="email">
+                          Email <span className="required">*</span>
+                        </label>
+                        <input
+                          type="email"
+                          id="email"
+                          name="email"
+                          value={formData.email}
+                          onChange={handleInputChange}
+                          className={userFormErrors.email ? "error" : ""}
+                          placeholder="Enter email address"
+                        />
+                        {userFormErrors.email && (
+                          <span className="error-text">
+                            {userFormErrors.email}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="form-group-new">
                         <label htmlFor="password">
                           Password
                           <span className="required">*</span>

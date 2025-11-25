@@ -895,7 +895,6 @@
   border-radius: 20px;
   max-width: 600px;
   width: 95%;
-  max-height: 90vh;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
@@ -1013,6 +1012,7 @@
   flex: 1;
   overflow-y: scroll;
   padding: 0 2rem;
+  max-height: 60vh;
 }
 
 .tab-content {
@@ -1574,7 +1574,6 @@
   /* Modal Adjustments */
   .profile-modal {
     width: 98%;
-    max-height: 95vh;
   }
 
   .profile-modal-header {
