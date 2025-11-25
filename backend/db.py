@@ -19,7 +19,8 @@ def get_db_connection():
             user=Config.DB_USER,  
             password=Config.DB_PASSWORD, 
             host=Config.DB_HOST, 
-            port=Config.DB_PORT  
+            port=Config.DB_PORT,
+            sslmode='require'  # Required for AWS RDS
         )
         return conn
     except Exception as e:

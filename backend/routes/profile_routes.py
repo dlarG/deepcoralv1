@@ -18,7 +18,7 @@ def get_profile():
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT id, username, firstname, lastname, roletype, bio, profile_image, created_at FROM users WHERE id = %s", (session['user_id'],))
+            cur.execute("SELECT id, username, firstname, lastname, roletype, bio, profile_image, created_at, email FROM users WHERE id = %s", (session['user_id'],))
             user = cur.fetchone()
             
             if not user:
@@ -34,7 +34,8 @@ def get_profile():
                     'roletype': user[4],
                     'bio': user[5],
                     'profile_image': user[6],
-                    'created_at': user[7]
+                    'created_at': user[7],
+                    'email': user[8],
                 }
             }), 200
     except Exception as e:
@@ -106,6 +107,7 @@ def update_profile():
         bio = request.form.get('bio', '')
         current_password = request.form.get('current_password')
         new_password = request.form.get('new_password')
+        new_email = request.form.get('email')
 
         # Validate required fields
         if not all([username, firstname, lastname]):
@@ -130,18 +132,23 @@ def update_profile():
             cur.execute("SELECT id FROM users WHERE username = %s AND id != %s", (username, user_id))
             if cur.fetchone():
                 return jsonify({'error': 'Username already taken'}), 400
+        # Check if email is taken by another user
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM users WHERE email = %s AND id != %s", (new_email, user_id))
+            if cur.fetchone():
+                return jsonify({'error': 'Email already taken'}), 400
 
         # Update user profile
         with conn.cursor() as cur:
             cur.execute("""
                 UPDATE users 
                 SET username = %s, password = %s, firstname = %s, lastname = %s, 
-                    bio = %s, profile_image = %s, updated_at = CURRENT_TIMESTAMP
+                    bio = %s, profile_image = %s, email = %s, updated_at = CURRENT_TIMESTAMP
                 WHERE id = %s
-                RETURNING id, username, firstname, lastname, roletype, bio, profile_image, created_at
+                RETURNING id, username, firstname, lastname, roletype, bio, profile_image, created_at, email
             """, (
                 username, password_hash, firstname, lastname, 
-                bio, profile_image_filename, user_id
+                bio, profile_image_filename, new_email, user_id
             ))
             
             updated_user = cur.fetchone()
@@ -155,7 +162,8 @@ def update_profile():
                 'roletype': updated_user[4],
                 'bio': updated_user[5],
                 'profile_image': updated_user[6],
-                'created_at': updated_user[7]
+                'created_at': updated_user[7],
+                'email': updated_user[8],
             }
             
             return jsonify({

@@ -263,7 +263,7 @@ def check_auth():
     try:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT id, username, firstname, lastname, roletype, bio, profile_image, created_at, status, last_login 
+                SELECT id, username, firstname, lastname, roletype, bio, profile_image, created_at, status, last_login, institution, email, phone 
                 FROM users WHERE id = %s
             """, (session['user_id'],))
             user = cur.fetchone()
@@ -289,7 +289,10 @@ def check_auth():
                     'profile_image': user[6],
                     'created_at': user[7].isoformat() if user[7] else None,
                     'status': user[8],
-                    'last_login': user[9].isoformat() if user[9] else None
+                    'last_login': user[9].isoformat() if user[9] else None,
+                    'institution': user[10],
+                    'email': user[11],
+                    'phone': user[12]
                 }
             }), 200
             
