@@ -1,0 +1,35 @@
+# Ignore large model files during Railway upload
+models/autocrop_yolov11_best.pt
+models/coral_unet_best.pth
+models/segmentation/version2/coral_unet_best.pth
+models/segmentation/version3/coral_unet_best.pth
+models/segmentation/version4/coral_unet_best.pth
+
+# Ignore upload directories
+coral_uploads/
+profile_uploads/
+shared_uploads/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment files (will use Railway variables)
+.env.development
+.env.production
