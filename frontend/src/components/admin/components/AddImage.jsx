@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useAuth } from "../../../context/AuthContext";
 import {
   FiUpload,
@@ -88,6 +88,23 @@ function AddImage() {
   const [imageToOverride, setImageToOverride] = useState(null);
 
   const [analysisInProgress, setAnalysisInProgress] = useState(false);
+
+  const [realTimeProgress, setRealTimeProgress] = useState({
+    current: 0,
+    total: 0,
+    percentage: 0,
+    message: "",
+    isActive: false,
+  });
+  const [eventSource, setEventSource] = useState(null);
+
+  useEffect(() => {
+    return () => {
+      if (eventSource) {
+        eventSource.close();
+      }
+    };
+  }, [eventSource]);
 
   const processCrops = async (file, intensity) => {
     try {
@@ -587,34 +604,12 @@ function AddImage() {
     alert(validationSummary);
   };
 
-  const downloadBatchCrops = () => {
-    let totalCrops = 0;
-    images.forEach((image, imgIndex) => {
-      if (image.crops && image.crops.length > 0) {
-        image.crops.forEach((crop, cropIndex) => {
-          setTimeout(() => {
-            const link = document.createElement("a");
-            link.href = `${process.env.REACT_APP_API_URL}/${crop}`;
-            link.download = `img_${imgIndex + 1}_crop_${cropIndex + 1}_${
-              image.file.name
-            }`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-          }, totalCrops * 200);
-          totalCrops++;
-        });
-      }
-    });
-  };
-
   const handleBatchAnalyze = async () => {
     if (images.length === 0) {
       alert("Please select images first!");
       return;
     }
 
-    // Prevent multiple clicks and check if analysis already completed
     if (analysisInProgress || analysisCompleted) {
       if (analysisCompleted) {
         alert("Analysis already completed! Clear images to analyze new ones.");
@@ -624,7 +619,6 @@ function AddImage() {
       return;
     }
 
-    // Get valid images AND manually included images
     const validImages = images.filter(
       (img) =>
         img.status === "valid" ||
@@ -633,11 +627,10 @@ function AddImage() {
         (img.status === "pending" && img.processed !== false)
     );
 
-    // FIXED: Calculate manually_included_indices based on the validImages array indices
     const manuallyIncludedIndices = [];
     validImages.forEach((img, validIndex) => {
       if (img.status === "manually_included") {
-        manuallyIncludedIndices.push(validIndex); // Use validIndex, not original index
+        manuallyIncludedIndices.push(validIndex);
       }
     });
 
@@ -670,40 +663,24 @@ function AddImage() {
 
     confirmMessage += ` Proceed with analyzing ${validImages.length} total image(s)?`;
 
-    // Enhanced debug logging
-    console.log("=== BATCH ANALYSIS DEBUG ===");
-    console.log(
-      "All images:",
-      images.map((img, idx) => ({
-        index: idx,
-        filename: img.file.name,
-        status: img.status,
-      }))
-    );
-    console.log(
-      "Valid images:",
-      validImages.map((img, idx) => ({
-        validIndex: idx,
-        filename: img.file.name,
-        status: img.status,
-      }))
-    );
-    console.log(
-      "Manually included indices (in validImages array):",
-      manuallyIncludedIndices
-    );
-    console.log("Manually included count:", manuallyIncludedCount);
-
     if (invalidCount > 0 || manuallyIncludedCount > 0) {
       const proceed = window.confirm(confirmMessage);
       if (!proceed) return;
     }
 
-    // Set analysis in progress - FIXED: Set initial progress to 0
+    // Set analysis in progress
     setAnalysisInProgress(true);
     setBatchLoading(true);
     setShowBatchChart(false);
-    setBatchProgress({ current: 0, total: validImages.length });
+
+    // Initialize real-time progress
+    setRealTimeProgress({
+      current: 0,
+      total: validImages.length,
+      percentage: 0,
+      message: "Starting analysis...",
+      isActive: true,
+    });
 
     try {
       const csrfResponse = await fetch(
@@ -726,41 +703,7 @@ function AddImage() {
         JSON.stringify(manuallyIncludedIndices)
       );
 
-      // Additional debug info
-      formData.append(
-        "debug_info",
-        JSON.stringify({
-          total_valid_images: validImages.length,
-          manually_included_count: manuallyIncludedCount,
-          manually_included_indices: manuallyIncludedIndices,
-          valid_images_filenames: validImages.map((img) => img.file.name),
-          manually_included_filenames: validImages
-            .filter((img, idx) => manuallyIncludedIndices.includes(idx))
-            .map((img) => img.file.name),
-        })
-      );
-
-      // ADDED: Progress simulation for better UX while waiting for server response
-      const simulateProgress = () => {
-        let currentProgress = 0;
-        const progressInterval = setInterval(() => {
-          currentProgress += Math.random() * 10; // Random increment between 0-10%
-          if (currentProgress < 90) {
-            // Don't go above 90% until we get actual response
-            setBatchProgress({
-              current: Math.floor((currentProgress / 100) * validImages.length),
-              total: validImages.length,
-            });
-          } else {
-            clearInterval(progressInterval);
-          }
-        }, 500); // Update every 500ms
-
-        return progressInterval;
-      };
-
-      const progressInterval = simulateProgress();
-
+      // Start the batch analysis
       const res = await fetch(
         `${process.env.REACT_APP_API_URL}/batch_analyze`,
         {
@@ -772,15 +715,6 @@ function AddImage() {
           },
         }
       );
-
-      // ADDED: Clear the progress simulation once we get response
-      clearInterval(progressInterval);
-
-      // ADDED: Set to 100% when complete
-      setBatchProgress({
-        current: validImages.length,
-        total: validImages.length,
-      });
 
       const contentType = res.headers.get("content-type") || "";
       const resBody = contentType.includes("application/json")
@@ -798,13 +732,56 @@ function AddImage() {
 
       const data = resBody;
 
+      // If we got a session_id, start listening to progress updates
+      if (data.session_id) {
+        const progressUrl = `${process.env.REACT_APP_API_URL}/batch_progress/${data.session_id}`;
+        const es = new EventSource(progressUrl);
+
+        es.onmessage = function (event) {
+          try {
+            const progressData = JSON.parse(event.data);
+            setRealTimeProgress({
+              current: progressData.current || 0,
+              total: progressData.total || validImages.length,
+              percentage: progressData.percentage || 0,
+              message: progressData.message || "Processing...",
+              isActive: true,
+            });
+
+            // Update the existing batch progress for backward compatibility
+            setBatchProgress({
+              current: progressData.current || 0,
+              total: progressData.total || validImages.length,
+            });
+          } catch (e) {
+            console.error("Error parsing progress data:", e);
+          }
+        };
+
+        es.onerror = function (event) {
+          console.log("EventSource failed:", event);
+          es.close();
+          setEventSource(null);
+        };
+
+        setEventSource(es);
+
+        // Close EventSource after analysis is complete
+        setTimeout(() => {
+          if (es) {
+            es.close();
+            setEventSource(null);
+          }
+        }, 10000); // Close after 10 seconds
+      }
+
       setBatchResults(data);
       setShowBatchChart(true);
       setActiveTab("batch-analysis");
       setShowSaveButton(true);
       setAnalysisCompleted(true);
 
-      // FIXED: Process results with proper manual override handling
+      // Process results (same as before)
       const processedImagesWithData = validImages.map((image) => {
         const result = data.results.find((r) => r.filename === image.file.name);
         if (result && result.crops) {
@@ -816,11 +793,10 @@ function AddImage() {
             segmentationData: {
               crops: result.crops.map((crop) => ({
                 ...crop,
-                // Ensure both field names are available for backward compatibility
                 overlay_url: crop.overlay_url || crop.visualization_url,
                 visualization_url: crop.overlay_url || crop.visualization_url,
-                mask_url: crop.mask_url, // Add mask URL
-                manually_included: crop.manually_included || false, // Track manual override
+                mask_url: crop.mask_url,
+                manually_included: crop.manually_included || false,
               })),
               total_crops: result.crops.length,
               filename: result.filename,
@@ -833,7 +809,6 @@ function AddImage() {
 
       setProcessedImagesForSaving(processedImagesWithData);
 
-      // FIXED: Update images with results, preserving manual override status
       const updatedImages = images.map((image) => {
         const result = data.results.find((r) => r.filename === image.file.name);
         if (result && result.crops) {
@@ -861,7 +836,7 @@ function AddImage() {
 
       setImages(updatedImages);
 
-      // Show success message with manual override info
+      // Show success message
       let successMessage = `Analysis completed successfully!\n`;
       successMessage += `${data.batch_statistics.total_images_processed} images processed\n`;
       successMessage += `${data.batch_statistics.total_crops} total crops generated\n`;
@@ -880,8 +855,19 @@ function AddImage() {
       alert("Batch analysis failed: " + error.message);
     } finally {
       setBatchLoading(false);
-      setAnalysisInProgress(false); // Re-enable button
-      setBatchProgress({ current: 0, total: 0 });
+      setAnalysisInProgress(false);
+      setRealTimeProgress({
+        current: 0,
+        total: 0,
+        percentage: 0,
+        message: "",
+        isActive: false,
+      });
+      // Clean up EventSource
+      if (eventSource) {
+        eventSource.close();
+        setEventSource(null);
+      }
     }
   };
 
@@ -903,13 +889,16 @@ function AddImage() {
     if (!loading && !batchLoading) return null;
 
     const isValidating = loading && validationProgress.total > 0;
-    const isAnalyzing = batchLoading && batchProgress.total > 0;
+    const isAnalyzing = batchLoading && realTimeProgress.isActive;
+    const isFallbackAnalyzing =
+      batchLoading && batchProgress.total > 0 && !realTimeProgress.isActive;
 
     let progressPercentage = 0;
     let currentStep = 0;
     let totalSteps = 0;
     let statusText = "";
     let subText = "";
+    let detailedMessage = "";
 
     if (isValidating) {
       currentStep = validationProgress.current;
@@ -919,6 +908,15 @@ function AddImage() {
       statusText = "Validating Images...";
       subText = `Processing ${currentStep} of ${totalSteps} images`;
     } else if (isAnalyzing) {
+      // Use real-time progress
+      currentStep = realTimeProgress.current;
+      totalSteps = realTimeProgress.total;
+      progressPercentage = realTimeProgress.percentage;
+      statusText = "Analyzing Batch...";
+      subText = `${currentStep} of ${totalSteps} images processed`;
+      detailedMessage = realTimeProgress.message;
+    } else if (isFallbackAnalyzing) {
+      // Fallback to old progress system
       currentStep = batchProgress.current;
       totalSteps = batchProgress.total;
       progressPercentage =
@@ -942,11 +940,21 @@ function AddImage() {
           <div className="loading-text">{statusText}</div>
           <div className="loading-subtext">{subText}</div>
 
+          {/* Real-time detailed message */}
+          {detailedMessage && (
+            <div className="loading-detail-message">{detailedMessage}</div>
+          )}
+
           {/* Enhanced Progress Bar */}
           <div className="progress-bar-container">
             <div
               className="progress-bar"
-              style={{ width: `${progressPercentage}%` }}
+              style={{
+                width: `${progressPercentage}%`,
+                transition: isAnalyzing
+                  ? "width 0.3s ease-in-out"
+                  : "width 0.1s ease",
+              }}
             ></div>
           </div>
 
@@ -961,12 +969,30 @@ function AddImage() {
             )}
           </div>
 
+          {/* Real-time status indicator */}
+          {isAnalyzing && (
+            <div className="real-time-indicator">
+              <span className="real-time-dot"></span>
+              Real-time updates
+            </div>
+          )}
+
           {/* Cancel Button for Long Operations */}
-          {(isValidating || isAnalyzing) && (
+          {(isValidating || isAnalyzing || isFallbackAnalyzing) && (
             <button
               className="cancel-operation-btn"
               onClick={() => {
-                // You can implement cancellation logic here if needed
+                if (eventSource) {
+                  eventSource.close();
+                  setEventSource(null);
+                }
+                setRealTimeProgress({
+                  current: 0,
+                  total: 0,
+                  percentage: 0,
+                  message: "",
+                  isActive: false,
+                });
                 console.log("Operation cancellation requested");
               }}
             >

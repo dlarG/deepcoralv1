@@ -1,8 +1,3 @@
-"""
-This module contains the database connection and table creation logic.
-Create a PostgreSQL database on pgAdmin4 named 'deep_coral_ai' before running this script.
-"""
-
 import psycopg2
 import os
 from config import Config
@@ -15,7 +10,7 @@ def get_db_connection():
     """
     try:
         conn = psycopg2.connect(
-            dbname=Config.DB_NAME,  # Changed from DB_TABLE to DB_NAME
+            dbname=Config.DB_NAME,  
             user=Config.DB_USER,  
             password=Config.DB_PASSWORD, 
             host=Config.DB_HOST, 

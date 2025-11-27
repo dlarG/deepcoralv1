@@ -176,39 +176,6 @@ function BiologistUserProfile() {
           <FiArrowLeft size={18} />
           <span>Back to Dashboard</span>
         </button>
-
-        <div className="userprofile-actions">
-          <div className="userprofile-action-dropdown">
-            <button
-              onClick={toggleDropdown}
-              className="userprofile-action-menu-trigger"
-            >
-              <FiMoreVertical size={20} />
-            </button>
-            {dropdownOpen && (
-              <div className="userprofile-action-dropdown-menu">
-                <button
-                  onClick={handleEditUser}
-                  className="userprofile-dropdown-action userprofile-edit"
-                >
-                  <FiEdit2 size={16} />
-                  <span>Edit Profile</span>
-                </button>
-                <button
-                  onClick={handleDeleteUser}
-                  className="userprofile-dropdown-action userprofile-delete"
-                >
-                  <FiTrash2 size={16} />
-                  <span>Delete User</span>
-                </button>
-                <button className="userprofile-dropdown-action userprofile-download">
-                  <FiDownload size={16} />
-                  <span>Export Data</span>
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
       </div>
 
       {/* Main Profile Content */}
@@ -444,35 +411,6 @@ function BiologistUserProfile() {
                     </p>
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Actions Card */}
-          <div className="userprofile-detail-card userprofile-actions-card">
-            <div className="userprofile-card-header">
-              <div className="userprofile-card-icon actions">
-                <FiActivity size={20} />
-              </div>
-              <h3>Quick Actions</h3>
-            </div>
-            <div className="userprofile-card-content">
-              <div className="userprofile-quick-actions">
-                <button
-                  onClick={handleEditUser}
-                  className="userprofile-quick-action userprofile-edit-action"
-                >
-                  <FiEdit2 size={18} />
-                  <span>Edit Profile</span>
-                </button>
-                <button className="userprofile-quick-action userprofile-message-action">
-                  <FiMail size={18} />
-                  <span>Send Message</span>
-                </button>
-                <button className="userprofile-quick-action userprofile-export-action">
-                  <FiDownload size={18} />
-                  <span>Export Data</span>
-                </button>
               </div>
             </div>
           </div>

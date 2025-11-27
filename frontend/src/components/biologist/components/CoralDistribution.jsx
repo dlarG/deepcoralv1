@@ -348,37 +348,6 @@ function CoralDistribution() {
           <Bar data={coverageData} options={coverageOptions} />
         </div>
 
-        <div className="comparison-stats">
-          <h4>Location Statistics</h4>
-          <div className="stats-table">
-            <table>
-              <thead>
-                <tr>
-                  <th>Location</th>
-                  <th>Images</th>
-                  <th>Species Count</th>
-                  <th>Avg Coverage</th>
-                  <th>Shannon Index</th>
-                </tr>
-              </thead>
-              <tbody>
-                {comparisonData.locations.map((location, index) => (
-                  <tr key={index}>
-                    <td>
-                      {location.location_name ||
-                        getLocationDisplayName(location)}
-                    </td>
-                    <td>{location.image_count}</td>
-                    <td>{location.species_count}</td>
-                    <td>{location.avg_coverage?.toFixed(2)}%</td>
-                    <td>{location.shannon_index?.toFixed(3)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
         {/* Summary Statistics */}
         <div className="comparison-summary">
           <h4>Comparison Summary</h4>
