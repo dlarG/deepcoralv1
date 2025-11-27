@@ -10,6 +10,10 @@ backend/coral_uploads/*
 backend/models/segmentation/version2/*
 backend/models/*
 
+# Test files
+backend/test_sendgrid.py
+**/test_sendgrid.py
+
 # Elastic Beanstalk
 .elasticbeanstalk/
 backend/.elasticbeanstalk/
