@@ -135,9 +135,9 @@ def update_profile():
             
             password_hash = generate_password_hash(new_password)
 
-        # Check if username is taken by another user
+        # Check if username is taken by another user (case-insensitive)
         with conn.cursor() as cur:
-            cur.execute("SELECT id FROM users WHERE username = %s AND id != %s", (username, user_id))
+            cur.execute("SELECT id FROM users WHERE LOWER(username) = LOWER(%s) AND id != %s", (username, user_id))
             if cur.fetchone():
                 return jsonify({'error': 'Username already taken'}), 409
         
