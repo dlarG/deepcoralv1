@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react"; // Add useState import
 import {
   FiUsers,
   FiImage,
@@ -10,10 +10,13 @@ import {
   FiRefreshCw,
 } from "react-icons/fi";
 import useDashboardData from "../hooks/useDashboard";
+import AnalyticsModal from "./AnalyticsModal"; // Import the AnalyticsModal
 import "../styles/adminDashboardStyle.css";
 
 const Dashboard = ({ user, setActiveTab }) => {
-  // Add setActiveTab prop
+  // Add state for analytics modal
+  const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
+
   const {
     stats,
     recentUsers,
@@ -40,8 +43,14 @@ const Dashboard = ({ user, setActiveTab }) => {
     setActiveTab("Generate Report");
   };
 
+  // Update this function to show the modal
   const handleViewAnalytics = () => {
-    console.log("Navigate to analytics");
+    setShowAnalyticsModal(true);
+  };
+
+  // Function to close the modal
+  const handleCloseAnalytics = () => {
+    setShowAnalyticsModal(false);
   };
 
   if (loading) {
@@ -289,41 +298,113 @@ const Dashboard = ({ user, setActiveTab }) => {
           </div>
         </div>
 
-        {/* Quick Stats */}
+        {/* Quick Stats
         <div className="dashboard-card quick-stats-card">
           <div className="card-header">
             <h3>Quick Insights</h3>
+            <button
+              className="refresh-btn"
+              onClick={refreshDashboard}
+              title="Refresh Insights"
+            >
+              <FiRefreshCw size={14} />
+            </button>
           </div>
           <div className="card-content">
-            <div className="quick-stat">
+            <div className="quick-stat trending-up">
+              <div className="quick-stat-icon">
+                <FiTrendingUp size={20} />
+              </div>
+              <div className="quick-stat-info">
+                <h4>Coral Coverage Trend</h4>
+                <p className="trend-positive">
+                  +{stats.coral_coverage_change}% this month
+                </p>
+                <span className="insight-detail">
+                  Hard coral coverage improving across {stats.active_sites}{" "}
+                  sites
+                </span>
+              </div>
+            </div>
+
+            <div className="quick-stat geographic">
               <div className="quick-stat-icon">
                 <FiMapPin size={20} />
               </div>
               <div className="quick-stat-info">
                 <h4>Geographic Coverage</h4>
-                <p>Analysis from multiple locations</p>
+                <p>
+                  {stats.regions_covered} regions, {stats.provinces_covered}{" "}
+                  provinces
+                </p>
+                <span className="insight-detail">
+                  Latest data from {stats.most_recent_location}
+                </span>
               </div>
             </div>
 
-            <div className="quick-stat">
+            <div className="quick-stat activity">
+              <div className="quick-stat-icon">
+                <FiActivity size={20} />
+              </div>
+              <div className="quick-stat-info">
+                <h4>Analysis Quality</h4>
+                <p>{stats.avg_confidence}% average AI confidence</p>
+                <span className="insight-detail">
+                  {stats.high_quality_analyses} high-quality analyses today
+                </span>
+              </div>
+            </div>
+
+            <div className="quick-stat users">
+              <div className="quick-stat-icon">
+                <FiUsers size={20} />
+              </div>
+              <div className="quick-stat-info">
+                <h4>User Engagement</h4>
+                <p>{stats.active_users_today} active users today</p>
+                <span className="insight-detail">
+                  {stats.peak_hour} was the peak activity hour
+                </span>
+              </div>
+            </div>
+
+            <div className="quick-stat data-quality">
+              <div className="quick-stat-icon">
+                <FiDatabase size={20} />
+              </div>
+              <div className="quick-stat-info">
+                <h4>Data Quality Score</h4>
+                <p className="quality-score">{stats.data_quality_score}/10</p>
+                <span className="insight-detail">
+                  Based on image quality, coverage, and validation
+                </span>
+              </div>
+            </div>
+
+            <div className="quick-stat system-health">
               <div className="quick-stat-icon">
                 <FiEye size={20} />
               </div>
               <div className="quick-stat-info">
-                <h4>Active Sessions</h4>
-                <p>{stats.recent_activities} in the last 7 days</p>
-              </div>
-            </div>
-
-            <div className="quick-stat">
-              <div className="quick-stat-info">
-                <h4>Platform Growth</h4>
-                <p>Steady increase in usage</p>
+                <h4>System Health</h4>
+                <p className={`health-status ${stats.system_status}`}>
+                  {stats.system_status}
+                </p>
+                <span className="insight-detail">
+                  {stats.processing_queue} items in processing queue
+                </span>
               </div>
             </div>
           </div>
-        </div>
+        </div> */}
       </div>
+
+      {/* Analytics Modal - Add this at the end */}
+      <AnalyticsModal
+        isOpen={showAnalyticsModal}
+        onClose={handleCloseAnalytics}
+      />
     </div>
   );
 };
