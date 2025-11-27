@@ -543,6 +543,7 @@ function ProfileManagement({ user }) {
                     </div>
                   </div>
                 )}
+                {/* jepoy gwapo */}
 
                 {profileTab === "security" && (
                   <div className="tab-content">
