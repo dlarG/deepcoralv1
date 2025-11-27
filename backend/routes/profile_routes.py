@@ -79,21 +79,21 @@ def update_profile():
                 # Delete old image if exists
                 if current_user[7]:  # profile_image column
                     old_image_path = os.path.join(
-                        current_app.root_path, 
-                        '..', 'frontend', 'public', 'profile_uploads',
+                        current_app.root_path,
+                        'profile_uploads',
                         current_user[7]
                     )
                     if os.path.exists(old_image_path):
                         os.remove(old_image_path)
 
-                # Save new image
+                # Save new image to backend
                 filename = secure_filename(file.filename)
                 import uuid
                 unique_filename = f"{uuid.uuid4().hex}_{filename}"
                 
                 upload_path = os.path.join(
-                    current_app.root_path, 
-                    '..', 'frontend', 'public', 'profile_uploads'
+                    current_app.root_path,
+                    'profile_uploads'
                 )
                 os.makedirs(upload_path, exist_ok=True)
                 file.save(os.path.join(upload_path, unique_filename))
@@ -363,7 +363,7 @@ def cleanup_user_files(user_images, mask_paths, profile_image):
         # Clean up profile image
         if profile_image:
             profile_file_path = os.path.join(
-                current_app.root_path, '..', 'frontend', 'public', 'profile_uploads', profile_image
+                current_app.root_path, 'profile_uploads', profile_image
             )
             if os.path.exists(profile_file_path):
                 os.remove(profile_file_path)
