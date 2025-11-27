@@ -226,7 +226,7 @@ function Login() {
           </form>
 
           <div className="login-footer">
-            <Link to="/" className="forgot-password">
+            <Link to="/forgot-password" className="forgot-password">
               Forgot password?
             </Link>
             <p className="signup-prompt">

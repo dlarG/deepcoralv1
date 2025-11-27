@@ -160,6 +160,106 @@ export function AuthProvider({ children }) {
     }));
   };
 
+  const forgotPassword = async (email) => {
+    try {
+      const token = csrfToken || (await fetchCsrfToken());
+      const response = await axios.post(
+        `${API_BASE_URL}/forgot-password`,
+        { email },
+        {
+          withCredentials: true,
+          headers: {
+            "X-CSRF-Token": token,
+          },
+        }
+      );
+
+      if (response.data.message) {
+        return {
+          success: true,
+          message: response.data.message,
+          resetToken: response.data.reset_token,
+        };
+      }
+    } catch (err) {
+      console.error("Forgot password error:", err);
+      return {
+        success: false,
+        error:
+          err.response?.data?.error || "An error occurred. Please try again.",
+      };
+    }
+  };
+
+  const verifyResetOTP = async (resetToken, otpCode) => {
+    try {
+      const token = csrfToken || (await fetchCsrfToken());
+      const response = await axios.post(
+        `${API_BASE_URL}/verify-reset-otp`,
+        {
+          reset_token: resetToken,
+          otp_code: otpCode,
+        },
+        {
+          withCredentials: true,
+          headers: {
+            "X-CSRF-Token": token,
+          },
+        }
+      );
+
+      if (response.data.verified) {
+        return {
+          success: true,
+          message: response.data.message,
+          verified: true,
+        };
+      }
+    } catch (err) {
+      console.error("OTP verification error:", err);
+      return {
+        success: false,
+        error:
+          err.response?.data?.error || "Verification failed. Please try again.",
+      };
+    }
+  };
+
+  const resetPassword = async (resetToken, newPassword, confirmPassword) => {
+    try {
+      const token = csrfToken || (await fetchCsrfToken());
+      const response = await axios.post(
+        `${API_BASE_URL}/reset-password`,
+        {
+          reset_token: resetToken,
+          new_password: newPassword,
+          confirm_password: confirmPassword,
+        },
+        {
+          withCredentials: true,
+          headers: {
+            "X-CSRF-Token": token,
+          },
+        }
+      );
+
+      if (response.data.message) {
+        return {
+          success: true,
+          message: response.data.message,
+        };
+      }
+    } catch (err) {
+      console.error("Password reset error:", err);
+      return {
+        success: false,
+        error:
+          err.response?.data?.error ||
+          "Password reset failed. Please try again.",
+      };
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -172,6 +272,9 @@ export function AuthProvider({ children }) {
         csrfToken, // Make sure this is exposed
         fetchCsrfToken, // Add this to exposed functions
         updateUser,
+        forgotPassword,
+        verifyResetOTP,
+        resetPassword,
       }}
     >
       {children}

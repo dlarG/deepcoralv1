@@ -26,7 +26,7 @@ class Config:
     # reCAPTCHA
     RECAPTCHA_SECRET = os.getenv('RECAPTCHA_SECRET')
     
-    # CORS - Make sure this is a list
+    # CORS
     cors_origins_str = os.getenv('CORS_ORIGINS', 'http://localhost:3000')
     CORS_ORIGINS = [origin.strip() for origin in cors_origins_str.split(',')]
     
