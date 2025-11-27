@@ -12,12 +12,18 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import UserProfile from "./components/admin/components/UserProfile";
 import BiologistUserProfile from "./components/biologist/components/UserProfile";
 import SuccessMessage from "./components/SuccessMessage";
+import ForgotPassword from "./components/ForgotPassword";
+import VerifyOTP from "./components/VerifyOTP";
+import ResetPassword from "./components/ResetPassword";
 
 function App() {
   return (
     <Router>
       <AuthProvider>
         <Routes>
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/verify-otp" element={<VerifyOTP />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/success" element={<SuccessMessage />} />
           <Route path="/" element={<HomePage />} />
           <Route path="/register" element={<Register />} />

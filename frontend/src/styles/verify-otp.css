@@ -1,0 +1,249 @@
+/* Verify OTP Card Styles - Inherited from Forgot Password */
+.verify-otp-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  position: relative;
+}
+
+.verify-otp-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 40px;
+  width: 100%;
+  max-width: 450px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  position: relative;
+  z-index: 10;
+}
+
+.verify-otp-header {
+  text-align: center;
+  margin-bottom: 30px;
+  position: relative;
+}
+
+.verify-otp-header h1 {
+  font-size: 28px;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.verify-otp-header p {
+  color: #666;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.verify-otp-body {
+  margin-top: 30px;
+}
+
+/* OTP Input Styles */
+.verify-otp-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.otp-input-group {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.otp-input {
+  width: 50px;
+  height: 60px;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  text-align: center;
+  font-size: 24px;
+  font-weight: 600;
+  background: white;
+  transition: all 0.3s ease;
+}
+
+.otp-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  transform: translateY(-2px);
+}
+
+.otp-input:valid {
+  border-color: #10b981;
+}
+
+/* Timer Section */
+.timer-section {
+  text-align: center;
+  margin: 10px 0;
+}
+
+.timer {
+  color: #666;
+  font-size: 14px;
+}
+
+.time {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.expired {
+  color: #dc2626;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* Button Styles */
+.verify-button {
+  padding: 16px 24px;
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.verify-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+}
+
+.verify-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.verify-button.loading {
+  background: linear-gradient(135deg, #6b7280, #4b5563);
+}
+
+/* Resend Button */
+.resend-button {
+  padding: 12px 20px;
+  background: transparent;
+  color: #3b82f6;
+  border: 2px solid #3b82f6;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.resend-button:hover:not(:disabled) {
+  background: #3b82f6;
+  color: white;
+  transform: translateY(-1px);
+}
+
+.resend-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.resend-button.disabled {
+  background: #f3f4f6;
+  color: #9ca3af;
+  border-color: #e5e7eb;
+}
+
+.resend-button.disabled:hover {
+  background: #f3f4f6;
+  color: #9ca3af;
+  transform: none;
+  cursor: not-allowed;
+}
+
+/* Success Message */
+.success-message {
+  text-align: center;
+  padding: 30px 20px;
+}
+
+.success-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+}
+
+.success-message h3 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.success-message p {
+  color: #666;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Footer */
+.verify-otp-footer {
+  margin-top: 30px;
+  text-align: center;
+}
+
+/* Responsive Design */
+@media (max-width: 480px) {
+  .verify-otp-container {
+    padding: 10px;
+  }
+
+  .verify-otp-card {
+    padding: 30px 20px;
+    border-radius: 16px;
+  }
+
+  .verify-otp-header h1 {
+    font-size: 24px;
+  }
+
+  .otp-input {
+    width: 45px;
+    height: 55px;
+    font-size: 20px;
+  }
+
+  .verify-button,
+  .resend-button {
+    padding: 14px 20px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 360px) {
+  .otp-input-group {
+    gap: 8px;
+  }
+
+  .otp-input {
+    width: 40px;
+    height: 50px;
+    font-size: 18px;
+  }
+}
