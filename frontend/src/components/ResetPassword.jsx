@@ -23,7 +23,7 @@ function ResetPassword() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [redirectCountdown, setRedirectCountdown] = useState(0); // Add countdown state
+  const [redirectCountdown, setRedirectCountdown] = useState(0);
   const [passwordStrength, setPasswordStrength] = useState({
     score: 0,
     feedback: [],
@@ -73,8 +73,20 @@ function ResetPassword() {
         setRedirectCountdown((prev) => prev - 1);
       }, 1000);
     } else if (isSuccess && redirectCountdown === 0) {
+      // Clean up localStorage before navigation
+      localStorage.removeItem("resetToken");
+      localStorage.removeItem("resetEmail");
+      localStorage.removeItem("otpVerified"); // Clean up any OTP verification flags
+
       // Navigate to login after countdown
-      navigate("/login", { replace: true });
+      navigate("/login", {
+        replace: true,
+        state: {
+          message:
+            "Password reset successful! You can now log in with your new password.",
+          type: "success",
+        },
+      });
     }
 
     return () => {
@@ -180,11 +192,11 @@ function ResetPassword() {
         setMessage(result.message);
         setRedirectCountdown(5); // Start 5-second countdown
 
-        // Clean up stored data immediately to prevent navigation issues
-        localStorage.removeItem("resetToken");
-        localStorage.removeItem("resetEmail");
+        // Clean up stored data immediately but keep them until navigation
+        // This prevents issues with navigation
       } else {
         setMessage(result.error);
+        // Don't clear tokens on failure - user might want to try again
       }
     } catch (err) {
       console.error("Password reset error:", err);
@@ -195,7 +207,19 @@ function ResetPassword() {
   };
 
   const handleManualRedirect = () => {
-    navigate("/login", { replace: true });
+    // Clean up localStorage before manual navigation
+    localStorage.removeItem("resetToken");
+    localStorage.removeItem("resetEmail");
+    localStorage.removeItem("otpVerified");
+
+    navigate("/login", {
+      replace: true,
+      state: {
+        message:
+          "Password reset successful! You can now log in with your new password.",
+        type: "success",
+      },
+    });
   };
 
   return (
@@ -247,7 +271,6 @@ function ResetPassword() {
           <div className="auth-logo-container">
             <Logo variant="auth" type="image" theme="dark" />
           </div>
-          <div className="lock-icon">{isSuccess ? "🎉" : "🔐"}</div>
           <h1>
             {isSuccess ? "Password Reset Successful!" : "Create New Password"}
           </h1>
@@ -274,7 +297,6 @@ function ResetPassword() {
           {!isSuccess ? (
             <form onSubmit={handleSubmit} className="reset-password-form">
               <div className="input-group">
-                <label className="input-label">New Password</label>
                 <div className="input-wrapper">
                   <div className="input-icon">
                     <FiLock />
@@ -369,7 +391,6 @@ function ResetPassword() {
               )}
 
               <div className="input-group">
-                <label className="input-label">Confirm New Password</label>
                 <div className="input-wrapper">
                   <div className="input-icon">
                     <FiLock />
