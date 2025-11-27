@@ -131,17 +131,6 @@
   color: #6366f1;
 }
 
-.tab-btn.active {
-  background: linear-gradient(
-    135deg,
-    rgba(99, 102, 241, 0.1),
-    rgba(168, 85, 247, 0.1)
-  );
-  color: #6366f1;
-  border-right: 3px solid #6366f1;
-  font-weight: 600;
-}
-
 .analytics-content {
   flex: 1;
   padding: 32px;
