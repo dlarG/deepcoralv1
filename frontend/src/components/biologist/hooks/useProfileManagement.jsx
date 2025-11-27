@@ -13,6 +13,7 @@ export default function useProfileManagement(user) {
     username: "",
     firstname: "",
     lastname: "",
+    email: "",
     bio: "",
     profile_image: null,
     current_password: "",
@@ -106,6 +107,7 @@ export default function useProfileManagement(user) {
       username: user.username,
       firstname: user.firstname,
       lastname: user.lastname,
+      email: user.email || "",
       bio: user.bio || "",
       profile_image: null,
       current_password: "",
@@ -125,6 +127,7 @@ export default function useProfileManagement(user) {
       username: "",
       firstname: "",
       lastname: "",
+      email: "",
       bio: "",
       profile_image: null,
       current_password: "",
@@ -197,6 +200,7 @@ export default function useProfileManagement(user) {
       formData.append("username", profileFormData.username);
       formData.append("firstname", profileFormData.firstname);
       formData.append("lastname", profileFormData.lastname);
+      formData.append("email", profileFormData.email);
       formData.append("bio", profileFormData.bio);
 
       if (profileFormData.new_password) {
