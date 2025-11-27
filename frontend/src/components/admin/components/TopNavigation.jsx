@@ -221,8 +221,13 @@ function TopNavigation({
               <div className="profile-avatar">
                 {user?.profile_image ? (
                   <img
-                    src={`/profile_uploads/${user.profile_image}`}
+                    src={`${process.env.REACT_APP_API_URL}/profile_uploads/${user.profile_image}`}
                     alt={`${user.firstname} ${user.lastname}`}
+                    onError={(e) => {
+                      console.error("Profile image failed to load:", e.target.src);
+                      e.target.style.display = "none";
+                      e.target.nextSibling.style.display = "flex";
+                    }}
                   />
                 ) : (
                   <div className="avatar-initials">
@@ -248,8 +253,13 @@ function TopNavigation({
                     <div className="profile-avatar-larges">
                       {user?.profile_image ? (
                         <img
-                          src={`/profile_uploads/${user.profile_image}`}
+                          src={`${process.env.REACT_APP_API_URL}/profile_uploads/${user.profile_image}`}
                           alt={`${user.firstname} ${user.lastname}`}
+                          onError={(e) => {
+                            console.error("Profile image failed to load:", e.target.src);
+                            e.target.style.display = "none";
+                            e.target.nextSibling.style.display = "flex";
+                          }}
                         />
                       ) : (
                         <div className="avatar-initials-large">
