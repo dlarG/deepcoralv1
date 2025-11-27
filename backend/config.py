@@ -31,9 +31,10 @@ class Config:
     # App configuration
     SECRET_KEY = os.getenv('SECRET_KEY', secrets.token_hex(32))
     SESSION_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_SECURE = os.getenv('SESSION_COOKIE_SECURE', 'False').lower() == 'true'
+    SESSION_COOKIE_SECURE = True  # Always True for production HTTPS
     SESSION_COOKIE_SAMESITE = 'None'  # Required for cross-origin requests
-    SESSION_COOKIE_DOMAIN = '.deepcoral.site'  # Share cookies across subdomains
+    # Remove domain restriction to allow cookies to work properly
+    # SESSION_COOKIE_DOMAIN = None
     
     # File upload configuration
     MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # 50MB max upload size
