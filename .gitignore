@@ -1,6 +1,9 @@
 .env
 backend/.env
 **/.env
+backend/.env.staging
+backend/.env.production
+backend/.env.development
 backend/__pycache__
 backend/routes/__pycache__
 backend/utils/__pycache__

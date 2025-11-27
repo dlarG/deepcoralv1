@@ -9,7 +9,9 @@ local_prod = os.getenv('LOCAL_PRODUCTION', 'False').lower() == 'true'
 if env != 'production':
     try:
         from dotenv import load_dotenv
-        if local_prod:
+        if env == 'staging':
+            load_dotenv('.env.staging')
+        elif local_prod:
             load_dotenv('.env.local-production')
         else:
             load_dotenv('.env.development')
