@@ -12,6 +12,7 @@ profile_bp = Blueprint('profile', __name__)
 
 # klasjdjlkas
 
+
 @profile_bp.route('/profile', methods=['GET'])
 @login_required
 def get_profile():
@@ -21,7 +22,13 @@ def get_profile():
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT id, username, firstname, lastname, roletype, bio, profile_image, created_at, email FROM users WHERE id = %s", (session['user_id'],))
+            # Make sure email is included in the query
+            cur.execute("""
+                SELECT id, username, firstname, lastname, roletype, bio, 
+                       profile_image, created_at, email, status, last_login 
+                FROM users 
+                WHERE id = %s
+            """, (session['user_id'],))
             user = cur.fetchone()
             
             if not user:
@@ -37,8 +44,10 @@ def get_profile():
                     'roletype': user[4],
                     'bio': user[5],
                     'profile_image': user[6],
-                    'created_at': user[7],
-                    'email': user[8],
+                    'created_at': user[7].isoformat() if user[7] else None,
+                    'email': user[8],  # Email is now at index 8
+                    'status': user[9],
+                    'last_login': user[10].isoformat() if user[10] else None
                 }
             }), 200
     except Exception as e:
@@ -47,6 +56,7 @@ def get_profile():
         if conn:
             conn.close()
 
+            
 @profile_bp.route('/profile', methods=['PUT'])
 @login_required
 def update_profile():

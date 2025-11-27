@@ -1,4 +1,4 @@
-from flask import Flask, request, session, jsonify
+from flask import Flask, app, request, session, jsonify
 from flask_cors import CORS
 from config import Config
 from routes import init_routes
@@ -34,15 +34,17 @@ def create_app():
     
     # Initialize routes
     init_routes(app)
+
     
-    # Serve static files for profile images
+    
     @app.route('/profile_uploads/<path:filename>')
     def serve_profile_image(filename):
         from flask import send_from_directory
         import os
         profile_uploads_path = os.path.join(app.root_path, 'profile_uploads')
+        # Ensure directory exists
+        os.makedirs(profile_uploads_path, exist_ok=True)
         return send_from_directory(profile_uploads_path, filename)
-    
     # CSRF token endpoint
     @app.route('/csrf-token', methods=['GET'])
     def get_csrf_token():
@@ -92,6 +94,8 @@ def create_app():
                 return jsonify({'error': 'CSRF token missing or invalid'}), 403
     
     return app
+
+
 
 if __name__ == '__main__':
     app = create_app()

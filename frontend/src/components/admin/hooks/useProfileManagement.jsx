@@ -178,9 +178,14 @@ export default function useProfileManagement(user) {
       new_password: "",
       confirm_password: "",
     });
+    
+    // FIXED: Use API URL for profile image preview
     setProfileImagePreview(
-      user.profile_image ? `/profile_uploads/${user.profile_image}` : null
+      user.profile_image 
+        ? `${process.env.REACT_APP_API_URL}/profile_uploads/${user.profile_image}` 
+        : null
     );
+    
     // Reset password strength
     setPasswordStrength({ score: 0, feedback: [], color: "#e5e7eb" });
     setShowProfileModal(true);
