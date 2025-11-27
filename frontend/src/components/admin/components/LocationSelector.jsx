@@ -533,9 +533,9 @@ const LocationSelector = ({
 
               if (crop && typeof crop === "object" && crop.image_id) {
                 imageIds.push(crop.image_id);
-                console.log(`✅ Found image_id from batch: ${crop.image_id}`);
+                console.log(` Found image_id from batch: ${crop.image_id}`);
               } else {
-                console.log(`❌ No image_id in batch crop:`, crop);
+                console.log(` No image_id in batch crop:`, crop);
               }
             });
           }
@@ -564,11 +564,9 @@ const LocationSelector = ({
 
               if (crop && typeof crop === "object" && crop.image_id) {
                 imageIds.push(crop.image_id);
-                console.log(
-                  `✅ Found image_id from processed: ${crop.image_id}`
-                );
+                console.log(` Found image_id from processed: ${crop.image_id}`);
               } else {
-                console.log(`❌ No image_id in processed crop:`, crop);
+                console.log(` No image_id in processed crop:`, crop);
               }
             });
           }
@@ -586,7 +584,7 @@ const LocationSelector = ({
       console.log("Selected transect:", transect);
 
       if (imageIds.length === 0) {
-        console.error("❌ NO IMAGE IDS FOUND!");
+        console.error(" NO IMAGE IDS FOUND!");
         console.error(
           "Batch results structure:",
           JSON.stringify(batchResults, null, 2)
@@ -615,7 +613,7 @@ const LocationSelector = ({
         }
       }
 
-      console.log(`✅ Proceeding with ${imageIds.length} image IDs:`, imageIds);
+      console.log(` Proceeding with ${imageIds.length} image IDs:`, imageIds);
 
       const requestBody = {
         image_ids: imageIds,
