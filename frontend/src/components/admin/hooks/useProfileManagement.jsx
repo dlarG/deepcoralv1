@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import axios from "axios";
 import { useAuth } from "../../../context/AuthContext";
 
@@ -24,6 +24,21 @@ export default function useProfileManagement(user) {
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileTab, setProfileTab] = useState("info");
   const [pendingDeleteProfile, setPendingDeleteProfile] = useState(false);
+
+  // Password visibility states
+  const [showPasswords, setShowPasswords] = useState({
+    current_password: false,
+    new_password: false,
+    confirm_password: false,
+    delete: false,
+  });
+
+  // Password strength state
+  const [passwordStrength, setPasswordStrength] = useState({
+    score: 0,
+    feedback: [],
+    color: "#ef4444",
+  });
 
   // Modal state for success/error messages
   const [showModal, setShowModal] = useState(false);
@@ -64,10 +79,58 @@ export default function useProfileManagement(user) {
     setShowModal(true);
   };
 
-  const handleProfileInputChange = (e) => {
-    const { name, value } = e.target;
-    setProfileFormData((prev) => ({ ...prev, [name]: value }));
-  };
+  // Password visibility toggle
+  const togglePasswordVisibility = useCallback((field) => {
+    setShowPasswords((prev) => ({
+      ...prev,
+      [field]: !prev[field],
+    }));
+  }, []);
+
+  // Password strength checker
+  const checkPasswordStrength = useCallback((password) => {
+    if (!password) {
+      return { score: 0, feedback: [], color: "#e5e7eb" };
+    }
+
+    const checks = [
+      { test: /.{8,}/, message: "At least 8 characters" },
+      { test: /[a-z]/, message: "One lowercase letter" },
+      { test: /[A-Z]/, message: "One uppercase letter" },
+      { test: /\d/, message: "One number" },
+      { test: /[!@#$%^&*(),.?":{}|<>]/, message: "One special character" },
+    ];
+
+    const passedChecks = checks.filter((check) => check.test.test(password));
+    const failedChecks = checks.filter((check) => !check.test.test(password));
+
+    const score = passedChecks.length;
+    const feedback = failedChecks.map((check) => check.message);
+
+    let color = "#ef4444"; // Red - Weak
+    if (score >= 5) color = "#10b981"; // Green - Strong
+    else if (score >= 4) color = "#eab308"; // Yellow - Good
+    else if (score >= 3) color = "#f59e0b"; // Orange - Fair
+
+    return { score, feedback, color };
+  }, []);
+
+  // Enhanced input change handler
+  const handleProfileInputChange = useCallback(
+    (e) => {
+      const { name, value } = e.target;
+      setProfileFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+
+      // Check password strength for new password
+      if (name === "new_password") {
+        setPasswordStrength(checkPasswordStrength(value));
+      }
+    },
+    [checkPasswordStrength]
+  );
 
   const handleProfileImageChange = (e) => {
     const file = e.target.files[0];
@@ -86,8 +149,8 @@ export default function useProfileManagement(user) {
         return;
       }
 
-      // Validate file size (10MB max)
-      if (file.size > 10 * 1024 * 1024) {
+      // Validate file size (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
         showErrorModal(
           "File Too Large",
           "Profile image must be less than 5MB. Please choose a smaller image or compress your file."
@@ -109,15 +172,17 @@ export default function useProfileManagement(user) {
       firstname: user.firstname || "",
       lastname: user.lastname || "",
       bio: user.bio || "",
+      email: user.email || "",
       profile_image: null,
       current_password: "",
       new_password: "",
       confirm_password: "",
-      email: user.email || "",
     });
     setProfileImagePreview(
       user.profile_image ? `/profile_uploads/${user.profile_image}` : null
     );
+    // Reset password strength
+    setPasswordStrength({ score: 0, feedback: [], color: "#e5e7eb" });
     setShowProfileModal(true);
     setProfileTab("info");
   };
@@ -137,6 +202,14 @@ export default function useProfileManagement(user) {
     });
     setProfileImagePreview(null);
     setProfileTab("info");
+    // Reset password states
+    setPasswordStrength({ score: 0, feedback: [], color: "#e5e7eb" });
+    setShowPasswords({
+      current_password: false,
+      new_password: false,
+      confirm_password: false,
+      delete: false,
+    });
   };
 
   const openDeleteModal = () => {
@@ -150,6 +223,8 @@ export default function useProfileManagement(user) {
     setDeletePassword("");
     setDeleteError("");
     setPendingDeleteProfile(false);
+    // Reset delete password visibility
+    setShowPasswords((prev) => ({ ...prev, delete: false }));
   };
 
   const validateProfileForm = () => {
@@ -165,19 +240,29 @@ export default function useProfileManagement(user) {
       errors.push("Last name is required");
     }
 
-    // Add email validation
+    // Email validation
     if (!profileFormData.email?.trim()) {
       errors.push("Email is required");
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileFormData.email)) {
       errors.push("Please enter a valid email address");
     }
 
-    if (profileFormData.new_password) {
+    // Password validation (only if changing password)
+    if (profileFormData.new_password || profileFormData.current_password) {
       if (!profileFormData.current_password) {
         errors.push("Current password is required to change password");
       }
-      if (profileFormData.new_password.length < 8) {
-        errors.push("New password must be at least 8 characters long");
+      if (!profileFormData.new_password) {
+        errors.push("New password is required");
+      } else {
+        if (profileFormData.new_password.length < 8) {
+          errors.push("New password must be at least 8 characters long");
+        }
+        if (passwordStrength.score < 3) {
+          errors.push(
+            "Password is too weak. Please include uppercase, lowercase, numbers, and special characters"
+          );
+        }
       }
       if (profileFormData.new_password !== profileFormData.confirm_password) {
         errors.push("New passwords do not match");
@@ -405,7 +490,6 @@ export default function useProfileManagement(user) {
     handleProfileSubmit,
     handleDeleteProfile,
     setProfileTab,
-
     showModal,
     modalConfig,
     setShowModal,
@@ -415,5 +499,9 @@ export default function useProfileManagement(user) {
     confirmDeleteProfile,
     cancelDeleteProfile,
     pendingDeleteProfile,
+    // New password features
+    showPasswords,
+    togglePasswordVisibility,
+    passwordStrength,
   };
 }
