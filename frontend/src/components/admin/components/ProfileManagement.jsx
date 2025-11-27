@@ -1,4 +1,3 @@
-// src/components/admin/components/ProfileManagement.js
 import React from "react";
 import {
   FiEdit2,
@@ -14,11 +13,96 @@ import {
   FiAward,
   FiActivity,
   FiSettings,
+  FiEye,
+  FiEyeOff,
+  FiCheck,
+  FiAlertCircle,
 } from "react-icons/fi";
 import useProfileManagement from "../hooks/useProfileManagement";
 import dayjs from "dayjs";
 import SuccessModal from "../../SuccessMessage";
 import "../styles/profileStyles.css";
+
+// Move PasswordStrengthIndicator outside the component
+const PasswordStrengthIndicator = ({ strength }) => {
+  const getStrengthText = (score) => {
+    if (score === 0) return "";
+    if (score <= 2) return "Weak";
+    if (score <= 3) return "Fair";
+    if (score <= 4) return "Good";
+    return "Strong";
+  };
+
+  const getStrengthWidth = (score) => `${(score / 5) * 100}%`;
+
+  if (!strength.score) return null;
+
+  return (
+    <div className="password-strength-indicator">
+      <div className="strength-bar-container">
+        <div
+          className="strength-bar"
+          style={{
+            width: getStrengthWidth(strength.score),
+            backgroundColor: strength.color,
+          }}
+        />
+      </div>
+      <div className="strength-info">
+        <span className="strength-text" style={{ color: strength.color }}>
+          {getStrengthText(strength.score)}
+        </span>
+        {strength.feedback.length > 0 && (
+          <div className="strength-requirements">
+            <small>Missing: {strength.feedback.join(", ")}</small>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Move PasswordInput outside the component
+const PasswordInput = ({
+  name,
+  value,
+  onChange,
+  placeholder,
+  label,
+  required = false,
+  showStrength = false,
+  showPasswords,
+  togglePasswordVisibility,
+  passwordStrength,
+}) => (
+  <div className="form-group">
+    <label>
+      {label} {required && "*"}
+    </label>
+    <div className="password-input-container">
+      <input
+        type={showPasswords[name] ? "text" : "password"}
+        name={name}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        required={required}
+        className="password-input"
+      />
+      <button
+        type="button"
+        className="password-toggle-btn"
+        onClick={() => togglePasswordVisibility(name)}
+        tabIndex={-1}
+      >
+        {showPasswords[name] ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+      </button>
+    </div>
+    {showStrength && value && (
+      <PasswordStrengthIndicator strength={passwordStrength} />
+    )}
+  </div>
+);
 
 function ProfileManagement({ user }) {
   const {
@@ -46,6 +130,9 @@ function ProfileManagement({ user }) {
     setShowModal,
     confirmDeleteProfile,
     cancelDeleteProfile,
+    showPasswords,
+    togglePasswordVisibility,
+    passwordStrength,
   } = useProfileManagement(user);
 
   return (
@@ -238,6 +325,8 @@ function ProfileManagement({ user }) {
           </div>
         </div>
       </div>
+
+      {/* Delete Modal with enhanced password input */}
       {showDeleteModal && (
         <div className="modal-overlay">
           <div className="delete-modal">
@@ -255,14 +344,28 @@ function ProfileManagement({ user }) {
             <div className="delete-modal-body">
               <div className="form-group">
                 <label>Confirm Your Password</label>
-                <input
-                  type="password"
-                  value={deletePassword}
-                  onChange={(e) => setDeletePassword(e.target.value)}
-                  placeholder="Enter your password"
-                  className={deleteError ? "error" : ""}
-                  autoFocus
-                />
+                <div className="password-input-container">
+                  <input
+                    type={showPasswords.delete ? "text" : "password"}
+                    value={deletePassword}
+                    onChange={(e) => setDeletePassword(e.target.value)}
+                    placeholder="Enter your password"
+                    className={`password-input ${deleteError ? "error" : ""}`}
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    className="password-toggle-btn"
+                    onClick={() => togglePasswordVisibility("delete")}
+                    tabIndex={-1}
+                  >
+                    {showPasswords.delete ? (
+                      <FiEyeOff size={18} />
+                    ) : (
+                      <FiEye size={18} />
+                    )}
+                  </button>
+                </div>
                 {deleteError && (
                   <span className="error-text">{deleteError}</span>
                 )}
@@ -300,6 +403,7 @@ function ProfileManagement({ user }) {
         </div>
       )}
 
+      {/* Profile Modal with enhanced security tab */}
       {showProfileModal && (
         <div className="modal-overlay">
           <div className="profile-modal">
@@ -378,8 +482,8 @@ function ProfileManagement({ user }) {
                       <label>Email Address *</label>
                       <input
                         type="email"
-                        name="new_email"
-                        value={profileFormData.email}
+                        name="email"
+                        value={profileFormData.email || ""}
                         onChange={handleProfileInputChange}
                         required
                         placeholder="Enter your email address"
@@ -450,38 +554,69 @@ function ProfileManagement({ user }) {
                       </p>
                     </div>
 
-                    <div className="form-group">
-                      <label>Current Password</label>
-                      <input
-                        type="password"
-                        name="current_password"
-                        value={profileFormData.current_password}
+                    <PasswordInput
+                      name="current_password"
+                      value={profileFormData.current_password}
+                      onChange={handleProfileInputChange}
+                      placeholder="Enter your current password"
+                      label="Current Password"
+                      showPasswords={showPasswords}
+                      togglePasswordVisibility={togglePasswordVisibility}
+                      passwordStrength={passwordStrength}
+                    />
+
+                    <div className="form-row">
+                      <PasswordInput
+                        name="new_password"
+                        value={profileFormData.new_password}
                         onChange={handleProfileInputChange}
-                        placeholder="Enter your current password"
+                        placeholder="Enter new password"
+                        label="New Password"
+                        showStrength={true}
+                        showPasswords={showPasswords}
+                        togglePasswordVisibility={togglePasswordVisibility}
+                        passwordStrength={passwordStrength}
+                      />
+                      <PasswordInput
+                        name="confirm_password"
+                        value={profileFormData.confirm_password}
+                        onChange={handleProfileInputChange}
+                        placeholder="Confirm new password"
+                        label="Confirm New Password"
+                        showPasswords={showPasswords}
+                        togglePasswordVisibility={togglePasswordVisibility}
+                        passwordStrength={passwordStrength}
                       />
                     </div>
 
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label>New Password</label>
-                        <input
-                          type="password"
-                          name="new_password"
-                          value={profileFormData.new_password}
-                          onChange={handleProfileInputChange}
-                          placeholder="Enter new password (min 8 characters)"
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>Confirm New Password</label>
-                        <input
-                          type="password"
-                          name="confirm_password"
-                          value={profileFormData.confirm_password}
-                          onChange={handleProfileInputChange}
-                          placeholder="Confirm new password"
-                        />
-                      </div>
+                    {/* Password match indicator */}
+                    {profileFormData.new_password &&
+                      profileFormData.confirm_password && (
+                        <div className="password-match-indicator">
+                          {profileFormData.new_password ===
+                          profileFormData.confirm_password ? (
+                            <div className="match-success">
+                              <FiCheck size={16} />
+                              <span>Passwords match</span>
+                            </div>
+                          ) : (
+                            <div className="match-error">
+                              <FiAlertCircle size={16} />
+                              <span>Passwords do not match</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                    {/* Security tips */}
+                    <div className="security-tips">
+                      <h5>Password Security Tips:</h5>
+                      <ul>
+                        <li>Use a mix of uppercase and lowercase letters</li>
+                        <li>Include numbers and special characters</li>
+                        <li>Avoid using personal information</li>
+                        <li>Make it at least 8 characters long</li>
+                      </ul>
                     </div>
                   </div>
                 )}
@@ -508,6 +643,7 @@ function ProfileManagement({ user }) {
           </div>
         </div>
       )}
+
       <SuccessModal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
