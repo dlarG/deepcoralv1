@@ -33,7 +33,7 @@ function HomePage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    document.title = "DeepCoral - AI-Powered Marine Conservation";
+    document.title = "DeepCoral - AI-Powered Coral Reef Analysis";
 
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
@@ -74,24 +74,24 @@ function HomePage() {
       icon: <FiCamera />,
       title: "AI Image Analysis",
       description:
-        "Advanced deep learning algorithms analyze coral reef images with 99.5% accuracy, providing instant coral coverage estimates.",
-      features: ["Real-time Processing", "Auto Cropping", "Batch Analysis"],
+        "Advanced deep learning algorithms powered by YOLOv11 and U-Net to analyze coral reef images with high accuracy, providing instant coral coverage and species identification.",
+      features: ["Real-time Processing", "Automated Segmentation", "Batch Analysis"],
       gradient: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
     },
     {
       icon: <FiMap />,
       title: "GIS Integration",
       description:
-        "Seamlessly integrate analyzed data with GIS platforms to visualize coral health trends and support marine conservation efforts.",
-      features: ["Trend Analysis", "Data Visualization", "Export Options"],
+        "Seamlessly integrate analyzed data with Geographic Information Systems to map coral health trends, track conservation progress, and support marine spatial planning.",
+      features: ["Spatial Analysis", "Interactive Maps", "Data Export (Shapefile, GeoJSON)"],
       gradient: "linear-gradient(135deg, #10b981, #059669)",
     },
     {
       icon: <FiBarChart2 />,
-      title: "Dynamic Reporting",
+      title: "Comprehensive Reporting",
       description:
-        "Generate beautiful, interactive reports and visualizations to share insights with your research team and stakeholders.",
-      features: ["Custom Reports", "Interactive Charts", "Multi-format Export"],
+        "Generate detailed, publication-ready reports with interactive visualizations, statistical analysis, and customizable templates for research and conservation planning.",
+      features: ["Custom Reports", "Statistical Analysis", "Multi-format Export (PDF, CSV)"],
       gradient: "linear-gradient(135deg, #f59e0b, #d97706)",
     },
   ];

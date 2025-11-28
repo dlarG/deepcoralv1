@@ -855,9 +855,25 @@
   object-fit: cover;
 }
 
-.profile-avatar-larges img {
+/* Profile Avatar - Large (Dropdown) */
+.profile-avatar-larges {
+  position: relative;
   width: 90px;
-  height: 90px;
+  height: 90px; /* Make it square */
+  border-radius: 12px;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--color-accent), #00acc1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.profile-avatar-larges img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Crop to fill */
+  object-position: center; /* Center the crop */
   border-radius: 12px;
   border: 2px solid rgba(255, 255, 255, 0.3);
   box-shadow: 0 4px 12px rgba(61, 218, 215, 0.4);
