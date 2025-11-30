@@ -86,7 +86,7 @@ const SystemSettingsModal = ({ isOpen, onClose, darkMode }) => {
           </button>
         </div>
 
-        <div className="modal-content">
+        <div className="setting-modal-content">
           {message.text && (
             <div className={`message ${message.type}`}>
               {message.type === "success" ? <FiCheck /> : <FiAlertTriangle />}

@@ -1253,23 +1253,10 @@ function UserProfile({ darkMode }) {
 
           <div className="card-body">
             <div className="actions-grid">
-              <button onClick={handleEditUser} className="action-btn primary">
-                <div className="action-icon">
-                  <FiEdit2 size={20} />
-                </div>
-                <div className="action-content">
-                  <h3>Edit Profile</h3>
-                  <p>Modify user details</p>
-                </div>
-              </button>
-
               <button
                 onClick={exportUserDataToCSV}
                 className="action-btn neutral"
               >
-                <div className="action-icon">
-                  <FiDownload size={20} />
-                </div>
                 <div className="action-content">
                   <h3>Export Profile</h3>
                   <p>Download user info</p>
@@ -1285,9 +1272,6 @@ function UserProfile({ darkMode }) {
                   (activitiesSummary.total_activities || 0) === 0
                 }
               >
-                <div className="action-icon">
-                  <FiActivity size={20} />
-                </div>
                 <div className="action-content">
                   <h3>Export Activities</h3>
                   <p>Download activity logs</p>
@@ -1295,9 +1279,6 @@ function UserProfile({ darkMode }) {
               </button>
 
               <button onClick={handleDeleteUser} className="action-btn danger">
-                <div className="action-icon">
-                  <FiTrash2 size={20} />
-                </div>
                 <div className="action-content">
                   <h3>Delete User</h3>
                   <p>Remove permanently</p>

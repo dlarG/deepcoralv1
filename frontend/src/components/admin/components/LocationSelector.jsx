@@ -671,7 +671,7 @@ const LocationSelector = ({
   return (
     <div className="location-selector-overlay">
       <div className="location-selector-modal">
-        <div className="location-header">
+        <div className="save-location-header">
           <div className="header-left">
             <FiMap size={24} />
             <div>
@@ -689,9 +689,9 @@ const LocationSelector = ({
         </div>
 
         <div className="location-content">
-          <div className="map-controls">
+          <div className="save-map-controls">
             <div className="search-section">
-              <div className="search-bar">
+              <div className="save-search-bar">
                 <input
                   type="text"
                   placeholder="Search for a location..."
@@ -744,7 +744,7 @@ const LocationSelector = ({
             </div>
 
             {selectedLocation && (
-              <div className="selected-location-info">
+              <div className="save-selected-location-info">
                 <FiCheckCircle size={16} />
                 <div>
                   <strong>
@@ -1080,7 +1080,7 @@ const LocationSelector = ({
             )}
           </div>
 
-          <div className="existing-locations-panel">
+          <div className="select-existing-locations-panel">
             <h3>
               <FiMapPin size={16} />
               Existing Locations ({existingLocations.length})
@@ -1102,7 +1102,7 @@ const LocationSelector = ({
                 existingLocations.map((location, index) => (
                   <div
                     key={`location-item-${index}`}
-                    className={`location-item ${
+                    className={`select-location-item ${
                       selectedLocation &&
                       selectedLocation.lat === location.latitude &&
                       selectedLocation.lng === location.longitude

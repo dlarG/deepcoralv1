@@ -1456,7 +1456,7 @@ function AddImage() {
             {coverageData
               .sort((a, b) => b.coverage_percent - a.coverage_percent)
               .map((coral, index) => (
-                <div key={index} className="table-row">
+                <div key={index} className="up-table-row">
                   <div className="coral-name">
                     <div
                       className="color-indicator"

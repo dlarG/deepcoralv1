@@ -249,6 +249,7 @@
 /* Dropdown Header */
 .profile-dropdown .dropdown-header {
   padding: 1.5rem;
+  cursor: pointer;
   background: linear-gradient(135deg, var(--color-primary), var(--color-hover));
   color: var(--text-light);
 }
@@ -898,7 +899,6 @@
     position: absolute;
     top: 100%;
     right: 0;
-    width: 260px;
     margin-top: 8px;
     /* If it goes off-screen, it will auto-adjust with transform */
     transform: translateX(0);
@@ -1064,29 +1064,35 @@
     font-size: 12px;
   }
 
-  /* Add close button for mobile */
-  .dropdown-header::after {
-    content: "";
+  .mobile-close-btn {
     position: absolute;
     top: 12px;
     right: 12px;
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
+    border: none;
     background: rgba(255, 255, 255, 0.2);
-    border-radius: 50%;
-    cursor: pointer;
-  }
-
-  .dropdown-header::before {
-    content: "×";
-    position: absolute;
-    top: 12px;
-    right: 18px;
     color: white;
+    border-radius: 50%;
     font-size: 18px;
     font-weight: bold;
     cursor: pointer;
-    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    transition: all 0.2s ease;
+  }
+
+  .mobile-close-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.1);
+  }
+
+  /* Hide pseudo-elements when using real button */
+  .dropdown-header.has-close-btn::before,
+  .dropdown-header.has-close-btn::after {
+    display: none;
   }
 }
 

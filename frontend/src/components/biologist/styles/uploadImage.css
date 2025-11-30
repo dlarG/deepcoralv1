@@ -2503,6 +2503,7 @@ override-details p {
   border: 1px solid #a7f3d0;
   border-radius: 8px;
   font-weight: 600;
+  margin-bottom: 1rem;
 }
 
 .upload-charts-container {
@@ -2578,7 +2579,7 @@ override-details p {
   font-size: 0.875rem;
 }
 
-.table-row {
+.up-table-row {
   display: grid;
   grid-template-columns: 2fr 1fr 1fr 1fr;
   gap: 1rem;

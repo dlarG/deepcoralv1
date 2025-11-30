@@ -10,7 +10,6 @@ from flask import current_app
 profile_bp = Blueprint('profile', __name__)
 
 
-# klasjdjlkas
 
 @profile_bp.route('/profile', methods=['GET'])
 @login_required
