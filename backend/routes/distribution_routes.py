@@ -578,11 +578,10 @@ def compare_locations():
         if conn:
             conn.close()
 
-
 @distribution_bp.route('/location/<float:lat>/<float:lng>/images', methods=['GET'])
 @cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
 def get_location_images(lat, lng):
-    """Get all images for a specific location including manually included images"""
+    """Get all images for a specific location with proper transect filtering"""
     try:
         conn = get_db_connection()
         if not conn:
@@ -598,12 +597,13 @@ def get_location_images(lat, lng):
         tolerance = 0.0001
         
         with conn.cursor() as cur:
-            # Build the base query conditions
+            # STEP 1: Determine the search scope
             location_condition = ""
             params = []
+            municipality = None
             
             if scope == 'municipality':
-                # FIXED: Get municipality from the clicked location first
+                # Get municipality from the clicked location first
                 cur.execute("""
                     SELECT DISTINCT municipality 
                     FROM images 
@@ -620,32 +620,12 @@ def get_location_images(lat, lng):
                 municipality_result = cur.fetchone()
                 if municipality_result and municipality_result[0]:
                     municipality = municipality_result[0]
-                    location_condition = "AND i.municipality = %s"
+                    location_condition = "i.municipality = %s"
                     params = [municipality]
-                    print(f"🔍 Municipality scope: fetching all images from '{municipality}' municipality")
-                    
-                    # Debug: Let's see what the date range is doing
-                    print(f"   Date filters: start_date={start_date}, end_date={end_date}")
-                    
-                    # Additional debug query to see all images in municipality without date filter
-                    cur.execute("""
-                        SELECT COUNT(*) as total_without_date,
-                               COUNT(*) FILTER (WHERE uploaded_at >= %s) as after_start,
-                               COUNT(*) FILTER (WHERE uploaded_at <= %s) as before_end
-                        FROM images 
-                        WHERE municipality = %s 
-                        AND processing_status IN ('completed', 'manually_included_completed')
-                        AND (upload_status = 'approved' OR upload_status IS NULL)
-                    """, [start_date if start_date else '1900-01-01', 
-                          end_date + ' 23:59:59' if end_date else '2100-12-31',
-                          municipality])
-                    
-                    debug_counts = cur.fetchone()
-                    print(f"   Debug counts - Total: {debug_counts[0]}, After start: {debug_counts[1]}, Before end: {debug_counts[2]}")
-                    
+                    print(f"🔍 Municipality scope: fetching from '{municipality}' municipality")
                 else:
                     # Fallback to location-based if no municipality found
-                    location_condition = """AND ST_DWithin(
+                    location_condition = """ST_DWithin(
                         i.location,
                         ST_SetSRID(ST_MakePoint(%s, %s), 4326),
                         %s
@@ -654,36 +634,47 @@ def get_location_images(lat, lng):
                     print(f"⚠️ No municipality found, falling back to location-based search")
             else:
                 # Location scope - only images from this specific location
-                location_condition = """AND ST_DWithin(
+                location_condition = """ST_DWithin(
                     i.location,
                     ST_SetSRID(ST_MakePoint(%s, %s), 4326),
                     %s
                 )"""
                 params = [lng, lat, tolerance]
-                print(f"🔍 Location scope: fetching images from specific coordinates ({lat}, {lng})")
+                print(f"🔍 Location scope: fetching from coordinates ({lat}, {lng})")
             
-            # Add date filters - FIXED: Only add if values are provided
-            date_conditions = []
+            # Store base params for available transects query
+            base_params = params.copy()
+            base_condition = location_condition
+            
+            # STEP 2: Add transect filter - FIXED
+            transect_applied = False
+            if transect and transect != 'all' and transect.strip():
+                try:
+                    transect_int = int(transect)
+                    location_condition += " AND i.transect = %s"
+                    params.append(transect_int)
+                    transect_applied = True
+                    print(f"🔍 Applying transect filter: T{transect_int}")
+                except ValueError:
+                    print(f"⚠️ Invalid transect filter value: {transect}")
+            
+            # STEP 3: Add date filters
             if start_date and start_date.strip():
-                date_conditions.append(" AND i.uploaded_at >= %s")
+                location_condition += " AND i.uploaded_at >= %s"
                 params.append(start_date)
+                base_condition += " AND i.uploaded_at >= %s"
+                base_params.append(start_date)
             
             if end_date and end_date.strip():
-                date_conditions.append(" AND i.uploaded_at <= %s")
+                location_condition += " AND i.uploaded_at <= %s"
                 params.append(end_date + " 23:59:59")
+                base_condition += " AND i.uploaded_at <= %s"
+                base_params.append(end_date + " 23:59:59")
             
-            # Add transect filter
-            if transect != 'all':
-                location_condition += " AND i.transect = %s"
-                params.append(int(transect))
-            
-            # Combine all conditions
-            all_conditions = location_condition + ''.join(date_conditions)
-            
-            print(f"   Final query conditions: {all_conditions}")
+            print(f"   Final conditions: {location_condition}")
             print(f"   Parameters: {params}")
             
-            # UPDATED: Include both processing statuses and add processing_status to the SELECT
+            # STEP 4: Execute the main query
             query = f"""
                 SELECT DISTINCT
                     i.id,
@@ -703,24 +694,18 @@ def get_location_images(lat, lng):
                 WHERE i.location IS NOT NULL
                 AND i.processing_status IN ('completed', 'manually_included_completed')
                 AND (i.upload_status = 'approved' OR i.upload_status IS NULL)
-                {all_conditions}
+                AND {location_condition}
                 ORDER BY i.uploaded_at DESC
             """
             
-            print(f"   Executing query: {query}")
             cur.execute(query, params)
             
             images = []
-            municipalities_found = set()
-            locations_found = set()
+            transects_found = set()
             
             for row in cur.fetchall():
-                if row[7]:  # municipality field
-                    municipalities_found.add(row[7])
-                
-                # Track unique locations for debugging
-                if row[10] and row[11]:  # longitude, latitude
-                    locations_found.add(f"{row[11]:.6f},{row[10]:.6f}")
+                if row[5]:  # transect field
+                    transects_found.add(row[5])
                     
                 images.append({
                     'id': row[0],
@@ -738,67 +723,49 @@ def get_location_images(lat, lng):
                     'latitude': float(row[11]) if row[11] else lat
                 })
             
-            # Enhanced debug logging
-            print(f"🔍 Location images query returned {len(images)} images")
-            if images:
-                processing_statuses = [img['processing_status'] for img in images]
-                print(f"   Processing statuses: {set(processing_statuses)}")
-                manually_included_count = sum(1 for img in images if img.get('manually_included', False))
-                print(f"   Manually included count: {manually_included_count}")
-                print(f"   Municipalities found: {municipalities_found}")
-                print(f"   Unique locations found: {len(locations_found)} locations")
-                print(f"   Location coordinates: {list(locations_found)[:5]}...")  # Show first 5
-                
-                if scope == 'municipality' and 'municipality' in locals():
-                    print(f"   Expected municipality images for: {municipality}")
-                    
-                    # More detailed verification query
-                    cur.execute("""
-                        SELECT 
-                            COUNT(*) as total_all_time,
-                            COUNT(*) FILTER (WHERE uploaded_at >= %s AND uploaded_at <= %s) as in_date_range,
-                            COUNT(DISTINCT ST_X(location) || ',' || ST_Y(location)) as unique_locations,
-                            MIN(uploaded_at) as earliest,
-                            MAX(uploaded_at) as latest
-                        FROM images 
-                        WHERE municipality = %s 
-                        AND processing_status IN ('completed', 'manually_included_completed')
-                        AND (upload_status = 'approved' OR upload_status IS NULL)
-                    """, [
-                        start_date if start_date and start_date.strip() else '1900-01-01',
-                        (end_date + ' 23:59:59') if end_date and end_date.strip() else '2100-12-31',
-                        municipality
-                    ])
-                    
-                    verification = cur.fetchone()
-                    print(f"   📊 Municipality verification:")
-                    print(f"      - Total images all time: {verification[0]}")
-                    print(f"      - Images in date range: {verification[1]}")
-                    print(f"      - Unique locations: {verification[2]}")
-                    print(f"      - Date range in DB: {verification[3]} to {verification[4]}")
+            # STEP 5: Get available transects for this scope (for UI) - FIXED
+            available_transects_query = f"""
+                SELECT DISTINCT i.transect
+                FROM images i
+                WHERE i.location IS NOT NULL
+                AND i.processing_status IN ('completed', 'manually_included_completed')
+                AND (i.upload_status = 'approved' OR i.upload_status IS NULL)
+                AND {base_condition}
+                AND i.transect IS NOT NULL
+                ORDER BY i.transect
+            """
+            
+            print(f"🔍 Available transects query: {available_transects_query}")
+            print(f"🔍 Available transects params: {base_params}")
+            
+            try:
+                cur.execute(available_transects_query, base_params)
+                available_transects = [row[0] for row in cur.fetchall()]
+            except Exception as transect_error:
+                print(f"⚠️ Error getting available transects: {transect_error}")
+                available_transects = []
+            
+            print(f"🔍 Query returned {len(images)} images")
+            print(f"   Transects found in results: {sorted(transects_found)}")
+            print(f"   Available transects for scope: {sorted(available_transects)}")
             
             return jsonify({
                 "images": images,
+                "available_transects": sorted(available_transects),
                 "filters": {
                     "scope": scope,
                     "transect": transect,
                     "start_date": start_date,
-                    "end_date": end_date
+                    "end_date": end_date,
+                    "municipality": municipality
                 },
                 "debug_info": {
                     "total_images": len(images),
-                    "processing_statuses": list(set([img['processing_status'] for img in images])),
-                    "manually_included_count": sum(1 for img in images if img.get('manually_included', False)),
-                    "municipalities_found": list(municipalities_found),
-                    "unique_locations_count": len(locations_found),
+                    "transects_in_results": sorted(transects_found),
+                    "available_transects": sorted(available_transects),
                     "scope_applied": scope,
-                    "municipality_filter": municipality if scope == 'municipality' and 'municipality' in locals() else None,
-                    "date_filters_applied": {
-                        "start_date": start_date,
-                        "end_date": end_date,
-                        "has_start": bool(start_date and start_date.strip()),
-                        "has_end": bool(end_date and end_date.strip())
-                    }
+                    "municipality_filter": municipality,
+                    "transect_filter_applied": transect if transect != 'all' else None
                 }
             })
             
@@ -814,7 +781,7 @@ def get_location_images(lat, lng):
 @distribution_bp.route('/location/<float:lat>/<float:lng>/analytics', methods=['GET'])
 @cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
 def get_location_analytics(lat, lng):
-    """Get aggregated coral analytics with transect and scope filtering"""
+    """Get aggregated coral analytics with proper transect and scope filtering"""
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
@@ -827,10 +794,14 @@ def get_location_analytics(lat, lng):
             
         tolerance = 0.0001
         
-        # Build WHERE conditions based on scope
-        if scope == 'municipality':
-            # Get municipality for this location
-            with conn.cursor() as cur:
+        with conn.cursor() as cur:
+            # Build WHERE conditions based on scope
+            where_conditions = []
+            params = []
+            municipality = None
+            
+            if scope == 'municipality':
+                # Get municipality for this location
                 cur.execute("""
                     SELECT municipality 
                     FROM images 
@@ -840,46 +811,47 @@ def get_location_analytics(lat, lng):
                 """, (lng, lat, tolerance))
                 
                 result = cur.fetchone()
-                if not result or not result[0]:
-                    return jsonify({"error": "No municipality found for this location"}), 404
-                    
-                municipality = result[0]
+                if result and result[0]:
+                    municipality = result[0]
+                    where_conditions.append("i.municipality = %s")
+                    params.append(municipality)
+                    print(f"🔍 Analytics municipality scope: {municipality}")
+                else:
+                    # Fallback to location scope
+                    where_conditions.append("ST_DWithin(i.location, ST_SetSRID(ST_MakePoint(%s, %s), 4326), %s)")
+                    params.extend([lng, lat, tolerance])
+            else:
+                # Location scope
+                where_conditions.append("ST_DWithin(i.location, ST_SetSRID(ST_MakePoint(%s, %s), 4326), %s)")
+                params.extend([lng, lat, tolerance])
             
-            where_conditions = [
-                "i.municipality = %s",
-                "i.processing_status IN ('completed', 'manually_included_completed')"
-            ]
-            params = [municipality]
-        else:
-            # Default: location scope
-            where_conditions = [
-                "ST_DWithin(i.location, ST_SetSRID(ST_MakePoint(%s, %s), 4326), %s)",
-                "i.processing_status IN ('completed', 'manually_included_completed')"
-            ]
-            params = [lng, lat, tolerance]
-        
-        if start_date:
-            where_conditions.append("i.uploaded_at >= %s")
-            params.append(start_date)
+            # Always add processing status filter
+            where_conditions.append("i.processing_status IN ('completed', 'manually_included_completed')")
             
-        if end_date:
-            where_conditions.append("i.uploaded_at <= %s")
-            params.append(end_date + ' 23:59:59')
+            # Add transect filter - FIXED
+            if transect_filter and transect_filter != 'all' and transect_filter.strip():
+                try:
+                    transect_int = int(transect_filter)
+                    where_conditions.append("i.transect = %s")
+                    params.append(transect_int)
+                    print(f"🔍 Analytics transect filter: T{transect_int}")
+                except ValueError:
+                    print(f"⚠️ Invalid transect filter value: {transect_filter}")
             
-        # FIXED: Transect filter handling
-        if transect_filter and transect_filter != 'all' and transect_filter.strip():
-            try:
-                transect_int = int(transect_filter)
-                where_conditions.append("i.transect = %s")
-                params.append(transect_int)
-                print(f"🔍 Applying transect filter: {transect_int}")
-            except ValueError:
-                print(f"⚠️ Invalid transect filter value: {transect_filter}")
+            # Add date filters
+            if start_date and start_date.strip():
+                where_conditions.append("i.uploaded_at >= %s")
+                params.append(start_date)
+                
+            if end_date and end_date.strip():
+                where_conditions.append("i.uploaded_at <= %s")
+                params.append(end_date + ' 23:59:59')
+            
+            where_clause = " AND ".join(where_conditions)
+            print(f"🔍 Analytics where clause: {where_clause}")
+            print(f"🔍 Analytics params: {params}")
         
-        where_clause = " AND ".join(where_conditions)
-        
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            # Get coral analytics with filtering - ADDED class_code
+            # Get coral analytics with filtering
             cur.execute(f"""
                 SELECT 
                     cl.class_name,
@@ -889,9 +861,7 @@ def get_location_analytics(lat, lng):
                     cl.color_hex,
                     COUNT(sr.id) as occurrence_count,
                     SUM(sr.area_px) as total_area_px,
-                    -- INDIVIDUAL coral type average (keep this for per-type analysis)
                     AVG(sr.coverage_percent) as avg_coverage_percent,
-                    -- CORRECTED: Total coverage for this coral type across all location images
                     CASE 
                         WHEN SUM(i.total_pixels) > 0 THEN
                             (SUM(sr.area_px)::FLOAT / SUM(i.total_pixels)::FLOAT) * 100
@@ -905,33 +875,13 @@ def get_location_analytics(lat, lng):
                 INNER JOIN coral_lifeforms cl ON sr.class_id = cl.id
                 WHERE {where_clause}
                 GROUP BY cl.id, cl.class_name, cl.class_code, cl.scientific_name, cl.category, cl.color_hex
-                HAVING SUM(sr.area_px) > 0  -- Changed from AVG > 0 to SUM > 0
-                ORDER BY location_coverage_percent DESC  -- Order by corrected calculation
+                HAVING SUM(sr.area_px) > 0
+                ORDER BY location_coverage_percent DESC
             """, params)
             
             coral_analytics = cur.fetchall()
             
-            # CORRECTED: Get overall location coverage statistics
-            cur.execute(f"""
-                SELECT 
-                    -- Total coverage: sum of all coral areas / sum of all image pixels
-                    CASE 
-                        WHEN SUM(i.total_pixels) > 0 THEN
-                            (SUM(sr.area_px)::FLOAT / SUM(i.total_pixels)::FLOAT) * 100
-                        ELSE 0 
-                    END as total_coral_coverage,
-                    COUNT(DISTINCT i.id) as total_images_analyzed,
-                    SUM(i.total_pixels) as total_pixels_analyzed,
-                    SUM(sr.area_px) as total_coral_area_px
-                FROM images i
-                INNER JOIN segmentation_results sr ON i.id = sr.image_id
-                INNER JOIN coral_lifeforms cl ON sr.class_id = cl.id
-                WHERE {where_clause}
-            """, params)
-            
-            coverage_stats = cur.fetchone()
-            
-            # Get time series data for trends
+            # Get time series data for trends with same filters
             cur.execute(f"""
                 SELECT 
                     DATE(i.uploaded_at) as date,
@@ -949,25 +899,47 @@ def get_location_analytics(lat, lng):
             
             trend_data = cur.fetchall()
             
-            # Get transect-specific statistics
+            # Get transect-specific statistics (only if not filtering by specific transect)
+            if not transect_filter or transect_filter == 'all':
+                cur.execute(f"""
+                    SELECT 
+                        i.transect,
+                        COUNT(DISTINCT i.id) as image_count,
+                        COUNT(DISTINCT sr.class_id) as coral_types,
+                        AVG(sr.coverage_percent) as avg_coverage,
+                        AVG(i.analysis_confidence) as avg_confidence
+                    FROM images i
+                    LEFT JOIN segmentation_results sr ON i.id = sr.image_id
+                    WHERE {where_clause}
+                    AND i.transect IS NOT NULL
+                    GROUP BY i.transect
+                    ORDER BY i.transect
+                """, params)
+                
+                transect_stats = cur.fetchall()
+            else:
+                # If filtering by specific transect, show that transect's stats
+                transect_stats = []
+            
+            # Overall coverage statistics
             cur.execute(f"""
                 SELECT 
-                    i.transect,
-                    COUNT(DISTINCT i.id) as image_count,
-                    COUNT(DISTINCT sr.class_id) as coral_types,
-                    AVG(sr.coverage_percent) as avg_coverage,
-                    AVG(i.analysis_confidence) as avg_confidence
+                    CASE 
+                        WHEN SUM(i.total_pixels) > 0 THEN
+                            (SUM(sr.area_px)::FLOAT / SUM(i.total_pixels)::FLOAT) * 100
+                        ELSE 0 
+                    END as total_coral_coverage,
+                    COUNT(DISTINCT i.id) as total_images_analyzed,
+                    SUM(i.total_pixels) as total_pixels_analyzed,
+                    SUM(sr.area_px) as total_coral_area_px
                 FROM images i
-                LEFT JOIN segmentation_results sr ON i.id = sr.image_id
+                INNER JOIN segmentation_results sr ON i.id = sr.image_id
                 WHERE {where_clause}
-                AND i.transect IS NOT NULL
-                GROUP BY i.transect
-                ORDER BY i.transect
             """, params)
             
-            transect_stats = cur.fetchall()
+            coverage_stats = cur.fetchone()
             
-            # Get overall statistics
+            # Overall statistics
             cur.execute(f"""
                 SELECT 
                     COUNT(DISTINCT i.id) as total_images,
@@ -992,72 +964,76 @@ def get_location_analytics(lat, lng):
         analytics_result = []
         for coral in coral_analytics:
             analytics_result.append({
-                'class_name': coral['class_name'],
-                'class_code': coral['class_code'],
-                'scientific_name': coral['scientific_name'],
-                'category': coral['category'],
-                'color_hex': coral['color_hex'],
-                'occurrence_count': coral['occurrence_count'],
-                'total_area_px': coral['total_area_px'],
-               
-                'avg_coverage_percent': float(coral['location_coverage_percent']) if coral['location_coverage_percent'] else 0,
-                'individual_avg_coverage': float(coral['avg_coverage_percent']) if coral['avg_coverage_percent'] else 0,  # Keep original for reference
-                'avg_confidence': float(coral['avg_confidence']) if coral['avg_confidence'] else 0,
-                'image_count': coral['image_count'],
-                'transect_count': coral['transect_count']
+                'class_name': coral[0],
+                'class_code': coral[1],
+                'scientific_name': coral[2],
+                'category': coral[3],
+                'color_hex': coral[4],
+                'occurrence_count': coral[5],
+                'total_area_px': coral[6],
+                'avg_coverage_percent': float(coral[8]) if coral[8] else 0,  # Use location_coverage_percent
+                'individual_avg_coverage': float(coral[7]) if coral[7] else 0,
+                'avg_confidence': float(coral[9]) if coral[9] else 0,
+                'image_count': coral[10],
+                'transect_count': coral[11]
             })
         
         trend_result = []
         for trend in trend_data:
             trend_result.append({
-                'date': trend['date'].isoformat(),
-                'class_name': trend['class_name'],
-                'avg_coverage': float(trend['avg_coverage']) if trend['avg_coverage'] else 0,
-                'detection_count': trend['detection_count'],
-                'transects_on_date': trend['transects_on_date']
+                'date': trend[0].isoformat(),
+                'class_name': trend[1],
+                'avg_coverage': float(trend[2]) if trend[2] else 0,
+                'detection_count': trend[3],
+                'transects_on_date': trend[4]
             })
             
         transect_result = []
         for transect in transect_stats:
             transect_result.append({
-                'transect': transect['transect'],
-                'image_count': transect['image_count'],
-                'coral_types': transect['coral_types'],
-                'avg_coverage': float(transect['avg_coverage']) if transect['avg_coverage'] else 0,
-                'avg_confidence': float(transect['avg_confidence']) if transect['avg_confidence'] else 0
+                'transect': transect[0],
+                'image_count': transect[1],
+                'coral_types': transect[2],
+                'avg_coverage': float(transect[3]) if transect[3] else 0,
+                'avg_confidence': float(transect[4]) if transect[4] else 0
             })
+        
+        print(f"🔍 Analytics results: {len(analytics_result)} coral types, {len(trend_result)} trend points")
         
         return jsonify({
             "coral_analytics": analytics_result,
             "trend_data": trend_result,
             "transect_statistics": transect_result,
             "coverage_statistics": {
-                'total_coral_coverage': float(coverage_stats['total_coral_coverage']) if coverage_stats['total_coral_coverage'] else 0,
-                'total_images_analyzed': coverage_stats['total_images_analyzed'] or 0,
-                'total_pixels_analyzed': coverage_stats['total_pixels_analyzed'] or 0,
-                'total_coral_area_px': coverage_stats['total_coral_area_px'] or 0
+                'total_coral_coverage': float(coverage_stats[0]) if coverage_stats[0] else 0,
+                'total_images_analyzed': coverage_stats[1] or 0,
+                'total_pixels_analyzed': coverage_stats[2] or 0,
+                'total_coral_area_px': coverage_stats[3] or 0
             },
             "statistics": {
-                'total_images': stats['total_images'] or 0,
-                'total_contributors': stats['total_contributors'] or 0,
-                'total_pixels_analyzed': stats['total_pixels_analyzed'] or 0,
-                'avg_confidence': float(stats['avg_confidence']) if stats['avg_confidence'] else 0,
-                'unique_coral_types': stats['unique_coral_types'] or 0,
-                'unique_transects': stats['unique_transects'] or 0,
-                'unique_municipalities': stats['unique_municipalities'] or 0,
-                'manually_included_count': stats['manually_included_count'] or 0
+                'total_images': stats[0] or 0,
+                'total_contributors': stats[1] or 0,
+                'total_pixels_analyzed': stats[2] or 0,
+                'avg_confidence': float(stats[3]) if stats[3] else 0,
+                'unique_coral_types': stats[4] or 0,
+                'unique_transects': stats[5] or 0,
+                'unique_municipalities': stats[6] or 0,
+                'manually_included_count': stats[7] or 0
             },
             "location": {"lat": lat, "lng": lng},
             "filters_applied": {
                 "start_date": start_date,
                 "end_date": end_date,
                 "transect": transect_filter,
-                "scope": scope
+                "scope": scope,
+                "municipality": municipality
             }
         })
         
     except Exception as e:
         print(f"Error fetching location analytics: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": f"Failed to fetch analytics: {str(e)}"}), 500
 
 @distribution_bp.route('/date-range', methods=['GET'])
@@ -1112,7 +1088,6 @@ def get_date_range():
         print(f"Error fetching date range: {str(e)}")
         return jsonify({"error": f"Failed to fetch date range: {str(e)}"}), 500
     
-
 @distribution_bp.route('/images/<int:image_id>', methods=['DELETE', 'OPTIONS'])
 @cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
 def delete_image(image_id):
@@ -1137,22 +1112,45 @@ def delete_image(image_id):
                 
             filename = image[0]
             
-            # Delete cascade: coral_instances -> segmentation_results -> images
-            # Delete coral instances first (if any exist)
+            # Check what tables exist and delete accordingly
+            deleted_items = {}
+            
+            # Check if coral_instances table exists
             cur.execute("""
-                DELETE FROM coral_instances 
-                WHERE segmentation_id IN (
-                    SELECT id FROM segmentation_results WHERE image_id = %s
-                )
-            """, (image_id,))
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_schema = 'public' 
+                    AND table_name = 'coral_instances'
+                );
+            """)
+            
+            coral_instances_exists = cur.fetchone()[0]
+            
+            if coral_instances_exists:
+                # Delete coral instances if table exists
+                cur.execute("""
+                    DELETE FROM coral_instances 
+                    WHERE segmentation_id IN (
+                        SELECT id FROM segmentation_results WHERE image_id = %s
+                    )
+                """, (image_id,))
+                deleted_items['coral_instances'] = cur.rowcount
+                print(f"✅ Deleted {cur.rowcount} coral instances")
             
             # Delete segmentation results
             cur.execute("DELETE FROM segmentation_results WHERE image_id = %s", (image_id,))
+            deleted_items['segmentation_results'] = cur.rowcount
+            print(f"✅ Deleted {cur.rowcount} segmentation results")
             
             # Delete the image record
             cur.execute("DELETE FROM images WHERE id = %s", (image_id,))
+            deleted_items['images'] = cur.rowcount
             
-            # Try to delete the physical files
+            if deleted_items['images'] == 0:
+                return jsonify({"error": "Image not found or already deleted"}), 404
+            
+            # Try to delete the physical files (same as before)
+            files_deleted = []
             try:
                 import os
                 from flask import current_app
@@ -1161,33 +1159,46 @@ def delete_image(image_id):
                 crops_path = os.path.join(current_app.root_path, '..', 'frontend', 'public', 'crops', filename)
                 if os.path.exists(crops_path):
                     os.remove(crops_path)
-                    print(f"Deleted crop file: {filename}")
+                    files_deleted.append(f"crop: {filename}")
                 
-                # Delete mask files if they exist
-                mask_base = filename.replace('.jpg', '').replace('.jpeg', '').replace('.png', '')
-                masks_dir = os.path.join(current_app.root_path, '..', 'frontend', 'public', 'masks')
-                if os.path.exists(masks_dir):
-                    for mask_file in os.listdir(masks_dir):
-                        if mask_base in mask_file:
-                            mask_path = os.path.join(masks_dir, mask_file)
-                            os.remove(mask_path)
-                            print(f"Deleted mask file: {mask_file}")
-                            
+                # Delete mask files
+                mask_base = filename.replace('.jpg', '').replace('.jpeg', '').replace('.png', '').replace('.JPG', '').replace('.JPEG', '').replace('.PNG', '')
+                
+                possible_dirs = [
+                    ('masks', os.path.join(current_app.root_path, '..', 'frontend', 'public', 'masks')),
+                    ('overlays', os.path.join(current_app.root_path, '..', 'frontend', 'public', 'overlays')),
+                    ('segmentation', os.path.join(current_app.root_path, '..', 'frontend', 'public', 'segmentation'))
+                ]
+                
+                for dir_name, masks_dir in possible_dirs:
+                    if os.path.exists(masks_dir):
+                        for mask_file in os.listdir(masks_dir):
+                            if mask_base in mask_file:
+                                mask_path = os.path.join(masks_dir, mask_file)
+                                os.remove(mask_path)
+                                files_deleted.append(f"{dir_name}: {mask_file}")
+                                
             except Exception as file_error:
-                print(f"Could not delete file {filename}: {str(file_error)}")
-                # Continue anyway, database cleanup is more important
+                print(f"⚠️ File deletion warning: {str(file_error)}")
             
             conn.commit()
+            
+            print(f"✅ Successfully deleted image {image_id} ({filename})")
             
         conn.close()
         return jsonify({
             "message": "Image deleted successfully",
-            "deleted_image_id": image_id
+            "deleted_image_id": image_id,
+            "deleted_filename": filename,
+            "database_deletions": deleted_items,
+            "files_deleted": files_deleted
         }), 200
         
     except Exception as e:
         if conn:
             conn.rollback()
             conn.close()
-        print(f"Error deleting image: {str(e)}")
+        print(f"❌ Error deleting image {image_id}: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": f"Failed to delete image: {str(e)}"}), 500
