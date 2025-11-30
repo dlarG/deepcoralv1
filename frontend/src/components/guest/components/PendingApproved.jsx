@@ -235,10 +235,6 @@ function PendingApprovedImages() {
             onChange={() => handleImageSelect(image.id)}
             className="image-checkbox"
           />
-          <div className="image-status">
-            <FiCheckCircle className="status-icon approved" />
-            <span className="status-text">Pending Approved</span>
-          </div>
           {hasAnalysis && (
             <div className="analysis-badge">
               <FiBarChart size={12} />
@@ -262,7 +258,7 @@ function PendingApprovedImages() {
           </div>
         </div>
 
-        <div className="image-info">
+        <div className="app-image-info">
           <h4 className="image-filename">{image.filename}</h4>
           <div className="image-meta">
             <div className="meta-item">

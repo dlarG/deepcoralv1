@@ -276,6 +276,7 @@ export const getGuestStyles = (sidebarOpen) => `
   .detail-value {
     font-size: 1rem;
     color: #0f172a;
+    text-transform: capitalize;
     font-weight: 500;
   }
 
@@ -287,13 +288,14 @@ export const getGuestStyles = (sidebarOpen) => `
 
   .coral-description h3 {
     font-size: 1.25rem;
+    font-weight: 700;
     color: #0f172a;
     margin: 0 0 1rem 0;
   }
 
   .coral-description p {
     line-height: 1.6;
-    color: #374151;
+    color: var(--text-secondary);
     margin: 0;
   }
 
@@ -530,7 +532,13 @@ export const getGuestStyles = (sidebarOpen) => `
     margin: 0 auto;
   }
   .coral-name {
-    font-size: 1.5rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 1rem;
+    text-align: center;
+  }
+
+  .dis-coral-name {
     font-weight: 600;
     color: #333;
     margin-bottom: 1rem;
@@ -1365,7 +1373,7 @@ export const getGuestStyles = (sidebarOpen) => `
     border-radius: 0 0 20px 20px;
   }
 
-  .cancel-btn {
+  .prof-cancel-btn {
     padding: 0.875rem 1.5rem;
     background: #f1f5f9;
     border: 2px solid #e2e8f0;
@@ -1376,12 +1384,12 @@ export const getGuestStyles = (sidebarOpen) => `
     font-weight: 600;
   }
 
-  .cancel-btn:hover:not(:disabled) {
+  .prof-cancel-btn:hover:not(:disabled) {
     background: #e2e8f0;
     color: #475569;
   }
 
-  .save-btn {
+  .prof-save-btn {
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -1393,19 +1401,6 @@ export const getGuestStyles = (sidebarOpen) => `
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
-  }
-
-  .save-btn:hover:not(:disabled) {
-    background: linear-gradient(135deg, #0284c7 0%, #0891b2 100%);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(14, 165, 233, 0.3);
-  }
-
-  .save-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
   }
 
   .loading-text {
@@ -1460,9 +1455,6 @@ export const getGuestStyles = (sidebarOpen) => `
       text-align: center;
     }
 
-    .modal-footer {
-      flex-direction: column-reverse;
-    }
 
     .modal-container {
       margin: 1rem;
@@ -1677,10 +1669,11 @@ export const getGuestStyles = (sidebarOpen) => `
   75% { transform: translateY(-10px) rotate(270deg); }
 }
 
-.hero-content {
+.profile-hero-contents {
   position: relative;
   z-index: 2;
   color: white;
+  padding: 2.5rem;
 }
 
 .profile-header-actions {
@@ -1694,11 +1687,11 @@ export const getGuestStyles = (sidebarOpen) => `
   align-items: center;
   gap: 0.75rem;
   padding: 1rem 2rem;
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--color-accent);
   backdrop-filter: blur(10px);
   border: 2px solid rgba(255, 255, 255, 0.2);
   border-radius: 50px;
-  color: white;
+  color: var(--color-primary);
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -1759,10 +1752,16 @@ export const getGuestStyles = (sidebarOpen) => `
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
-.avatar-status-indicator {
+.avatar-status-indicators {
   position: absolute;
   bottom: 5px;
   right: 5px;
+  height: 20px;
+  width: 20px;
+  background: #10b981;;
+  border: 3px solid white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  border-radius: 50%;
 }
 
 .status-dot {
@@ -1805,7 +1804,7 @@ export const getGuestStyles = (sidebarOpen) => `
   font-size: 3rem;
   font-weight: 800;
   margin: 0 0 0.5rem 0;
-  background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-primary) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -1818,6 +1817,7 @@ export const getGuestStyles = (sidebarOpen) => `
   opacity: 0.9;
   margin: 0 0 1.5rem 0;
   font-weight: 500;
+  color: var(--text-secondary);
 }
 
 .profile-bio-hero {
@@ -1826,6 +1826,7 @@ export const getGuestStyles = (sidebarOpen) => `
   line-height: 1.6;
   margin: 0 0 2rem 0;
   max-width: 600px;
+  color: var(--text-secondary);
 }
 
 .profile-stats-hero {
@@ -1838,7 +1839,9 @@ export const getGuestStyles = (sidebarOpen) => `
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem 1rem;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--text-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  
   backdrop-filter: blur(10px);
   border-radius: 12px;
   font-weight: 500;
@@ -2444,10 +2447,21 @@ export const getGuestStyles = (sidebarOpen) => `
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin-bottom: 0.75rem;
   color: #475569;
   font-size: 0.9rem;
 }
+
+.app-image-info {
+  align-items: center;
+  padding: 1rem;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+  color: #64748b;
+}
+
 
 .detail-item:last-child {
   margin-bottom: 0;
@@ -2493,9 +2507,7 @@ export const getGuestStyles = (sidebarOpen) => `
 .modal-footer {
   padding: 1.5rem 2rem;
   border-top: 1px solid #eef2f7;
-  display: flex;
   justify-content: flex-end;
-  background: #f8fafc;
 }
 
 .primary-btn {
@@ -3153,6 +3165,7 @@ export const getGuestStyles = (sidebarOpen) => `
 }
 
 .image-preview {
+  max-width: 2000px;
   width: 100%;
   height: 200px;
   border-radius: 8px;

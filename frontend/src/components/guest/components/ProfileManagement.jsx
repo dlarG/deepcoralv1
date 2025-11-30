@@ -1,4 +1,3 @@
-// src/components/guest/components/ProfileManagement.js
 import React from "react";
 import {
   FiUser,
@@ -13,6 +12,7 @@ import {
   FiUpload,
   FiActivity,
   FiSettings,
+  FiMail,
 } from "react-icons/fi";
 import useProfileManagement from "../hooks/useProfileManagement";
 import dayjs from "dayjs";
@@ -64,7 +64,7 @@ function ProfileManagement({ user }) {
           </div>
         </div>
 
-        <div className="hero-content">
+        <div className="profile-hero-contents">
           <div className="profile-header-actions">
             <button className="modern-settings-btn" onClick={openProfileModal}>
               <FiSettings size={20} />
@@ -94,9 +94,7 @@ function ProfileManagement({ user }) {
                     {user.lastname?.charAt(0)?.toUpperCase()}
                   </div>
                 </div>
-                <div className="avatar-status-indicator">
-                  <div className="status-dot active"></div>
-                </div>
+                <div className="avatar-status-indicators"></div>
               </div>
 
               <div className="profile-role-indicator">
@@ -157,6 +155,10 @@ function ProfileManagement({ user }) {
               <div className="info-item">
                 <span className="info-label">Username</span>
                 <span className="info-value">@{user.username}</span>
+              </div>
+              <div className="info-item">
+                <span className="info-label">Email</span>
+                <span className="info-value">{user.email}</span>
               </div>
               <div className="info-item">
                 <span className="info-label">Bio</span>
@@ -266,14 +268,11 @@ function ProfileManagement({ user }) {
         </div>
       </div>
 
-      {/* Keep existing modals (they're already well-designed) */}
+      {/* Delete Modal */}
       {showDeleteModal && (
         <div className="modal-overlay">
           <div className="delete-modal">
             <div className="delete-modal-header">
-              <div className="delete-warning-icon">
-                <FiTrash2 size={32} />
-              </div>
               <h3>Delete Account</h3>
               <p>
                 This action cannot be undone. Please confirm your password to
@@ -329,7 +328,7 @@ function ProfileManagement({ user }) {
         </div>
       )}
 
-      {/* Profile Edit Modal (keep existing - it's already good) */}
+      {/* Profile Edit Modal */}
       {showProfileModal && (
         <div className="modal-overlay">
           <div className="modal-container">
@@ -480,6 +479,29 @@ function ProfileManagement({ user }) {
                     </div>
 
                     <div className="form-group">
+                      <label htmlFor="email" className="form-label">
+                        Email Address *
+                      </label>
+                      <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        value={profileFormData.email}
+                        onChange={handleProfileInputChange}
+                        className={`form-input ${
+                          profileErrors.email ? "error" : ""
+                        }`}
+                        required
+                        placeholder="Enter your email address"
+                      />
+                      {profileErrors.email && (
+                        <span className="error-text">
+                          {profileErrors.email}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="form-group">
                       <label htmlFor="bio" className="form-label">
                         Bio
                       </label>
@@ -581,14 +603,14 @@ function ProfileManagement({ user }) {
                 <button
                   type="button"
                   onClick={closeProfileModal}
-                  className="cancel-btn"
+                  className="prof-cancel-btn"
                   disabled={profileLoading}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="save-btn"
+                  className="prof-save-btn"
                   disabled={profileLoading}
                 >
                   {profileLoading ? (

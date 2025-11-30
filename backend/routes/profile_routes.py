@@ -9,6 +9,8 @@ from flask import current_app
 
 profile_bp = Blueprint('profile', __name__)
 
+
+
 @profile_bp.route('/profile', methods=['GET'])
 @login_required
 def get_profile():
@@ -44,7 +46,6 @@ def get_profile():
         if conn:
             conn.close()
 
-
 @profile_bp.route('/profile', methods=['PUT'])
 @login_required
 def update_profile():
@@ -59,14 +60,14 @@ def update_profile():
 
         # Get current user data
         with conn.cursor() as cur:
-            cur.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+            cur.execute("SELECT id, username, password, firstname, lastname, roletype, bio, profile_image, created_at, status, email FROM users WHERE id = %s", (user_id,))
             current_user = cur.fetchone()
             
             if not current_user:
                 return jsonify({'error': 'User not found'}), 404
 
         # Handle file upload
-        profile_image_filename = current_user[6] if len(current_user) > 6 else None  # Keep existing image
+        profile_image_filename = current_user[7] if len(current_user) > 7 else None  # Keep existing image
         if 'profile_image' in request.files:
             file = request.files['profile_image']
             if file and file.filename != '':
@@ -78,11 +79,11 @@ def update_profile():
                     return jsonify({'error': 'Invalid file type. Only PNG, JPG, JPEG, and GIF are allowed'}), 400
                 
                 # Delete old image if exists
-                if current_user[6]:  # profile_image column
+                if current_user[7]:  # profile_image column
                     old_image_path = os.path.join(
                         current_app.root_path, 
                         '..', 'frontend', 'public', 'profile_uploads',
-                        current_user[6]
+                        current_user[7]
                     )
                     if os.path.exists(old_image_path):
                         os.remove(old_image_path)
@@ -107,11 +108,17 @@ def update_profile():
         bio = request.form.get('bio', '')
         current_password = request.form.get('current_password')
         new_password = request.form.get('new_password')
-        new_email = request.form.get('email')
+        new_email = request.form.get('email')  # Get email from form
 
         # Validate required fields
-        if not all([username, firstname, lastname]):
-            return jsonify({'error': 'Username, first name, and last name are required'}), 400
+        if not all([username, firstname, lastname, new_email]):
+            return jsonify({'error': 'Username, first name, last name, and email are required'}), 400
+
+        # Validate email format
+        import re
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, new_email):
+            return jsonify({'error': 'Please enter a valid email address'}), 400
 
         # Validate password change if requested
         password_hash = current_user[2]  # Keep existing password
@@ -131,12 +138,13 @@ def update_profile():
         with conn.cursor() as cur:
             cur.execute("SELECT id FROM users WHERE username = %s AND id != %s", (username, user_id))
             if cur.fetchone():
-                return jsonify({'error': 'Username already taken'}), 400
+                return jsonify({'error': 'Username already taken'}), 409
+        
         # Check if email is taken by another user
         with conn.cursor() as cur:
             cur.execute("SELECT id FROM users WHERE email = %s AND id != %s", (new_email, user_id))
             if cur.fetchone():
-                return jsonify({'error': 'Email already taken'}), 400
+                return jsonify({'error': 'Email address already in use by another account'}), 409
 
         # Update user profile
         with conn.cursor() as cur:
@@ -145,7 +153,7 @@ def update_profile():
                 SET username = %s, password = %s, firstname = %s, lastname = %s, 
                     bio = %s, profile_image = %s, email = %s, updated_at = CURRENT_TIMESTAMP
                 WHERE id = %s
-                RETURNING id, username, firstname, lastname, roletype, bio, profile_image, created_at, email
+                RETURNING id, username, firstname, lastname, roletype, bio, profile_image, created_at, email, status, last_login
             """, (
                 username, password_hash, firstname, lastname, 
                 bio, profile_image_filename, new_email, user_id
@@ -162,8 +170,10 @@ def update_profile():
                 'roletype': updated_user[4],
                 'bio': updated_user[5],
                 'profile_image': updated_user[6],
-                'created_at': updated_user[7],
+                'created_at': updated_user[7].isoformat() if updated_user[7] else None,
                 'email': updated_user[8],
+                'status': updated_user[9],
+                'last_login': updated_user[10].isoformat() if updated_user[10] else None
             }
             
             return jsonify({

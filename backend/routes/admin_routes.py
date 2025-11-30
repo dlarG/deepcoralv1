@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, session, request
+from flask import Blueprint, jsonify, session, request, make_response
 from werkzeug.security import generate_password_hash, check_password_hash
 from db import get_db_connection
 import psycopg2
@@ -8,9 +8,9 @@ from werkzeug.utils import secure_filename
 from flask import current_app
 from datetime import datetime
 import json
+import io
 from io import BytesIO
 from datetime import datetime
-import os
 import psycopg2
 import pandas as pd
 from flask import send_file
@@ -22,6 +22,19 @@ from routes.activity_log import (
 )
 import uuid
 from werkzeug.utils import secure_filename
+
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as ReportLabImage
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+from matplotlib.backends.backend_pdf import PdfPages
+import base64
+import tempfile
+
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -2463,12 +2476,8 @@ def get_analytics_data(tab_name):
         
         if tab_name == 'overview':
             return get_overview_analytics(conn, date_filter)
-        elif tab_name == 'coral-trends':
-            return get_coral_trends_analytics(conn, date_filter)
         elif tab_name == 'user-activity':
             return get_user_activity_analytics(conn, date_filter)
-        elif tab_name == 'geographic':
-            return get_geographic_analytics(conn, date_filter)
         elif tab_name == 'performance':
             return get_performance_analytics(conn, date_filter)
         else:
@@ -2484,26 +2493,12 @@ def get_analytics_data(tab_name):
 def get_overview_analytics(conn, date_filter):
     with conn.cursor() as cur:
         try:
-            # Growth trend data - Users
-            cur.execute(f"""
-                SELECT 
-                    DATE(created_at) as date,
-                    COUNT(*) as users
-                FROM users
-                {date_filter.replace('created_at', 'users.created_at') if date_filter else ''}
-                AND status = 'approved'
-                GROUP BY DATE(created_at)
-                ORDER BY date DESC
-                LIMIT 10
-            """)
-            
-            user_trend = {row[0].strftime("%Y-%m-%d"): row[1] for row in cur.fetchall()}
-            
-            # Growth trend data - Images
+            # Image Upload Trends
             cur.execute(f"""
                 SELECT 
                     DATE(uploaded_at) as date,
-                    COUNT(*) as images
+                    COUNT(*) as uploads,
+                    COUNT(CASE WHEN processing_status = 'completed' THEN 1 END) as analysisCompleted
                 FROM images
                 {date_filter.replace('created_at', 'uploaded_at') if date_filter else ''}
                 GROUP BY DATE(uploaded_at)
@@ -2511,20 +2506,41 @@ def get_overview_analytics(conn, date_filter):
                 LIMIT 10
             """)
             
-            image_trend = {row[0].strftime("%Y-%m-%d"): row[1] for row in cur.fetchall()}
-            
-            # Combine trends
-            all_dates = set(list(user_trend.keys()) + list(image_trend.keys()))
-            growth_data = []
-            
-            for date in sorted(all_dates):
-                growth_data.append({
-                    'date': date,
-                    'users': user_trend.get(date, 0),
-                    'images': image_trend.get(date, 0)
+            image_upload_results = cur.fetchall()
+            imageUploadTrend = []
+            for row in image_upload_results:
+                imageUploadTrend.append({
+                    'date': row[0].strftime("%Y-%m-%d"),
+                    'uploads': row[1],
+                    'analysisCompleted': row[2]
                 })
             
-            # Engagement metrics
+            # User Growth Trends
+            cur.execute(f"""
+                SELECT 
+                    DATE(created_at) as date,
+                    COUNT(*) as newRegistrations,
+                    COUNT(CASE WHEN status = 'approved' THEN 1 END) as approvals,
+                    COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejections
+                FROM users
+                {date_filter.replace('created_at', 'users.created_at') if date_filter else ''}
+                GROUP BY DATE(created_at)
+                ORDER BY date DESC
+                LIMIT 10
+            """)
+            
+            user_growth_results = cur.fetchall()
+            userGrowthTrend = []
+            for row in user_growth_results:
+                userGrowthTrend.append({
+                    'date': row[0].strftime("%Y-%m-%d"),
+                    'newRegistrations': row[1],
+                    'approvals': row[2],
+                    'rejections': row[3]
+                })
+
+            
+            # Engagement metrics from activities table - FIXED COLUMN NAME
             cur.execute("""
                 SELECT 
                     COUNT(DISTINCT user_id) as daily_active_users,
@@ -2534,7 +2550,7 @@ def get_overview_analytics(conn, date_filter):
             """)
             engagement_result = cur.fetchone()
             
-            # Content distribution based on segmentation results
+            # Content distribution from segmentation results
             cur.execute("""
                 SELECT 
                     COALESCE(cl.category, 'Unknown') as category,
@@ -2546,158 +2562,186 @@ def get_overview_analytics(conn, date_filter):
                 LIMIT 5
             """)
             
-            content_distribution = []
-            colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#0088fe']
             content_results = cur.fetchall()
+            colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57']
+            contentDistribution = []
             
-            if content_results and content_results[0][1] > 0:
+            if content_results and len(content_results) > 0:
+                total_count = sum(row[1] for row in content_results)
                 for i, row in enumerate(content_results):
-                    content_distribution.append({
-                        'name': (row[0] or 'Unknown').replace('_', ' ').title(),
-                        'value': row[1],
-                        'color': colors[i % len(colors)]
-                    })
-            else:
-                # Default distribution if no segmentation data
-                content_distribution = [
-                    {'name': 'Images', 'value': cur.execute("SELECT COUNT(*) FROM images").fetchone()[0] or 0, 'color': colors[0]},
-                    {'name': 'Users', 'value': cur.execute("SELECT COUNT(*) FROM users WHERE status = 'approved'").fetchone()[0] or 0, 'color': colors[1]}
-                ]
+                    if total_count > 0:
+                        percentage = (row[1] / total_count) * 100
+                        contentDistribution.append({
+                            'name': (row[0] or 'Unknown').replace('_', ' ').title(),
+                            'value': row[1],
+                            'percentage': round(percentage, 1),
+                            'color': colors[i % len(colors)]
+                        })
+            
+            # If no segmentation data, use basic image/user distribution
+            if not contentDistribution:
+                cur.execute("SELECT COUNT(*) FROM images")
+                image_count = cur.fetchone()[0] or 0
+                
+                cur.execute("SELECT COUNT(*) FROM users WHERE status = 'approved'")
+                user_count = cur.fetchone()[0] or 0
+                
+                total = image_count + user_count
+                if total > 0:
+                    contentDistribution = [
+                        {
+                            'name': 'Images Analyzed',
+                            'value': image_count,
+                            'percentage': round((image_count / total) * 100, 1),
+                            'color': colors[0]
+                        },
+                        {
+                            'name': 'Active Users',
+                            'value': user_count,
+                            'percentage': round((user_count / total) * 100, 1),
+                            'color': colors[1]
+                        }
+                    ]
+            
+            # Analysis Quality Trend
+            cur.execute(f"""
+                SELECT 
+                    DATE(uploaded_at) as date,
+                    AVG(analysis_confidence) as avgConfidence,
+                    COUNT(CASE WHEN analysis_confidence >= 90 THEN 1 END) as highQuality,
+                    COUNT(CASE WHEN upload_status = 'pending' THEN 1 END) as needsReview
+                FROM images
+                {date_filter.replace('created_at', 'uploaded_at') if date_filter else ''}
+                AND analysis_confidence IS NOT NULL
+                GROUP BY DATE(uploaded_at)
+                ORDER BY date DESC
+                LIMIT 10
+            """)
+            
+            quality_results = cur.fetchall()
+            qualityTrend = []
+            for row in quality_results:
+                qualityTrend.append({
+                    'date': row[0].strftime("%Y-%m-%d"),
+                    'avgConfidence': round(row[1] or 0, 1),
+                    'highQuality': row[2] or 0,
+                    'needsReview': row[3] or 0
+                })
+            
+            # User Activity Patterns (by hour) - FIXED COLUMN NAME
+            cur.execute("""
+                SELECT 
+                    EXTRACT(HOUR FROM created_at) as hour,
+                    COUNT(CASE WHEN activity_type LIKE '%upload%' THEN 1 END) as uploads,
+                    COUNT(CASE WHEN activity_type LIKE '%login%' THEN 1 END) as logins
+                FROM activities
+                WHERE created_at >= NOW() - INTERVAL '7 days'
+                GROUP BY EXTRACT(HOUR FROM created_at)
+                ORDER BY hour
+            """)
+            
+            activity_results = cur.fetchall()
+            engagementPatterns = []
+            for row in activity_results:
+                engagementPatterns.append({
+                    'hour': f"{int(row[0]):02d}",
+                    'uploads': row[1] or 0,
+                    'logins': row[2] or 0
+                })
+            
+            # Processing Metrics
+            cur.execute("""
+                SELECT 
+                    AVG(CASE WHEN processing_status = 'completed' 
+                        THEN EXTRACT(EPOCH FROM (updated_at - uploaded_at)) END) as avgProcessingTime,
+                    COUNT(*) as totalProcessed,
+                    COUNT(CASE WHEN processing_status = 'completed' THEN 1 END) * 100.0 / COUNT(*) as successRate,
+                    COUNT(CASE WHEN processing_status = 'error' THEN 1 END) * 100.0 / COUNT(*) as errorRate,
+                    COUNT(CASE WHEN processing_status = 'pending' THEN 1 END) as queueLength
+                FROM images
+                WHERE uploaded_at >= NOW() - INTERVAL '30 days'
+            """)
+            
+            processing_result = cur.fetchone()
+            processingMetrics = {
+                'avgProcessingTime': round(processing_result[0] or 0, 1),
+                'totalProcessed': processing_result[1] or 0,
+                'successRate': round(processing_result[2] or 0, 1),
+                'errorRate': round(processing_result[3] or 0, 1),
+                'queueLength': processing_result[4] or 0
+            }
             
             return jsonify({
-                'growthTrend': growth_data[-7:],  # Last 7 days
-                'engagement': {
-                    'dailyActiveUsers': engagement_result[0] or 0,
-                    'avgSessionTime': '12 min',  # Could be calculated from activity timestamps
-                    'retentionRate': 85  # Could be calculated from user login patterns
-                },
-                'contentDistribution': content_distribution
+                'imageUploadTrend': imageUploadTrend,
+                'userGrowthTrend': userGrowthTrend,
+                'contentDistribution': contentDistribution,
+                'qualityTrend': qualityTrend,
+                'engagementPatterns': engagementPatterns,
+                'processingMetrics': processingMetrics
             })
             
         except Exception as e:
             print(f"Error in overview analytics: {str(e)}")
-            # Fallback to basic counts
-            try:
-                cur.execute("SELECT COUNT(*) FROM users WHERE status = 'approved'")
-                user_count = cur.fetchone()[0] or 0
-                
-                cur.execute("SELECT COUNT(*) FROM images")
-                image_count = cur.fetchone()[0] or 0
-                
-                return jsonify({
-                    'growthTrend': [{'date': '2024-11-27', 'users': user_count, 'images': image_count}],
-                    'engagement': {'dailyActiveUsers': 0, 'avgSessionTime': '0 min', 'retentionRate': 0},
-                    'contentDistribution': [
-                        {'name': 'Users', 'value': user_count, 'color': '#8884d8'},
-                        {'name': 'Images', 'value': image_count, 'color': '#82ca9d'}
-                    ]
-                })
-            except:
-                return jsonify({
-                    'growthTrend': [],
-                    'engagement': {'dailyActiveUsers': 0, 'avgSessionTime': '0 min', 'retentionRate': 0},
-                    'contentDistribution': []
-                })
-
-def get_coral_trends_analytics(conn, date_filter):
-    with conn.cursor() as cur:
-        # Coral coverage trends
-        cur.execute(f"""
-            SELECT 
-                DATE(i.uploaded_at) as date,
-                AVG(CASE WHEN cl.category = 'hard_coral' THEN sr.coverage_percent ELSE 0 END) as hardCoral,
-                AVG(CASE WHEN cl.category = 'soft_coral' THEN sr.coverage_percent ELSE 0 END) as softCoral,
-                AVG(CASE WHEN cl.category = 'algae' THEN sr.coverage_percent ELSE 0 END) as algae
-            FROM segmentation_results sr
-            JOIN images i ON sr.image_id = i.id
-            JOIN coral_lifeforms cl ON sr.class_id = cl.id
-            {date_filter.replace('created_at', 'i.uploaded_at') if date_filter else ''}
-            GROUP BY DATE(i.uploaded_at)
-            ORDER BY date
-        """)
-        
-        coverage_trends = []
-        for row in cur.fetchall():
-            coverage_trends.append({
-                'date': row[0].strftime("%Y-%m-%d"),
-                'hardCoral': float(row[1] or 0),
-                'softCoral': float(row[2] or 0),
-                'algae': float(row[3] or 0)
+            import traceback
+            traceback.print_exc()
+            
+            # Return minimal fallback data with proper structure
+            return jsonify({
+                'imageUploadTrend': [],
+                'userGrowthTrend': [],
+                'engagement': {
+                    'dailyActiveUsers': 0,
+                    'totalActivities': 0,
+                    'avgSessionTime': '0 min',
+                    'retentionRate': 0,
+                    'bounceRate': 0
+                },
+                'contentDistribution': [],
+                'qualityTrend': [],
+                'engagementPatterns': [],
+                'processingMetrics': {
+                    'avgProcessingTime': 0,
+                    'totalProcessed': 0,
+                    'successRate': 0,
+                    'errorRate': 0,
+                    'queueLength': 0
+                }
             })
-        
-        # Species distribution
-        cur.execute("""
-            SELECT 
-                cl.class_name,
-                COUNT(sr.id) as count
-            FROM segmentation_results sr
-            JOIN coral_lifeforms cl ON sr.class_id = cl.id
-            GROUP BY cl.class_name
-            ORDER BY count DESC
-            LIMIT 10
-        """)
-        
-        species_distribution = []
-        for row in cur.fetchall():
-            species_distribution.append({
-                'species': row[0],
-                'count': row[1]
-            })
-        
-        # Quality metrics
-        cur.execute("""
-            SELECT 
-                AVG(analysis_confidence) as avg_confidence,
-                COUNT(CASE WHEN analysis_confidence > 0.8 THEN 1 END) as high_quality,
-                COUNT(CASE WHEN manual_override = true THEN 1 END) as manual_reviews
-            FROM images
-            WHERE processing_status = 'completed'
-        """)
-        
-        quality_result = cur.fetchone()
-        
-        return jsonify({
-            'coverageTrends': coverage_trends,
-            'speciesDistribution': species_distribution,
-            'qualityMetrics': {
-                'avgConfidence': round(float(quality_result[0] or 0) * 100, 1),
-                'highQualityAnalyses': quality_result[1] or 0,
-                'manualReviews': quality_result[2] or 0
-            }
-        })
-
-
-
+       
 def get_user_activity_analytics(conn, date_filter):
     with conn.cursor() as cur:
         try:
-            # Activity timeline (hourly distribution for the last 24 hours)
+            # 24-hour activity timeline - FIXED COLUMN NAME
             cur.execute("""
                 SELECT 
                     EXTRACT(HOUR FROM created_at) as hour,
-                    COUNT(DISTINCT user_id) as activeUsers
+                    COUNT(DISTINCT user_id) as activeUsers,
+                    COUNT(CASE WHEN activity_type LIKE '%upload%' THEN 1 END) as uploads,
+                    COUNT(CASE WHEN activity_type LIKE '%login%' THEN 1 END) as logins
                 FROM activities
                 WHERE created_at >= NOW() - INTERVAL '24 hours'
                 GROUP BY EXTRACT(HOUR FROM created_at)
                 ORDER BY hour
             """)
             
-            activity_timeline = []
-            hourly_data = {int(row[0]): row[1] for row in cur.fetchall()}
-            
-            # Fill all 24 hours with data
-            for hour in range(24):
-                activity_timeline.append({
-                    'hour': f"{hour:02d}:00",
-                    'activeUsers': hourly_data.get(hour, 0)
+            activity_results = cur.fetchall()
+            activityTimeline = []
+            for row in activity_results:
+                activityTimeline.append({
+                    'hour': f"{int(row[0]):02d}:00",
+                    'activeUsers': row[1] or 0,
+                    'uploads': row[2] or 0,
+                    'logins': row[3] or 0
                 })
             
-            # Registration trends over the selected time period
+            # Registration trends
             cur.execute(f"""
                 SELECT 
                     DATE(created_at) as date,
                     COUNT(*) as newUsers,
-                    COUNT(CASE WHEN status = 'approved' THEN 1 END) as approvedUsers
+                    COUNT(CASE WHEN status = 'approved' THEN 1 END) as approvedUsers,
+                    COUNT(CASE WHEN status = 'pending' THEN 1 END) as pendingUsers,
+                    COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejectedUsers
                 FROM users
                 {date_filter.replace('created_at', 'users.created_at') if date_filter else ''}
                 GROUP BY DATE(created_at)
@@ -2705,18 +2749,21 @@ def get_user_activity_analytics(conn, date_filter):
                 LIMIT 10
             """)
             
-            registration_trends = []
-            for row in cur.fetchall():
-                registration_trends.append({
+            reg_results = cur.fetchall()
+            registrationTrends = []
+            for row in reg_results:
+                registrationTrends.append({
                     'date': row[0].strftime("%Y-%m-%d"),
                     'newUsers': row[1],
-                    'approvedUsers': row[2]
+                    'approvedUsers': row[2],
+                    'pendingUsers': row[3],
+                    'rejectedUsers': row[4]
                 })
             
-            # Role distribution of approved users
+            # Role distribution
             cur.execute("""
                 SELECT 
-                    roletype,
+                    roletype as name,
                     COUNT(*) as count
                 FROM users
                 WHERE status = 'approved'
@@ -2724,229 +2771,924 @@ def get_user_activity_analytics(conn, date_filter):
                 ORDER BY count DESC
             """)
             
-            role_distribution = []
-            colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#0088fe']
-            for i, row in enumerate(cur.fetchall()):
-                role_distribution.append({
-                    'name': row[0].title(),
+            role_results = cur.fetchall()
+            colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300']
+            roleDistribution = []
+            
+            for i, row in enumerate(role_results):
+                roleDistribution.append({
+                    'name': row[0].title() + 's',
                     'count': row[1],
-                    'color': colors[i % len(colors)]
+                    'color': colors[i % len(colors)],
+                    'growth': '+12%'  # Could be calculated
+                })
+            
+            # User retention - ADD MISSING LOGIC
+            cur.execute("""
+                SELECT 
+                    DATE_TRUNC('week', created_at) as week,
+                    COUNT(DISTINCT id) as new_users,
+                    COUNT(DISTINCT CASE WHEN last_login > created_at + INTERVAL '1 week' THEN id END) as retained_users
+                FROM users
+                WHERE status = 'approved' 
+                AND created_at >= NOW() - INTERVAL '8 weeks'
+                GROUP BY DATE_TRUNC('week', created_at)
+                ORDER BY week DESC
+                LIMIT 8
+            """)
+            
+            retention_results = cur.fetchall()
+            userRetention = []
+            for row in retention_results:
+                new_users = row[1] or 0
+                retained_users = row[2] or 0
+                retention_rate = (retained_users / new_users * 100) if new_users > 0 else 0
+                
+                userRetention.append({
+                    'week': row[0].strftime("%Y-%m-%d") if row[0] else '',
+                    'newUsers': new_users,
+                    'retainedUsers': retained_users,
+                    'retentionRate': round(retention_rate, 1)
+                })
+            
+            # Top users by activity - FIXED COLUMN NAME
+            cur.execute("""
+                SELECT 
+                    u.firstname || ' ' || u.lastname as name,
+                    u.username,
+                    u.roletype as role,
+                    COUNT(CASE WHEN a.activity_type LIKE '%upload%' THEN 1 END) as uploads,
+                    COUNT(CASE WHEN a.activity_type LIKE '%login%' THEN 1 END) as logins,
+                    COUNT(a.id) as total_activities
+                FROM users u
+                LEFT JOIN activities a ON u.id = a.user_id
+                WHERE u.status = 'approved'
+                AND (a.created_at >= NOW() - INTERVAL '30 days' OR a.created_at IS NULL)
+                GROUP BY u.id, u.firstname, u.lastname, u.username, u.roletype
+                HAVING COUNT(a.id) > 0
+                ORDER BY total_activities DESC, uploads DESC, logins DESC
+                LIMIT 10
+            """)
+
+            top_users_results = cur.fetchall()
+            topUsers = []
+            for row in top_users_results:
+                topUsers.append({
+                    'name': row[0],
+                    'username': row[1], 
+                    'role': row[2].title(),
+                    'uploads': row[1] or 0,
+                    'logins': row[4] or 0,
+                    'total_activities': row[5] or 0
                 })
             
             return jsonify({
-                'activityTimeline': activity_timeline,
-                'registrationTrends': registration_trends,
-                'roleDistribution': role_distribution
+                'activityTimeline': activityTimeline,
+                'registrationTrends': registrationTrends,
+                'roleDistribution': roleDistribution,
+                'userRetention': userRetention,
+                'topUsers': topUsers
             })
             
         except Exception as e:
             print(f"Error in user activity analytics: {str(e)}")
-            # Return empty data structure instead of failing
+            import traceback
+            traceback.print_exc()
+            
+            # Return empty data structure instead of error
             return jsonify({
-                'activityTimeline': [{'hour': f"{h:02d}:00", 'activeUsers': 0} for h in range(24)],
+                'activityTimeline': [],
                 'registrationTrends': [],
-                'roleDistribution': []
+                'roleDistribution': [],
+                'userRetention': [],
+                'topUsers': []
             })
 
-def get_geographic_analytics(conn, date_filter):
-    with conn.cursor() as cur:
-        try:
-            # Regional data from images table
-            cur.execute(f"""
-                SELECT 
-                    COALESCE(region, 'Unknown Region') as region,
-                    COUNT(*) as imageCount
-                FROM images
-                {date_filter.replace('created_at', 'uploaded_at') if date_filter else ''}
-                GROUP BY region
-                ORDER BY imageCount DESC
-                LIMIT 10
-            """)
-            
-            region_data = []
-            for row in cur.fetchall():
-                region_data.append({
-                    'region': row[0],
-                    'imageCount': row[1]
-                })
-            
-            # Site metrics
-            cur.execute("""
-                SELECT 
-                    COUNT(DISTINCT COALESCE(site_name, CONCAT(COALESCE(municipality, ''), '-', COALESCE(barangay, '')))) as totalSites,
-                    COUNT(DISTINCT CASE 
-                        WHEN uploaded_at >= NOW() - INTERVAL '30 days' 
-                        THEN COALESCE(site_name, CONCAT(COALESCE(municipality, ''), '-', COALESCE(barangay, ''))) 
-                    END) as activeSites,
-                    ROUND(AVG(site_counts.image_count), 1) as avgImagesPerSite
-                FROM images
-                LEFT JOIN (
-                    SELECT 
-                        COALESCE(site_name, CONCAT(COALESCE(municipality, ''), '-', COALESCE(barangay, ''))) as site,
-                        COUNT(*) as image_count
-                    FROM images
-                    WHERE site_name IS NOT NULL OR (municipality IS NOT NULL AND barangay IS NOT NULL)
-                    GROUP BY COALESCE(site_name, CONCAT(COALESCE(municipality, ''), '-', COALESCE(barangay, '')))
-                ) site_counts ON site_counts.site = COALESCE(images.site_name, CONCAT(COALESCE(images.municipality, ''), '-', COALESCE(images.barangay, '')))
-                WHERE site_name IS NOT NULL OR (municipality IS NOT NULL AND barangay IS NOT NULL)
-            """)
-            
-            site_metrics_result = cur.fetchone()
-            
-            # Top provinces by image count
-            cur.execute("""
-                SELECT 
-                    COALESCE(province, 'Unknown Province') as province,
-                    COUNT(*) as count
-                FROM images
-                WHERE province IS NOT NULL
-                GROUP BY province
-                ORDER BY count DESC
-                LIMIT 5
-            """)
-            
-            top_provinces = []
-            for row in cur.fetchall():
-                top_provinces.append({
-                    'name': row[0],
-                    'count': row[1]
-                })
-            
-            return jsonify({
-                'regionData': region_data,
-                'siteMetrics': {
-                    'totalSites': int(site_metrics_result[0] or 0),
-                    'activeSites': int(site_metrics_result[1] or 0),
-                    'avgImagesPerSite': float(site_metrics_result[2] or 0)
-                },
-                'topProvinces': top_provinces
-            })
-            
-        except Exception as e:
-            print(f"Error in geographic analytics: {str(e)}")
-            # Return minimal data structure
-            return jsonify({
-                'regionData': [{'region': 'No Data', 'imageCount': 0}],
-                'siteMetrics': {'totalSites': 0, 'activeSites': 0, 'avgImagesPerSite': 0},
-                'topProvinces': []
-            })
 
 def get_performance_analytics(conn, date_filter):
     with conn.cursor() as cur:
         try:
-            # Processing trends based on images processing
+            # Processing trends
             cur.execute(f"""
                 SELECT 
                     DATE(uploaded_at) as date,
-                    AVG(
-                        CASE 
-                            WHEN updated_at IS NOT NULL AND uploaded_at IS NOT NULL 
-                            THEN EXTRACT(EPOCH FROM (updated_at - uploaded_at))
-                            ELSE 30 -- Default processing time if no timing data
-                        END
-                    ) as avgProcessingTime,
-                    (COUNT(CASE WHEN processing_status = 'completed' THEN 1 END) * 100.0 / 
-                     GREATEST(COUNT(*), 1)) as successRate
+                    AVG(CASE WHEN processing_status = 'completed' 
+                        THEN EXTRACT(EPOCH FROM (updated_at - uploaded_at)) ELSE NULL END) as avgProcessingTime,
+                    COUNT(CASE WHEN processing_status = 'completed' THEN 1 END) * 100.0 / COUNT(*) as successRate,
+                    COUNT(*) as throughput
                 FROM images
-                WHERE processing_status IN ('completed', 'failed', 'error', 'pending')
-                {' AND ' + date_filter.replace('WHERE ', '').replace('created_at', 'uploaded_at') if date_filter else ''}
+                {date_filter.replace('created_at', 'uploaded_at') if date_filter else ''}
                 GROUP BY DATE(uploaded_at)
                 ORDER BY date DESC
                 LIMIT 10
             """)
             
-            processing_trends = []
-            for row in cur.fetchall():
-                processing_trends.append({
+            processing_results = cur.fetchall()
+            processingTrends = []
+            for row in processing_results:
+                processingTrends.append({
                     'date': row[0].strftime("%Y-%m-%d"),
-                    'avgProcessingTime': round(float(row[1] or 30), 1),
-                    'successRate': round(float(row[2] or 95), 1)
+                    'avgProcessingTime': round(row[1] or 0, 1),
+                    'successRate': round(row[2] or 0, 1),
+                    'throughput': row[3] or 0
                 })
             
-            # System metrics - get actual storage usage
-            cur.execute("""
-                SELECT 
-                    COUNT(*) as total_images,
-                    COUNT(CASE WHEN processing_status = 'completed' THEN 1 END) as processed_images,
-                    COUNT(CASE WHEN processing_status = 'failed' THEN 1 END) as failed_images,
-                    COUNT(CASE WHEN uploaded_at >= NOW() - INTERVAL '24 hours' THEN 1 END) as recent_uploads
-                FROM images
-            """)
-            
-            system_result = cur.fetchone()
-            
-            # Calculate system metrics based on actual data
-            total_images = system_result[0] or 0
-            processed_images = system_result[1] or 0
-            failed_images = system_result[2] or 0
-            recent_uploads = system_result[3] or 0
-            
-            # Estimate storage usage (assuming average 2MB per image)
-            estimated_storage = (total_images * 2.0) / 1024  # Convert to GB
-            
-            system_metrics = {
-                'cpuUsage': min(85, max(30, 40 + (recent_uploads * 2))),  # Dynamic based on recent activity
-                'memoryUsage': min(90, max(25, 50 + (processed_images % 40))),  # Dynamic based on processing
-                'storageUsed': round(estimated_storage, 1)
-            }
-            
-            # Error distribution based on actual data
-            cur.execute("""
-                SELECT 
-                    processing_status,
-                    COUNT(*) as count
-                FROM images
-                WHERE processing_status IN ('failed', 'error')
-                GROUP BY processing_status
-            """)
-            
-            error_distribution = []
-            colors = ['#ff7300', '#ef4444', '#f59e0b']
-            error_results = cur.fetchall()
-            
-            if error_results:
-                for i, row in enumerate(error_results):
-                    error_distribution.append({
-                        'name': f"{row[0].title()} Images",
-                        'count': row[1],
-                        'color': colors[i % len(colors)]
-                    })
-            else:
-                # Add placeholder if no errors
-                error_distribution = [
-                    {'name': 'No Errors', 'count': 1, 'color': '#10b981'}
-                ]
-            
-            # Add activity errors if activities table exists
-            try:
-                cur.execute("""
-                    SELECT COUNT(*) FROM activities 
-                    WHERE activity_type LIKE '%error%' OR activity_type LIKE '%fail%'
-                """)
-                activity_errors = cur.fetchone()[0] or 0
-                
-                if activity_errors > 0:
-                    error_distribution.append({
-                        'name': 'System Errors',
-                        'count': activity_errors,
-                        'color': '#8b5cf6'
-                    })
-            except:
-                pass  # Activities table might not exist
-            
+
             return jsonify({
-                'processingTrends': processing_trends,
-                'systemMetrics': system_metrics,
-                'errorDistribution': error_distribution
+                'processingTrends': processingTrends,
             })
             
         except Exception as e:
             print(f"Error in performance analytics: {str(e)}")
-            # Return basic performance data
             return jsonify({
-                'processingTrends': [
-                    {'date': '2024-11-27', 'avgProcessingTime': 30.0, 'successRate': 95.0}
-                ],
-                'systemMetrics': {'cpuUsage': 45, 'memoryUsage': 60, 'storageUsed': 1.2},
-                'errorDistribution': [{'name': 'No Data', 'count': 1, 'color': '#6b7280'}]
+                'processingTrends': [],
+                'systemMetrics': {},
+                'errorDistribution': [],
+                'responseTimeDistribution': []
             })
+
+
+@admin_bp.route('/admin/analytics/export-pdf', methods=['GET'])
+@admin_required
+@login_required
+def export_analytics_pdf():
+    """Export analytics data as PDF"""
+    tab_name = request.args.get('tab', 'overview')
+    time_range = request.args.get('timeRange', '30days')
+    
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({"error": "Database connection failed"}), 500
+    
+    try:
+        print(f"🔄 Starting PDF export: tab={tab_name}, range={time_range}")
+        
+        # Calculate date range
+        if time_range == '7days':
+            date_filter = "WHERE created_at >= NOW() - INTERVAL '7 days'"
+            range_label = "Last 7 Days"
+        elif time_range == '30days':
+            date_filter = "WHERE created_at >= NOW() - INTERVAL '30 days'"
+            range_label = "Last 30 Days"
+        elif time_range == '90days':
+            date_filter = "WHERE created_at >= NOW() - INTERVAL '90 days'"
+            range_label = "Last 3 Months"
+        elif time_range == '365days':
+            date_filter = "WHERE created_at >= NOW() - INTERVAL '365 days'"
+            range_label = "Last Year"
+        else:
+            date_filter = ""
+            range_label = "All Time"
+        
+        # Get the export data based on tab
+        if tab_name == 'overview':
+            export_data = get_overview_export_data(conn, date_filter, time_range)
+            tab_title = "Overview Analytics"
+        elif tab_name == 'user-activity':
+            export_data = get_user_activity_export_data(conn, date_filter, time_range)
+            tab_title = "User Activity Analytics"
+        elif tab_name == 'performance':
+            export_data = get_performance_export_data(conn, date_filter, time_range)
+            tab_title = "Performance Analytics"
+        else:
+            return jsonify({"error": "Invalid tab"}), 400
+        
+        print(f"✅ Export data collected: {len(export_data)} datasets")
+        
+        # Generate PDF
+        pdf_buffer = generate_analytics_pdf(export_data, tab_title, range_label, tab_name)
+        
+        # Create response
+        response = make_response(pdf_buffer.getvalue())
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'attachment; filename="analytics_{tab_name}_{time_range}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf"'
+        
+        print(f"✅ PDF export ready")
+        return response
+            
+    except Exception as e:
+        print(f"❌ PDF export error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"PDF export failed: {str(e)}"}), 500
+    finally:
+        if conn:
+            conn.close()
+
+def generate_analytics_pdf(export_data, tab_title, range_label, tab_name):
+    """Generate PDF report from analytics data"""
+    buffer = io.BytesIO()
+    
+    # Create PDF document
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=72,
+        leftMargin=72,
+        topMargin=72,
+        bottomMargin=18
+    )
+    
+    # Get styles
+    styles = getSampleStyleSheet()
+    
+    # Custom styles
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=24,
+        spaceAfter=30,
+        alignment=TA_CENTER,
+        textColor=colors.HexColor('#1f2937')
+    )
+    
+    heading_style = ParagraphStyle(
+        'CustomHeading',
+        parent=styles['Heading2'],
+        fontSize=16,
+        spaceAfter=12,
+        spaceBefore=20,
+        textColor=colors.HexColor('#374151')
+    )
+    
+    subheading_style = ParagraphStyle(
+        'CustomSubHeading',
+        parent=styles['Heading3'],
+        fontSize=14,
+        spaceAfter=8,
+        spaceBefore=12,
+        textColor=colors.HexColor('#4b5563')
+    )
+    
+    # Story elements
+    story = []
+    
+    # Title page
+    story.append(Paragraph("DeepCoral AI Analytics Report", title_style))
+    story.append(Spacer(1, 20))
+    
+    # Report info
+    info_data = [
+        ['Report Type:', tab_title],
+        ['Time Range:', range_label],
+        ['Generated:', datetime.now().strftime('%B %d, %Y at %I:%M %p')],
+        ['Total Datasets:', str(len(export_data))]
+    ]
+    
+    info_table = Table(info_data, colWidths=[2*inch, 4*inch])
+    info_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+    ]))
+    
+    story.append(info_table)
+    story.append(Spacer(1, 30))
+    
+    # Generate charts and add content based on tab
+    if tab_name == 'overview':
+        story.extend(generate_overview_pdf_content(export_data, styles, heading_style, subheading_style))
+    elif tab_name == 'user-activity':
+        story.extend(generate_user_activity_pdf_content(export_data, styles, heading_style, subheading_style))
+    elif tab_name == 'performance':
+        story.extend(generate_performance_pdf_content(export_data, styles, heading_style, subheading_style))
+    
+    # Build PDF
+    doc.build(story)
+    buffer.seek(0)
+    
+    return buffer
+
+def generate_overview_pdf_content(export_data, styles, heading_style, subheading_style):
+    """Generate PDF content for overview analytics"""
+    story = []
+    
+    story.append(Paragraph("📊 Platform Overview", heading_style))
+    story.append(Paragraph("This section provides a comprehensive overview of platform metrics including image uploads, user growth, and content analysis.", styles['Normal']))
+    story.append(Spacer(1, 20))
+    
+    # Image Upload Trends
+    if export_data.get('Image_Upload_Trends'):
+        story.append(Paragraph("📈 Image Upload Trends", subheading_style))
+        
+        data = export_data['Image_Upload_Trends']
+        table_data = [['Date', 'Total Uploads', 'Analysis Completed', 'Avg Confidence']]
+        
+        for item in data[:10]:  # Limit to 10 rows
+            table_data.append([
+                item.get('Date', 'N/A'),
+                str(item.get('Total_Uploads', 0)),
+                str(item.get('Analysis_Completed', 0)),
+                f"{item.get('Avg_Confidence', 0):.2f}%"
+            ])
+        
+        if len(table_data) > 1:
+            table = Table(table_data, colWidths=[1.5*inch, 1.2*inch, 1.5*inch, 1.2*inch])
+            table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f3f4f6')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#1f2937')),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#e5e7eb')),
+                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ]))
+            
+            story.append(table)
+            story.append(Spacer(1, 15))
+        
+        # Generate chart for image uploads
+        chart_image = generate_line_chart(
+            data, 
+            'Date', 
+            ['Total_Uploads', 'Analysis_Completed'],
+            'Image Upload Trends',
+            ['Total Uploads', 'Analysis Completed']
+        )
+        if chart_image:
+            story.append(chart_image)
+            story.append(Spacer(1, 20))
+    
+    # User Growth Trends
+    if export_data.get('User_Growth_Trends'):
+        story.append(Paragraph("👥 User Growth Trends", subheading_style))
+        
+        data = export_data['User_Growth_Trends']
+        table_data = [['Date', 'New Registrations', 'Approvals', 'Rejections', 'Pending']]
+        
+        for item in data[:10]:
+            table_data.append([
+                item.get('Date', 'N/A'),
+                str(item.get('New_Registrations', 0)),
+                str(item.get('Approvals', 0)),
+                str(item.get('Rejections', 0)),
+                str(item.get('Pending', 0))
+            ])
+        
+        if len(table_data) > 1:
+            table = Table(table_data, colWidths=[1.2*inch, 1.2*inch, 1*inch, 1*inch, 1*inch])
+            table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f3f4f6')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#1f2937')),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 9),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#e5e7eb')),
+                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 1), (-1, -1), 8),
+            ]))
+            
+            story.append(table)
+            story.append(Spacer(1, 15))
+    
+    # Content Distribution
+    if export_data.get('Content_Distribution'):
+        story.append(Paragraph("🪸 Content Analysis Distribution", subheading_style))
+        
+        data = export_data['Content_Distribution']
+        table_data = [['Category', 'Count', 'Percentage']]
+        
+        for item in data:
+            table_data.append([
+                item.get('Category', 'Unknown'),
+                str(item.get('Count', 0)),
+                f"{item.get('Percentage', 0):.1f}%"
+            ])
+        
+        if len(table_data) > 1:
+            table = Table(table_data, colWidths=[2*inch, 1.5*inch, 1.5*inch])
+            table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f3f4f6')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#1f2937')),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#e5e7eb')),
+                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ]))
+            
+            story.append(table)
+            story.append(Spacer(1, 20))
+    
+    return story
+
+def generate_user_activity_pdf_content(export_data, styles, heading_style, subheading_style):
+    """Generate PDF content for user activity analytics"""
+    story = []
+    
+    story.append(Paragraph("👥 User Activity Analysis", heading_style))
+    story.append(Paragraph("Detailed analysis of user behavior, registrations, and platform engagement patterns.", styles['Normal']))
+    story.append(Spacer(1, 20))
+    
+    # Activity Timeline
+    if export_data.get('Activity_Timeline_24h'):
+        story.append(Paragraph("⏰ 24-Hour Activity Timeline", subheading_style))
+        
+        data = export_data['Activity_Timeline_24h']
+        table_data = [['Hour', 'Active Users', 'Uploads', 'Logins']]
+        
+        for item in data:
+            table_data.append([
+                item.get('Hour', 'N/A'),
+                str(item.get('Active_Users', 0)),
+                str(item.get('Uploads', 0)),
+                str(item.get('Logins', 0))
+            ])
+        
+        if len(table_data) > 1:
+            table = Table(table_data, colWidths=[1.2*inch, 1.2*inch, 1.2*inch, 1.2*inch])
+            table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f3f4f6')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#1f2937')),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#e5e7eb')),
+                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ]))
+            
+            story.append(table)
+            story.append(Spacer(1, 15))
+    
+    # Top Users
+    if export_data.get('Top_Users_by_Activity'):
+        story.append(Paragraph("🏆 Top Contributors", subheading_style))
+        
+        data = export_data['Top_Users_by_Activity']
+        table_data = [['Name', 'Username', 'Role', 'Uploads', 'Logins', 'Total Activities']]
+        
+        for item in data:
+            table_data.append([
+                item.get('Name', 'Unknown'),
+                item.get('Username', 'N/A'),
+                item.get('Role', 'Unknown'),
+                str(item.get('Uploads', 0)),
+                str(item.get('Logins', 0)),
+                str(item.get('Total_Activities', 0))
+            ])
+        
+        if len(table_data) > 1:
+            table = Table(table_data, colWidths=[1.5*inch, 1*inch, 0.8*inch, 0.8*inch, 0.8*inch, 1*inch])
+            table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f3f4f6')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#1f2937')),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 9),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#e5e7eb')),
+                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 1), (-1, -1), 8),
+            ]))
+            
+            story.append(table)
+            story.append(Spacer(1, 20))
+    
+    return story
+
+def generate_performance_pdf_content(export_data, styles, heading_style, subheading_style):
+    """Generate PDF content for performance analytics"""
+    story = []
+    
+    story.append(Paragraph("⚡ Performance Analytics", heading_style))
+    story.append(Paragraph("System performance metrics including processing times, success rates, and error analysis.", styles['Normal']))
+    story.append(Spacer(1, 20))
+    
+    # Processing Trends
+    if export_data.get('Processing_Trends'):
+        story.append(Paragraph("📈 Processing Performance Trends", subheading_style))
+        
+        data = export_data['Processing_Trends']
+        table_data = [['Date', 'Total Images', 'Completed', 'Errors', 'Avg Time (s)', 'Success Rate (%)']]
+        
+        for item in data[:10]:
+            table_data.append([
+                item.get('Date', 'N/A'),
+                str(item.get('Total_Images', 0)),
+                str(item.get('Completed', 0)),
+                str(item.get('Errors', 0)),
+                f"{item.get('Avg_Processing_Time_seconds', 0):.1f}",
+                f"{item.get('Success_Rate_percent', 0):.1f}%"
+            ])
+        
+        if len(table_data) > 1:
+            table = Table(table_data, colWidths=[1*inch, 1*inch, 1*inch, 0.8*inch, 1*inch, 1.2*inch])
+            table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f3f4f6')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#1f2937')),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 9),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#e5e7eb')),
+                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 1), (-1, -1), 8),
+            ]))
+            
+            story.append(table)
+            story.append(Spacer(1, 20))
+    
+    return story
+
+def generate_line_chart(data, x_field, y_fields, title, labels):
+    """Generate a line chart for the PDF"""
+    try:
+        if not data or len(data) < 2:
+            return None
+        
+        # Create temporary file for the chart
+        temp_file = tempfile.NamedTemporaryFile(suffix='.png', delete=False)
+        
+        # Prepare data
+        x_values = [item.get(x_field, '') for item in data]
+        
+        # Create the plot
+        plt.figure(figsize=(8, 5))
+        
+        colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444']
+        
+        for i, y_field in enumerate(y_fields):
+            y_values = [item.get(y_field, 0) for item in data]
+            plt.plot(x_values, y_values, marker='o', linewidth=2, 
+                    color=colors[i % len(colors)], label=labels[i] if i < len(labels) else y_field)
+        
+        plt.title(title, fontsize=14, fontweight='bold', pad=20)
+        plt.xlabel(x_field, fontsize=12)
+        plt.ylabel('Count', fontsize=12)
+        plt.legend()
+        plt.grid(True, alpha=0.3)
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        
+        # Save the chart
+        plt.savefig(temp_file.name, dpi=150, bbox_inches='tight')
+        plt.close()
+        
+        # Create ReportLab Image
+        chart_image = ReportLabImage(temp_file.name, width=6*inch, height=3.75*inch)
+        
+        # Clean up
+        os.unlink(temp_file.name)
+        
+        return chart_image
+        
+    except Exception as e:
+        print(f"Error generating chart: {str(e)}")
+        return None
+
+
+def get_overview_export_data(conn, date_filter, time_range):
+    """Get overview analytics data for export"""
+    export_data = {}
+    
+    with conn.cursor() as cur:
+        try:
+            # Image Upload Trends
+            cur.execute(f"""
+                SELECT 
+                    DATE(uploaded_at) as date,
+                    COUNT(*) as total_uploads,
+                    COUNT(CASE WHEN processing_status = 'completed' THEN 1 END) as analysis_completed,
+                    AVG(analysis_confidence) as avg_confidence
+                FROM images
+                {date_filter.replace('created_at', 'uploaded_at') if date_filter else ''}
+                GROUP BY DATE(uploaded_at)
+                ORDER BY date DESC
+                LIMIT 30
+            """)
+            
+            results = cur.fetchall()
+            export_data['Image_Upload_Trends'] = []
+            for row in results:
+                export_data['Image_Upload_Trends'].append({
+                    'Date': row[0].strftime("%Y-%m-%d") if row[0] else '',
+                    'Total_Uploads': row[1] or 0,
+                    'Analysis_Completed': row[2] or 0,
+                    'Avg_Confidence': float(row[3]) if row[3] else 0
+                })
+            
+            # User Growth Trends
+            cur.execute(f"""
+                SELECT 
+                    DATE(created_at) as date,
+                    COUNT(*) as new_registrations,
+                    COUNT(CASE WHEN status = 'approved' THEN 1 END) as approvals,
+                    COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejections,
+                    COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending
+                FROM users
+                {date_filter.replace('created_at', 'users.created_at') if date_filter else ''}
+                GROUP BY DATE(created_at)
+                ORDER BY date DESC
+                LIMIT 30
+            """)
+            
+            results = cur.fetchall()
+            export_data['User_Growth_Trends'] = []
+            for row in results:
+                export_data['User_Growth_Trends'].append({
+                    'Date': row[0].strftime("%Y-%m-%d") if row[0] else '',
+                    'New_Registrations': row[1] or 0,
+                    'Approvals': row[2] or 0,
+                    'Rejections': row[3] or 0,
+                    'Pending': row[4] or 0
+                })
+            
+            # Content Distribution
+            cur.execute("""
+                SELECT 
+                    COALESCE(cl.category, 'Unknown') as category,
+                    COUNT(sr.id) as count
+                FROM segmentation_results sr
+                LEFT JOIN coral_lifeforms cl ON sr.class_id = cl.id
+                GROUP BY cl.category
+                ORDER BY count DESC
+                LIMIT 10
+            """)
+            
+            results = cur.fetchall()
+            export_data['Content_Distribution'] = []
+            total_count = sum(row[1] for row in results) if results else 0
+            
+            for row in results:
+                percentage = (row[1] / total_count * 100) if total_count > 0 else 0
+                export_data['Content_Distribution'].append({
+                    'Category': (row[0] or 'Unknown').replace('_', ' ').title(),
+                    'Count': row[1] or 0,
+                    'Percentage': round(percentage, 1)
+                })
+            
+            # Quality Trends
+            cur.execute(f"""
+                SELECT 
+                    DATE(uploaded_at) as date,
+                    AVG(analysis_confidence) as avg_confidence,
+                    COUNT(CASE WHEN analysis_confidence >= 90 THEN 1 END) as high_quality,
+                    COUNT(CASE WHEN upload_status = 'pending' THEN 1 END) as needs_review
+                FROM images
+                {date_filter.replace('created_at', 'uploaded_at') if date_filter else ''}
+                AND analysis_confidence IS NOT NULL
+                GROUP BY DATE(uploaded_at)
+                ORDER BY date DESC
+                LIMIT 30
+            """)
+            
+            results = cur.fetchall()
+            export_data['Quality_Trends'] = []
+            for row in results:
+                export_data['Quality_Trends'].append({
+                    'Date': row[0].strftime("%Y-%m-%d") if row[0] else '',
+                    'Avg_Confidence': round(float(row[1]), 1) if row[1] else 0,
+                    'High_Quality': row[2] or 0,
+                    'Needs_Review': row[3] or 0
+                })
+            
+        except Exception as e:
+            print(f"Error getting overview export data: {str(e)}")
+    
+    return export_data
+
+def get_user_activity_export_data(conn, date_filter, time_range):
+    """Get user activity analytics data for export"""
+    export_data = {}
+    
+    with conn.cursor() as cur:
+        try:
+            # 24-hour activity timeline
+            cur.execute("""
+                SELECT 
+                    EXTRACT(HOUR FROM created_at) as hour,
+                    COUNT(DISTINCT user_id) as active_users,
+                    COUNT(CASE WHEN activity_type LIKE '%upload%' THEN 1 END) as uploads,
+                    COUNT(CASE WHEN activity_type LIKE '%login%' THEN 1 END) as logins
+                FROM activities
+                WHERE created_at >= NOW() - INTERVAL '24 hours'
+                GROUP BY EXTRACT(HOUR FROM created_at)
+                ORDER BY hour
+            """)
+            
+            results = cur.fetchall()
+            export_data['Activity_Timeline_24h'] = []
+            for row in results:
+                export_data['Activity_Timeline_24h'].append({
+                    'Hour': f"{int(row[0]):02d}:00" if row[0] is not None else '00:00',
+                    'Active_Users': row[1] or 0,
+                    'Uploads': row[2] or 0,
+                    'Logins': row[3] or 0
+                })
+            
+            # Registration trends
+            cur.execute(f"""
+                SELECT 
+                    DATE(created_at) as date,
+                    COUNT(*) as new_users,
+                    COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved_users,
+                    COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_users,
+                    COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected_users
+                FROM users
+                {date_filter.replace('created_at', 'users.created_at') if date_filter else ''}
+                GROUP BY DATE(created_at)
+                ORDER BY date DESC
+                LIMIT 30
+            """)
+            
+            results = cur.fetchall()
+            export_data['Registration_Trends'] = []
+            for row in results:
+                export_data['Registration_Trends'].append({
+                    'Date': row[0].strftime("%Y-%m-%d") if row[0] else '',
+                    'New_Users': row[1] or 0,
+                    'Approved_Users': row[2] or 0,
+                    'Pending_Users': row[3] or 0,
+                    'Rejected_Users': row[4] or 0
+                })
+            
+            # Role distribution
+            cur.execute("""
+                SELECT 
+                    roletype as name,
+                    COUNT(*) as count
+                FROM users
+                WHERE status = 'approved'
+                GROUP BY roletype
+                ORDER BY count DESC
+            """)
+            
+            results = cur.fetchall()
+            export_data['Role_Distribution'] = []
+            for row in results:
+                export_data['Role_Distribution'].append({
+                    'Role': row[0].title() if row[0] else 'Unknown',
+                    'Count': row[1] or 0
+                })
+            
+            # Top users by activity
+            cur.execute("""
+                SELECT 
+                    u.firstname || ' ' || u.lastname as name,
+                    u.username,
+                    u.roletype as role,
+                    COUNT(CASE WHEN a.activity_type LIKE '%upload%' THEN 1 END) as uploads,
+                    COUNT(CASE WHEN a.activity_type LIKE '%login%' THEN 1 END) as logins,
+                    COUNT(a.id) as total_activities
+                FROM users u
+                LEFT JOIN activities a ON u.id = a.user_id
+                WHERE u.status = 'approved'
+                AND (a.created_at >= NOW() - INTERVAL '30 days' OR a.created_at IS NULL)
+                GROUP BY u.id, u.firstname, u.lastname, u.username, u.roletype
+                HAVING COUNT(a.id) > 0
+                ORDER BY uploads DESC, total_activities DESC
+                LIMIT 10
+            """)
+            
+            results = cur.fetchall()
+            export_data['Top_Users_by_Activity'] = []
+            for row in results:
+                export_data['Top_Users_by_Activity'].append({
+                    'Name': row[0] or 'Unknown User',
+                    'Username': row[1] or 'N/A',
+                    'Role': row[2].title() if row[2] else 'Unknown',
+                    'Uploads': row[3] or 0,
+                    'Logins': row[4] or 0,
+                    'Total_Activities': row[5] or 0
+                })
+            
+            # User retention
+            cur.execute("""
+                SELECT 
+                    DATE_TRUNC('week', created_at) as week,
+                    COUNT(DISTINCT id) as new_users,
+                    COUNT(DISTINCT CASE WHEN last_login > created_at + INTERVAL '1 week' THEN id END) as retained_users
+                FROM users
+                WHERE status = 'approved' 
+                AND created_at >= NOW() - INTERVAL '8 weeks'
+                GROUP BY DATE_TRUNC('week', created_at)
+                ORDER BY week DESC
+                LIMIT 8
+            """)
+            
+            results = cur.fetchall()
+            export_data['User_Retention'] = []
+            for row in results:
+                new_users = row[1] or 0
+                retained_users = row[2] or 0
+                retention_rate = (retained_users / new_users * 100) if new_users > 0 else 0
+                
+                export_data['User_Retention'].append({
+                    'Week': row[0].strftime("%Y-%m-%d") if row[0] else '',
+                    'New_Users': new_users,
+                    'Retained_Users': retained_users,
+                    'Retention_Rate': round(retention_rate, 1)
+                })
+            
+        except Exception as e:
+            print(f"Error getting user activity export data: {str(e)}")
+    
+    return export_data
+
+def get_performance_export_data(conn, date_filter, time_range):
+    """Get performance analytics data for export"""
+    export_data = {}
+    
+    with conn.cursor() as cur:
+        try:
+            # Processing trends
+            cur.execute(f"""
+                SELECT 
+                    DATE(uploaded_at) as date,
+                    COUNT(*) as total_images,
+                    COUNT(CASE WHEN processing_status = 'completed' THEN 1 END) as completed,
+                    COUNT(CASE WHEN processing_status = 'error' THEN 1 END) as errors,
+                    AVG(CASE WHEN processing_status = 'completed' 
+                        THEN EXTRACT(EPOCH FROM (updated_at - uploaded_at)) ELSE NULL END) as avg_processing_time_seconds,
+                    COUNT(CASE WHEN processing_status = 'completed' THEN 1 END) * 100.0 / COUNT(*) as success_rate_percent
+                FROM images
+                {date_filter.replace('created_at', 'uploaded_at') if date_filter else ''}
+                GROUP BY DATE(uploaded_at)
+                ORDER BY date DESC
+                LIMIT 30
+            """)
+            
+            results = cur.fetchall()
+            export_data['Processing_Trends'] = []
+            for row in results:
+                export_data['Processing_Trends'].append({
+                    'Date': row[0].strftime("%Y-%m-%d") if row[0] else '',
+                    'Total_Images': row[1] or 0,
+                    'Completed': row[2] or 0,
+                    'Errors': row[3] or 0,
+                    'Avg_Processing_Time_seconds': round(float(row[4]), 1) if row[4] else 0,
+                    'Success_Rate_percent': round(float(row[5]), 1) if row[5] else 0
+                })
+            
+            # System performance metrics
+            cur.execute("""
+                SELECT 
+                    AVG(CASE WHEN processing_status = 'completed' 
+                        THEN EXTRACT(EPOCH FROM (updated_at - uploaded_at)) END) as avg_processing_time,
+                    COUNT(*) as total_processed,
+                    COUNT(CASE WHEN processing_status = 'completed' THEN 1 END) * 100.0 / COUNT(*) as success_rate,
+                    COUNT(CASE WHEN processing_status = 'error' THEN 1 END) * 100.0 / COUNT(*) as error_rate,
+                    COUNT(CASE WHEN processing_status = 'pending' THEN 1 END) as queue_length
+                FROM images
+                WHERE uploaded_at >= NOW() - INTERVAL '30 days'
+            """)
+            
+            result = cur.fetchone()
+            export_data['System_Metrics'] = [{
+                'Metric': 'Average Processing Time (seconds)',
+                'Value': round(float(result[0]), 1) if result[0] else 0
+            }, {
+                'Metric': 'Total Images Processed',
+                'Value': result[1] or 0
+            }, {
+                'Metric': 'Success Rate (%)',
+                'Value': round(float(result[2]), 1) if result[2] else 0
+            }, {
+                'Metric': 'Error Rate (%)',
+                'Value': round(float(result[3]), 1) if result[3] else 0
+            }, {
+                'Metric': 'Current Queue Length',
+                'Value': result[4] or 0
+            }]
+            
+            # Error distribution
+            cur.execute(f"""
+                SELECT 
+                    COALESCE(error_message, 'Unknown Error') as error_type,
+                    COUNT(*) as count
+                FROM images
+                WHERE processing_status = 'error'
+                {('AND ' + date_filter.replace('created_at', 'uploaded_at')) if date_filter else ''}
+                GROUP BY error_message
+                ORDER BY count DESC
+                LIMIT 10
+            """)
+            
+            results = cur.fetchall()
+            export_data['Error_Distribution'] = []
+            for row in results:
+                export_data['Error_Distribution'].append({
+                    'Error_Type': row[0] or 'Unknown Error',
+                    'Count': row[1] or 0
+                })
+            
+        except Exception as e:
+            print(f"Error getting performance export data: {str(e)}")
+    
+    return export_data

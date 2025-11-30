@@ -143,7 +143,7 @@ if PYTORCH_AVAILABLE:
                 SEGMENTATION_AVAILABLE = True
                 
                 segmentation_transform = A.Compose([
-                    A.Resize(512, 512),
+                    A.Resize(832, 832),
                     A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                     ToTensorV2()
                 ])
@@ -206,7 +206,7 @@ def predict_segmentation(image):
         raise Exception("Segmentation model not available")
     
     transform = A.Compose([
-        A.Resize(512, 512),
+        A.Resize(832, 832),
         A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ToTensorV2()
     ])
@@ -389,7 +389,7 @@ def serve_crop(filename):
 def serve_mask(filename):
     return send_from_directory(MASKS_FOLDER, filename)
 
-def preprocess_for_segmentation(image_path, target_size=(512, 512)):
+def preprocess_for_segmentation(image_path, target_size=(832, 832)):
     """Preprocess image for segmentation model"""
     transform = A.Compose([
         A.Resize(target_size[0], target_size[1]),

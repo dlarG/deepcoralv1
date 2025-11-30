@@ -17,6 +17,8 @@ from datetime import datetime
 
 auth_bp = Blueprint('auth', __name__)
 
+# dalskndasj
+
 @auth_bp.route('/register', methods=['POST'])
 def register_user():
     data = request.get_json()
@@ -295,7 +297,7 @@ def check_auth():
                     'status': user[8],
                     'last_login': user[9].isoformat() if user[9] else None,
                     'institution': user[10],
-                    'email': user[11],
+                    'email': user[11],  # Make sure email is included here
                     'phone': user[12]
                 }
             }), 200
@@ -316,7 +318,6 @@ def check_auth():
     finally:
         if conn:
             conn.close()
-
 
 @auth_bp.route('/login', methods=['POST', 'OPTIONS'])
 @cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
@@ -341,8 +342,9 @@ def login_user():
             return jsonify({"error": "Database connection failed"}), 500
             
         with conn.cursor() as cur:  
+            # Add email to the SELECT query
             cur.execute("""
-                SELECT id, username, password, firstname, lastname, roletype, bio, profile_image, created_at, status, last_login 
+                SELECT id, username, password, firstname, lastname, roletype, bio, profile_image, created_at, status, last_login, email
                 FROM users WHERE username = %s
             """, (username,))
             user = cur.fetchone()
@@ -373,7 +375,7 @@ def login_user():
                 )
                 return jsonify({'error': 'Invalid credentials'}), 401
             
-            if user[9] == 'pending':
+            if user[9] == 'pending':  # status is now at index 9
                 log_system_action(
                     user_id=user[0],
                     action='login_attempt_pending',
@@ -386,7 +388,7 @@ def login_user():
                 )
                 return jsonify({'error': 'Account is pending approval. Wait for the admin to validate your joining request.'}), 403
 
-            if user[9] == 'rejected':
+            if user[9] == 'rejected':  # status is now at index 9
                 log_system_action(
                     user_id=user[0],
                     action='login_attempt_rejected',
@@ -439,6 +441,7 @@ def login_user():
                 'created_at': user[8].isoformat() if user[8] else None,
                 'status': user[9],
                 'last_login': current_time.isoformat(),
+                'email': user[11],  # Add email here
                 'redirect_to': f'/{user[5].lower()}-dashboard'
             }
             

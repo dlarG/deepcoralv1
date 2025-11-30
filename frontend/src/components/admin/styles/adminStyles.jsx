@@ -450,7 +450,6 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
       
       .report-sidebar {
         width: 100%;
-        order: 1;
       }
       
       .report-main {
@@ -459,7 +458,6 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
       
       .report-filters {
         padding: 1rem;
-        margin-bottom: 1rem;
       }
       
       .report-filters h3 {
@@ -2501,7 +2499,6 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
 .report-sidebar {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
 }
 
 .report-filters {
@@ -2514,7 +2511,6 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
     darkMode ? "rgba(51, 65, 85, 0.6)" : "rgba(226, 232, 240, 0.6)"
   };
   border-radius: 16px;
-  padding: 1.5rem;
   backdrop-filter: blur(10px);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
 }
@@ -2945,7 +2941,6 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
   
   .report-content {
     grid-template-columns: 280px 1fr;
-    gap: 1.5rem;
   }
   
   .summary-grid {
@@ -2978,11 +2973,6 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
   
   .report-content {
     grid-template-columns: 1fr;
-    gap: 2rem;
-  }
-  
-  .report-sidebar {
-    order: 2;
   }
   
   .report-main {
@@ -3050,7 +3040,6 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
     display: none;
   }
   
-  .report-filters,
   .report-summarys,
   .report-table-container {
     padding: 1.25rem;
@@ -3126,7 +3115,6 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
     min-height: 44px;
   }
   
-  .report-filters,
   .report-summarys,
   .report-table-container {
     padding: 1rem;

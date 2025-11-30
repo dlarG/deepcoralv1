@@ -1,4 +1,3 @@
-// src/components/guest/hooks/useProfileManagement.js
 import { useState, useEffect } from "react";
 import { useAuth } from "../../../context/AuthContext";
 import axios from "axios";
@@ -10,6 +9,7 @@ export default function useProfileManagement(user) {
     username: "",
     firstname: "",
     lastname: "",
+    email: "",
     bio: "",
     profile_image: null,
     current_password: "",
@@ -33,11 +33,16 @@ export default function useProfileManagement(user) {
         username: user.username || "",
         firstname: user.firstname || "",
         lastname: user.lastname || "",
+        email: user.email || "",
         bio: user.bio || "",
+        // Don't set profile_image here as it's for new uploads
       }));
 
+      // Set image preview from current user image
       if (user.profile_image) {
         setProfileImagePreview(`/profile_uploads/${user.profile_image}`);
+      } else {
+        setProfileImagePreview(null);
       }
     }
   }, [user]);
@@ -54,7 +59,6 @@ export default function useProfileManagement(user) {
     setDeleteError("");
   };
 
-  // Update the handleDeleteProfile function
   const handleDeleteProfile = async () => {
     if (!deletePassword.trim()) {
       setDeleteError("Password is required");
@@ -151,24 +155,54 @@ export default function useProfileManagement(user) {
     setShowProfileModal(true);
     setProfileErrors({});
     setProfileTab("info");
+
+    // Reset form data to current user data when opening modal
+    if (user) {
+      setProfileFormData({
+        username: user.username || "",
+        firstname: user.firstname || "",
+        lastname: user.lastname || "",
+        email: user.email || "",
+        bio: user.bio || "",
+        profile_image: null, // This is for new uploads only
+        current_password: "",
+        new_password: "",
+        confirm_password: "",
+      });
+
+      // Set current image preview
+      if (user.profile_image) {
+        setProfileImagePreview(`/profile_uploads/${user.profile_image}`);
+      } else {
+        setProfileImagePreview(null);
+      }
+    }
   };
 
   const closeProfileModal = () => {
     setShowProfileModal(false);
-    setProfileFormData((prev) => ({
-      ...prev,
-      current_password: "",
-      new_password: "",
-      confirm_password: "",
-      profile_image: null,
-    }));
     setProfileErrors({});
 
-    // Reset image preview to current user image
-    if (user?.profile_image) {
-      setProfileImagePreview(`/profile_uploads/${user.profile_image}`);
-    } else {
-      setProfileImagePreview(null);
+    // Reset form data when closing
+    if (user) {
+      setProfileFormData({
+        username: user.username || "",
+        firstname: user.firstname || "",
+        lastname: user.lastname || "",
+        email: user.email || "",
+        bio: user.bio || "",
+        profile_image: null, // Clear any new upload
+        current_password: "",
+        new_password: "",
+        confirm_password: "",
+      });
+
+      // Reset image preview to current user image
+      if (user.profile_image) {
+        setProfileImagePreview(`/profile_uploads/${user.profile_image}`);
+      } else {
+        setProfileImagePreview(null);
+      }
     }
   };
 
@@ -188,6 +222,12 @@ export default function useProfileManagement(user) {
 
     if (!profileFormData.lastname.trim()) {
       errors.lastname = "Last name is required";
+    }
+
+    if (!profileFormData.email.trim()) {
+      errors.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileFormData.email)) {
+      errors.email = "Please enter a valid email address";
     }
 
     // Password validation (only if changing password)
@@ -227,8 +267,10 @@ export default function useProfileManagement(user) {
       formData.append("username", profileFormData.username);
       formData.append("firstname", profileFormData.firstname);
       formData.append("lastname", profileFormData.lastname);
+      formData.append("email", profileFormData.email);
       formData.append("bio", profileFormData.bio);
 
+      // Only append password fields if user is changing password
       if (profileFormData.current_password) {
         formData.append("current_password", profileFormData.current_password);
       }
@@ -237,9 +279,20 @@ export default function useProfileManagement(user) {
         formData.append("new_password", profileFormData.new_password);
       }
 
+      // Only append profile image if user selected a new one
       if (profileFormData.profile_image) {
         formData.append("profile_image", profileFormData.profile_image);
       }
+
+      console.log("Submitting form data:", {
+        username: profileFormData.username,
+        firstname: profileFormData.firstname,
+        lastname: profileFormData.lastname,
+        email: profileFormData.email,
+        bio: profileFormData.bio,
+        hasNewImage: !!profileFormData.profile_image,
+        hasPassword: !!profileFormData.current_password,
+      });
 
       const response = await axios.put(
         `${process.env.REACT_APP_API_URL}/profile`,
@@ -262,15 +315,18 @@ export default function useProfileManagement(user) {
       console.error("Profile update failed:", error);
 
       if (error.response?.data?.error) {
-        // Handle specific field errors
         const errorMessage = error.response.data.error;
 
         if (errorMessage.includes("Username already taken")) {
           setProfileErrors({ username: errorMessage });
+        } else if (errorMessage.includes("Email address already in use")) {
+          setProfileErrors({ email: errorMessage });
         } else if (errorMessage.includes("Current password is incorrect")) {
           setProfileErrors({ current_password: errorMessage });
         } else if (errorMessage.includes("password")) {
           setProfileErrors({ new_password: errorMessage });
+        } else if (errorMessage.includes("email")) {
+          setProfileErrors({ email: errorMessage });
         } else {
           setProfileErrors({ general: errorMessage });
         }
@@ -309,5 +365,3 @@ export default function useProfileManagement(user) {
     setProfileTab,
   };
 }
-// This hook manages the profile management logic for the guest dashboard
-// It handles form data, validation, submission, and profile image handling

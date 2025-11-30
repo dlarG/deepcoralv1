@@ -44,7 +44,6 @@ function CoralLifeForms() {
           </div>
           <div className="coral-detail-info">
             <h2 className="coral-detail-name">{coral.common_name}</h2>
-            <p className="coral-detail-scientific">{coral.scientific_name}</p>
 
             <div className="coral-detail-grid">
               <div className="detail-item">
@@ -52,12 +51,12 @@ function CoralLifeForms() {
                 <span className="detail-value">{coral.classification}</span>
               </div>
               <div className="detail-item">
-                <span className="detail-label">Subtype:</span>
-                <span className="detail-value">{coral.coral_subtype}</span>
-              </div>
-              <div className="detail-item">
                 <span className="detail-label">Type:</span>
                 <span className="detail-value">{coral.coral_type}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Subtype:</span>
+                <span className="detail-value">{coral.coral_subtype}</span>
               </div>
             </div>
 
