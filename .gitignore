@@ -9,7 +9,7 @@ backend/routes/__pycache__
 backend/utils/__pycache__
 backend/coral_uploads
 backend/coral_uploads/*
-
+backend/models/*
 
 # Test files
 backend/test_sendgrid.py
