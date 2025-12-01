@@ -15,7 +15,8 @@ class EmailService:
         self.support_email = os.getenv('SUPPORT_EMAIL', 'support@deepcoral.com')
         
         if not self.api_key:
-            current_app.logger.warning("SendGrid API key not configured")
+            # Use print instead of current_app.logger during initialization
+            print("Warning: SendGrid API key not configured")
             self.sg = None
         else:
             self.sg = SendGridAPIClient(api_key=self.api_key)
@@ -23,7 +24,10 @@ class EmailService:
     def send_email(self, to_emails, subject, html_content, plain_content=None):
         """Send email using SendGrid"""
         if not self.sg:
-            current_app.logger.error("SendGrid not configured, email not sent")
+            try:
+                current_app.logger.error("SendGrid not configured, email not sent")
+            except RuntimeError:
+                print("SendGrid not configured, email not sent")
             return False
         
         try:
@@ -44,11 +48,17 @@ class EmailService:
             
             # Send the email
             response = self.sg.send(mail)
-            current_app.logger.info(f"Email sent successfully. Status: {response.status_code}")
+            try:
+                current_app.logger.info(f"Email sent successfully. Status: {response.status_code}")
+            except RuntimeError:
+                print(f"Email sent successfully. Status: {response.status_code}")
             return True
             
         except Exception as e:
-            current_app.logger.error(f"Error sending email: {str(e)}")
+            try:
+                current_app.logger.error(f"Error sending email: {str(e)}")
+            except RuntimeError:
+                print(f"Error sending email: {str(e)}")
             return False
     
     def _html_to_text(self, html_content):

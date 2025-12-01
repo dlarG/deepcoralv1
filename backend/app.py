@@ -3,6 +3,7 @@ from flask_cors import CORS
 from config import Config
 from routes import init_routes
 import secrets
+from flask import send_from_directory
 
 def create_app():
     app = Flask(__name__)
@@ -36,7 +37,30 @@ def create_app():
     init_routes(app)
 
     
+    @app.route('/elements/<path:filename>')
+    def serve_elements(filename):
+        from flask import send_from_directory, Response
+        import os
+        
+        elements_path = os.path.join(app.root_path, 'elements')
+        os.makedirs(elements_path, exist_ok=True)
+        
+        file_path = os.path.join(elements_path, filename)
+        
+        if not os.path.exists(file_path):
+            app.logger.error(f"Video file not found: {file_path}")
+            return jsonify({'error': 'Video not found'}), 404
+        
+        # For video streaming support
+        return send_from_directory(elements_path, filename, mimetype='video/mp4')
     
+
+    @app.route('/coral_images/<path:filename>')
+    def serve_coral_image(filename):
+        """Serve coral images from backend coral_lifeforms folder"""
+        coral_images_path = os.path.join(app.root_path, 'coral_lifeforms')
+        return send_from_directory(coral_images_path, filename)
+
     @app.route('/profile_uploads/<path:filename>')
     def serve_profile_image(filename):
         from flask import send_from_directory

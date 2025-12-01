@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import VideoModal from './VideoModal';
 import {
   FiLogIn,
   FiUserPlus,
@@ -31,6 +32,11 @@ function HomePage() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [activeSection, setActiveSection] = useState("home");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showVideoModal, setShowVideoModal] = useState(false);
+
+  // API URL for video
+  const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+  const videoUrl = `${API_BASE_URL}/elements/demo-video.mp4`;
 
   useEffect(() => {
     document.title = "DeepCoral - AI-Powered Coral Reef Analysis";
@@ -204,10 +210,13 @@ function HomePage() {
 
           <div className="cta-buttons">
             <Link to="/register" className="cta-button primary">
-              <span>Start Free Trial</span>
+              <span>Get Started</span>
               <FiArrowRight className="button-arrow" />
             </Link>
-            <button className="cta-button secondary">
+            <button 
+              className="cta-button secondary"
+              onClick={() => setShowVideoModal(true)}
+            >
               <FiPlay className="button-icon" />
               <span>Watch Demo</span>
             </button>
@@ -418,6 +427,13 @@ function HomePage() {
           </div>
         </div>
       </footer>
+
+      {/* Video Modal */}
+      <VideoModal
+        isOpen={showVideoModal}
+        onClose={() => setShowVideoModal(false)}
+        videoUrl={videoUrl}
+      />
     </div>
   );
 }

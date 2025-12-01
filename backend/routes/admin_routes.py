@@ -8,6 +8,7 @@ from werkzeug.utils import secure_filename
 from flask import current_app
 from datetime import datetime
 import json
+import uuid
 from io import BytesIO
 from datetime import datetime
 import os
@@ -302,10 +303,10 @@ def add_coral():
         return jsonify({}), 200
     
     try:
-        print("Admin adding coral - Starting process...")  # Debug log
-        print(f"Session user ID: {session.get('user_id')}")  # Debug log
-        print(f"Form data: {request.form}")  # Debug log
-        print(f"Files: {request.files}")  # Debug log
+        print("Admin adding coral - Starting process...")
+        print(f"Session user ID: {session.get('user_id')}")
+        print(f"Form data: {request.form}")
+        print(f"Files: {request.files}")
         
         # Handle file upload
         image_filename = None
@@ -313,25 +314,22 @@ def add_coral():
             file = request.files['image']
             if file and file.filename != '':
                 filename = secure_filename(file.filename)
-                # Create unique filename with timestamp
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 file_ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else 'jpg'
                 unique_filename = f"coral_{timestamp}_{uuid.uuid4().hex[:8]}.{file_ext}"
                 
-                # Save to frontend/public/uploaded_coral_information
+                # Save to backend/coral_lifeforms directory
                 upload_path = os.path.join(
                     current_app.root_path, 
-                    '..', 'frontend', 'public', 'uploaded_coral_information'
+                    'coral_lifeforms'  # Changed from frontend path
                 )
                 
-                # Create directory if it doesn't exist
                 os.makedirs(upload_path, exist_ok=True)
                 
-                # Save the file
                 file_path = os.path.join(upload_path, unique_filename)
                 file.save(file_path)
                 image_filename = unique_filename
-                print(f"Image saved as: {image_filename}")  # Debug log
+                print(f"Image saved as: {image_filename}")
 
         # Get form data
         coral_data = {
@@ -444,14 +442,13 @@ def update_coral(coral_id):
         return jsonify({}), 200
     
     try:
-        print(f"Admin updating coral ID: {coral_id}")  # Debug log
-        print(f"Session user ID: {session.get('user_id')}")  # Debug log
+        print(f"Admin updating coral ID: {coral_id}")
+        print(f"Session user ID: {session.get('user_id')}")
         
         conn = get_db_connection()
         if conn is None:
             return jsonify({'error': 'Database connection failed'}), 500
 
-        # Get current coral data
         with conn.cursor() as cur:
             cur.execute("SELECT * FROM coral_information WHERE id = %s", (coral_id,))
             current_coral = cur.fetchone()
@@ -459,8 +456,7 @@ def update_coral(coral_id):
             if not current_coral:
                 return jsonify({'error': 'Coral not found'}), 404
 
-        # Handle file upload
-        image_filename = current_coral[9]  # Keep existing image
+        image_filename = current_coral[9]
         if 'image' in request.files:
             file = request.files['image']
             if file and file.filename != '':
@@ -468,7 +464,7 @@ def update_coral(coral_id):
                 if current_coral[9]:
                     old_image_path = os.path.join(
                         current_app.root_path, 
-                        '..', 'frontend', 'public', 'uploaded_coral_information',
+                        'coral_lifeforms',  # Changed from frontend path
                         current_coral[9]
                     )
                     if os.path.exists(old_image_path):
@@ -477,7 +473,6 @@ def update_coral(coral_id):
                         except:
                             pass
 
-                # Save new image
                 filename = secure_filename(file.filename)
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 file_ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else 'jpg'
@@ -485,7 +480,7 @@ def update_coral(coral_id):
                 
                 upload_path = os.path.join(
                     current_app.root_path, 
-                    '..', 'frontend', 'public', 'uploaded_coral_information'
+                    'coral_lifeforms'  # Changed from frontend path
                 )
                 os.makedirs(upload_path, exist_ok=True)
                 file.save(os.path.join(upload_path, unique_filename))
@@ -567,15 +562,14 @@ def delete_coral(coral_id):
         return jsonify({}), 200
     
     try:
-        print(f"Admin deleting coral ID: {coral_id}")  # Debug log
-        print(f"Session user ID: {session.get('user_id')}")  # Debug log
+        print(f"Admin deleting coral ID: {coral_id}")
+        print(f"Session user ID: {session.get('user_id')}")
         
         conn = get_db_connection()
         if conn is None:
             return jsonify({'error': 'Database connection failed'}), 500
 
         with conn.cursor() as cur:
-            # Get coral data to delete image file and for logging
             cur.execute("SELECT common_name, scientific_name, image FROM coral_information WHERE id = %s", (coral_id,))
             coral_data = cur.fetchone()
             
@@ -586,7 +580,7 @@ def delete_coral(coral_id):
             if coral_data[2]:
                 image_path = os.path.join(
                     current_app.root_path, 
-                    '..', 'frontend', 'public', 'uploaded_coral_information',
+                    'coral_lifeforms',  # Changed from frontend path
                     coral_data[2]
                 )
                 if os.path.exists(image_path):
