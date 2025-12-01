@@ -293,7 +293,6 @@ def delete_user(user_id):
         if conn:
             conn.close()
 
-@admin_bp.route('/admin/corals', methods=['POST', 'OPTIONS'])
 @cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
 @admin_required
 @login_required
@@ -303,33 +302,56 @@ def add_coral():
         return jsonify({}), 200
     
     try:
-        print("Admin adding coral - Starting process...")
-        print(f"Session user ID: {session.get('user_id')}")
-        print(f"Form data: {request.form}")
-        print(f"Files: {request.files}")
+        print("=" * 80)
+        print("🐠 ADMIN ADDING CORAL - STARTING PROCESS")
+        print(f"👤 Session user ID: {session.get('user_id')}")
+        print(f"📝 Form data: {request.form}")
+        print(f"📁 Files received: {list(request.files.keys())}")
+        print(f"🔍 Current working directory: {os.getcwd()}")
+        print(f"🏠 App root path: {current_app.root_path}")
         
         # Handle file upload
         image_filename = None
         if 'image' in request.files:
             file = request.files['image']
+            print(f"📷 Image file received: {file.filename}")
+            
             if file and file.filename != '':
                 filename = secure_filename(file.filename)
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 file_ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else 'jpg'
                 unique_filename = f"coral_{timestamp}_{uuid.uuid4().hex[:8]}.{file_ext}"
                 
-                # Save to backend/coral_lifeforms directory
-                upload_path = os.path.join(
-                    current_app.root_path, 
-                    'coral_lifeforms'  # Changed from frontend path
-                )
+                # Construct the upload path
+                upload_path = os.path.join(current_app.root_path, 'coral_lifeforms')
                 
+                print(f"📂 Upload path: {upload_path}")
+                print(f"📂 Upload path exists: {os.path.exists(upload_path)}")
+                
+                # Create directory if it doesn't exist
                 os.makedirs(upload_path, exist_ok=True)
+                print(f"✅ Directory created/verified: {upload_path}")
                 
+                # Full file path
                 file_path = os.path.join(upload_path, unique_filename)
+                print(f"💾 Saving file to: {file_path}")
+                
+                # Save the file
                 file.save(file_path)
+                
+                # Verify file was saved
+                if os.path.exists(file_path):
+                    file_size = os.path.getsize(file_path)
+                    print(f"✅ File saved successfully!")
+                    print(f"📊 File size: {file_size} bytes")
+                    print(f"📋 Files in directory: {os.listdir(upload_path)}")
+                else:
+                    print(f"❌ ERROR: File was not saved!")
+                
                 image_filename = unique_filename
-                print(f"Image saved as: {image_filename}")
+                print(f"📸 Image filename for DB: {image_filename}")
+        else:
+            print("⚠️  No image file in request")
 
         # Get form data
         coral_data = {

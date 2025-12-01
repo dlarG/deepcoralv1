@@ -3,6 +3,7 @@ from flask_cors import CORS
 from config import Config
 from routes import init_routes
 import secrets
+import os
 from flask import send_from_directory
 
 def create_app():
@@ -58,8 +59,30 @@ def create_app():
     @app.route('/coral_images/<path:filename>')
     def serve_coral_image(filename):
         """Serve coral images from backend coral_lifeforms folder"""
-        coral_images_path = os.path.join(app.root_path, 'coral_lifeforms')
-        return send_from_directory(coral_images_path, filename)
+        try:
+            import os
+            coral_images_path = os.path.join(app.root_path, 'coral_lifeforms')
+            
+            # Create directory if it doesn't exist
+            os.makedirs(coral_images_path, exist_ok=True)
+            
+            # Log the request
+            app.logger.info(f"🔍 Serving coral image: {filename}")
+            app.logger.info(f"📁 From directory: {coral_images_path}")
+            
+            # Check if file exists
+            file_path = os.path.join(coral_images_path, filename)
+            if not os.path.exists(file_path):
+                app.logger.error(f"❌ Image not found: {file_path}")
+                app.logger.info(f"📋 Available files: {os.listdir(coral_images_path)}")
+                return jsonify({'error': 'Image not found'}), 404
+            
+            app.logger.info(f"✅ Image found, serving: {filename}")
+            return send_from_directory(coral_images_path, filename)
+        
+        except Exception as e:
+            app.logger.error(f"❌ Error serving coral image: {str(e)}")
+            return jsonify({'error': 'Error serving image'}), 500
 
     @app.route('/profile_uploads/<path:filename>')
     def serve_profile_image(filename):
