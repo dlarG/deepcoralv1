@@ -4,10 +4,14 @@ from sendgrid.helpers.mail import Mail, Email, To, Content
 from datetime import datetime
 import json
 from flask import current_app
+import sys
+sys.path.append('..')
+from aws_secrets import get_sendgrid_api_key
 
 class EmailService:
     def __init__(self):
-        self.api_key = os.getenv('SENDGRID_API_KEY')
+        # Get API key from AWS Secrets Manager (with env var fallback)
+        self.api_key = get_sendgrid_api_key()
         self.from_email = os.getenv('SENDGRID_FROM_EMAIL', 'noreply@deepcoral.com')
         self.from_name = os.getenv('SENDGRID_FROM_NAME', 'DeepCoral AI System')
         self.company_name = os.getenv('COMPANY_NAME', 'DeepCoral AI')

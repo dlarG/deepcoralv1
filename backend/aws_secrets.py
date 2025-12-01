@@ -38,8 +38,9 @@ def get_secret():
     return secret_dict
 
 
-# Cache the secret to avoid multiple AWS API calls
-_cached_secret = None
+# Cache the secrets to avoid multiple AWS API calls
+_cached_db_secret = None
+_cached_sendgrid_secret = None
 
 def get_db_credentials():
     """
@@ -49,7 +50,7 @@ def get_db_credentials():
     Returns:
         dict: Database credentials
     """
-    global _cached_secret
+    global _cached_db_secret
     
     # If running locally (development), use environment variables
     if os.getenv('FLASK_ENV') != 'production' or os.getenv('USE_ENV_DB', 'False').lower() == 'true':
@@ -62,15 +63,15 @@ def get_db_credentials():
         }
     
     # Use cached secret if available
-    if _cached_secret:
-        return _cached_secret
+    if _cached_db_secret:
+        return _cached_db_secret
     
     # Try to get from Secrets Manager
     try:
-        _cached_secret = get_secret()
-        return _cached_secret
+        _cached_db_secret = get_secret()
+        return _cached_db_secret
     except Exception as e:
-        print(f"Failed to retrieve from Secrets Manager, falling back to env vars: {e}")
+        print(f"Failed to retrieve DB from Secrets Manager, falling back to env vars: {e}")
         # Fallback to environment variables
         return {
             'host': os.getenv('DB_HOST'),
@@ -79,3 +80,49 @@ def get_db_credentials():
             'password': os.getenv('DB_PASSWORD'),
             'dbname': os.getenv('DB_NAME')
         }
+
+
+def get_sendgrid_api_key():
+    """
+    Get SendGrid API key from AWS Secrets Manager.
+    Falls back to environment variable if Secrets Manager fails.
+    
+    Returns:
+        str: SendGrid API key
+    """
+    global _cached_sendgrid_secret
+    
+    # If running locally (development), use environment variable
+    if os.getenv('FLASK_ENV') != 'production' or os.getenv('USE_ENV_SENDGRID', 'False').lower() == 'true':
+        return os.getenv('SENDGRID_API_KEY')
+    
+    # Use cached secret if available
+    if _cached_sendgrid_secret:
+        return _cached_sendgrid_secret
+    
+    # Try to get from Secrets Manager
+    secret_name = "prod/sendgrid/apikey"
+    region_name = "ap-southeast-2"
+    
+    try:
+        session = boto3.session.Session()
+        client = session.client(
+            service_name='secretsmanager',
+            region_name=region_name
+        )
+        
+        get_secret_value_response = client.get_secret_value(
+            SecretId=secret_name
+        )
+        
+        secret = get_secret_value_response['SecretString']
+        secret_dict = json.loads(secret)
+        
+        # Cache and return the API key
+        _cached_sendgrid_secret = secret_dict.get('api_key')
+        return _cached_sendgrid_secret
+        
+    except Exception as e:
+        print(f"Failed to retrieve SendGrid from Secrets Manager, falling back to env var: {e}")
+        # Fallback to environment variable
+        return os.getenv('SENDGRID_API_KEY')
