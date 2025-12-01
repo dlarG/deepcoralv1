@@ -190,9 +190,9 @@ COLOR_MAP = {
     8: [247, 37, 133]       # Submassive - #F72585
 }
 
-UPLOAD_FOLDER = "../backend/coral_uploads"
-OUTPUT_FOLDER = "../backend/coral_uploads/outputs"
-MASKS_FOLDER = "../backend/coral_uploads/masks"
+UPLOAD_FOLDER = "coral_uploads"
+OUTPUT_FOLDER = "coral_uploads/outputs"
+MASKS_FOLDER = "coral_uploads/masks"
 
 # Ensure directories exist
 for folder in [UPLOAD_FOLDER, OUTPUT_FOLDER, MASKS_FOLDER]:
