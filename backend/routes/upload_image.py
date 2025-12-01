@@ -67,7 +67,8 @@ if PYTORCH_AVAILABLE:
         print(f"✅ Ultralytics imported successfully")
         
         # Try to load the YOLO model
-        model_path = "/app/models/autocrop_yolov11_best.pt" # /app/ path is for docker
+        BASE_DIR = Path(__file__).parent.parent
+        model_path = BASE_DIR / "models" / "autocrop_yolov11_best.pt"
         
         print(f"🔄 Attempting to load YOLO model from: {model_path}")
         
