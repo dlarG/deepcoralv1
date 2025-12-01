@@ -126,3 +126,52 @@ def get_sendgrid_api_key():
         print(f"Failed to retrieve SendGrid from Secrets Manager, falling back to env var: {e}")
         # Fallback to environment variable
         return os.getenv('SENDGRID_API_KEY')
+
+
+# Cache for reCAPTCHA secret
+_cached_recaptcha_secret = None
+
+def get_recaptcha_secret():
+    """
+    Get reCAPTCHA secret key from AWS Secrets Manager.
+    Falls back to environment variable if Secrets Manager fails.
+    
+    Returns:
+        str: reCAPTCHA secret key
+    """
+    global _cached_recaptcha_secret
+    
+    # If running locally (development), use environment variable
+    if os.getenv('FLASK_ENV') != 'production' or os.getenv('USE_ENV_RECAPTCHA', 'False').lower() == 'true':
+        return os.getenv('RECAPTCHA_SECRET')
+    
+    # Use cached secret if available
+    if _cached_recaptcha_secret:
+        return _cached_recaptcha_secret
+    
+    # Try to get from Secrets Manager
+    secret_name = "prod/recaptcha/secret"
+    region_name = "ap-southeast-2"
+    
+    try:
+        session = boto3.session.Session()
+        client = session.client(
+            service_name='secretsmanager',
+            region_name=region_name
+        )
+        
+        get_secret_value_response = client.get_secret_value(
+            SecretId=secret_name
+        )
+        
+        secret = get_secret_value_response['SecretString']
+        secret_dict = json.loads(secret)
+        
+        # Cache and return the secret key
+        _cached_recaptcha_secret = secret_dict.get('secret_key')
+        return _cached_recaptcha_secret
+        
+    except Exception as e:
+        print(f"Failed to retrieve reCAPTCHA from Secrets Manager, falling back to env var: {e}")
+        # Fallback to environment variable
+        return os.getenv('RECAPTCHA_SECRET')

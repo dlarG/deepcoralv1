@@ -41,7 +41,8 @@ cat > /tmp/secrets-policy.json << 'EOF'
       ],
       "Resource": [
         "arn:aws:secretsmanager:ap-southeast-2:*:secret:prod/mydb/postgres-*",
-        "arn:aws:secretsmanager:ap-southeast-2:*:secret:prod/sendgrid/apikey-*"
+        "arn:aws:secretsmanager:ap-southeast-2:*:secret:prod/sendgrid/apikey-*",
+        "arn:aws:secretsmanager:ap-southeast-2:*:secret:prod/recaptcha/secret-*"
       ]
     }
   ]

@@ -46,8 +46,9 @@ class Config:
     DB_PASSWORD = os.getenv('DB_PASSWORD')
     DB_NAME = os.getenv('DB_NAME') 
     
-    # reCAPTCHA
-    RECAPTCHA_SECRET = os.getenv('RECAPTCHA_SECRET')
+    # reCAPTCHA - Load from AWS Secrets Manager in production
+    from aws_secrets import get_recaptcha_secret
+    RECAPTCHA_SECRET = get_recaptcha_secret()
     
     # CORS
     cors_origins_str = os.getenv('CORS_ORIGINS', 'http://localhost:3000')
