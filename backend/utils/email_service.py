@@ -12,11 +12,11 @@ class EmailService:
     def __init__(self):
         # Get API key from AWS Secrets Manager (with env var fallback)
         self.api_key = get_sendgrid_api_key()
-        self.from_email = os.getenv('SENDGRID_FROM_EMAIL', 'noreply@deepcoral.com')
+        self.from_email = os.getenv('SENDGRID_FROM_EMAIL', 'noreply@em2602.deepcoral.site')
         self.from_name = os.getenv('SENDGRID_FROM_NAME', 'DeepCoral AI System')
         self.company_name = os.getenv('COMPANY_NAME', 'DeepCoral AI')
-        self.company_website = os.getenv('COMPANY_WEBSITE', 'https://deepcoral.com')
-        self.support_email = os.getenv('SUPPORT_EMAIL', 'support@deepcoral.com')
+        self.company_website = os.getenv('COMPANY_WEBSITE', 'https://deepcoral.site')
+        self.support_email = os.getenv('SUPPORT_EMAIL', 'support@deepcoral.site')
         
         if not self.api_key:
             # Use print instead of current_app.logger during initialization
