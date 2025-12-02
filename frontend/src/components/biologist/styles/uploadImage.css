@@ -2640,7 +2640,7 @@ override-details p {
 }
 
 .location-selector-modal {
-  background: white;
+  background: var(--background-primary, white);
   border-radius: 16px;
   width: 100%;
   max-width: 1200px;
@@ -2649,17 +2649,59 @@ override-details p {
   box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
 }
 
+.dark-mode .location-selector-modal {
+  background: var(--background-primary, #1a202c);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+}
+
 .location-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 1.5rem 2rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
   background: linear-gradient(135deg, #f8fafc, #e2e8f0);
 }
 
+.dark-mode .location-header {
+  border-bottom: 1px solid var(--border-color-dark, #4a5568);
+  background: linear-gradient(135deg, #2d3748, #1a202c);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: var(--text-primary, #1a202c);
+}
+
+.dark-mode .header-left {
+  color: var(--text-primary-dark, #f7fafc);
+}
+
+.header-left h2 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary, #1a202c);
+}
+
+.dark-mode .header-left h2 {
+  color: var(--text-primary-dark, #f7fafc);
+}
+
+.header-left p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-secondary, #64748b);
+}
+
+.dark-mode .header-left p {
+  color: var(--text-secondary-dark, #94a3b8);
+}
+
 .close-btn {
-  background: #f3f4f6;
+  background: var(--background-secondary, #f3f4f6);
   border: none;
   border-radius: 50%;
   width: 40px;
@@ -2669,11 +2711,21 @@ override-details p {
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s ease;
+  color: var(--text-primary, #374151);
+}
+
+.dark-mode .close-btn {
+  background: var(--background-tertiary, #2d3748);
+  color: var(--text-primary-dark, #f7fafc);
 }
 
 .close-btn:hover {
-  background: #e5e7eb;
+  background: var(--background-tertiary, #e5e7eb);
   transform: scale(1.1);
+}
+
+.dark-mode .close-btn:hover {
+  background: var(--background-secondary, #4a5568);
 }
 
 .location-content {
@@ -2682,8 +2734,13 @@ override-details p {
 
 .map-controls {
   padding: 1.5rem 2rem;
-  background: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--background-secondary, #f9fafb);
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+
+.dark-mode .map-controls {
+  background: var(--background-secondary, #2d3748);
+  border-bottom: 1px solid var(--border-color-dark, #4a5568);
 }
 
 .search-section {
@@ -2695,9 +2752,15 @@ override-details p {
 .search-bar {
   flex: 1;
   display: flex;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-color, #d1d5db);
   border-radius: 8px;
   overflow: hidden;
+  background: var(--background-primary, white);
+}
+
+.dark-mode .search-bar {
+  border: 1px solid var(--border-color-dark, #4a5568);
+  background: var(--background-primary, #1a202c);
 }
 
 .search-bar input {
@@ -2706,6 +2769,20 @@ override-details p {
   border: none;
   outline: none;
   font-size: 0.875rem;
+  background: transparent;
+  color: var(--text-primary, #374151);
+}
+
+.dark-mode .search-bar input {
+  color: var(--text-primary-dark, #f7fafc);
+}
+
+.search-bar input::placeholder {
+  color: var(--text-muted, #9ca3af);
+}
+
+.dark-mode .search-bar input::placeholder {
+  color: var(--text-muted-dark, #718096);
 }
 
 .search-btn,
@@ -2753,13 +2830,19 @@ override-details p {
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1rem;
-  border: 1px solid #d1d5db;
-  background: white;
+  border: 1px solid var(--border-color, #d1d5db);
+  background: var(--background-primary, white);
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
   font-weight: 500;
-  color: var(--color-dark);
+  color: var(--text-primary, #374151);
+}
+
+.dark-mode .mode-btn {
+  border: 1px solid var(--border-color-dark, #4a5568);
+  background: var(--background-primary, #1a202c);
+  color: var(--text-primary-dark, #f7fafc);
 }
 
 .mode-btn:hover {
@@ -2781,7 +2864,22 @@ override-details p {
   background: #dbeafe;
   border: 1px solid #93c5fd;
   border-radius: 8px;
-  color: white;
+  color: #1e40af;
+}
+
+.dark-mode .selected-location-info {
+  background: #1e3a8a;
+  border: 1px solid #3b82f6;
+  color: #dbeafe;
+}
+
+.selected-location-info strong {
+  color: inherit;
+}
+
+.selected-location-info p {
+  color: inherit;
+  opacity: 0.9;
 }
 
 .location-stats {
@@ -2821,8 +2919,13 @@ override-details p {
 
 .existing-locations-panel {
   padding: 1.5rem 2rem;
-  background: #f9fafb;
-  border-top: 1px solid #e5e7eb;
+  background: var(--background-secondary, #f9fafb);
+  border-top: 1px solid var(--border-color, #e5e7eb);
+}
+
+.dark-mode .existing-locations-panel {
+  background: var(--background-secondary, #2d3748);
+  border-top: 1px solid var(--border-color-dark, #4a5568);
 }
 
 .existing-locations-panel h3 {
@@ -2832,7 +2935,11 @@ override-details p {
   margin: 0 0 1rem 0;
   font-size: 1rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--text-primary, #374151);
+}
+
+.dark-mode .existing-locations-panel h3 {
+  color: var(--text-primary-dark, #f7fafc);
 }
 
 .locations-list {
@@ -2855,11 +2962,16 @@ override-details p {
   justify-content: space-between;
   align-items: center;
   padding: 0.75rem;
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--background-primary, white);
+  border: 1px solid var(--border-color, #e5e7eb);
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
+}
+
+.dark-mode .location-item {
+  background: var(--background-primary, #1a202c);
+  border: 1px solid var(--border-color-dark, #4a5568);
 }
 
 .location-item:hover {
@@ -2875,13 +2987,21 @@ override-details p {
 .location-info strong {
   display: block;
   margin-bottom: 0.25rem;
-  color: #374151;
+  color: var(--text-primary, #374151);
+}
+
+.dark-mode .location-info strong {
+  color: var(--text-primary-dark, #f7fafc);
 }
 
 .location-info p {
   margin: 0;
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--text-secondary, #6b7280);
+}
+
+.dark-mode .location-info p {
+  color: var(--text-secondary-dark, #a0aec0);
 }
 
 .coordinates {
@@ -2902,14 +3022,23 @@ override-details p {
   justify-content: space-between;
   align-items: center;
   padding: 1.5rem 2rem;
-  border-top: 1px solid #e5e7eb;
-  background: #f9fafb;
+  border-top: 1px solid var(--border-color, #e5e7eb);
+  background: var(--background-secondary, #f9fafb);
+}
+
+.dark-mode .location-footer {
+  border-top: 1px solid var(--border-color-dark, #4a5568);
+  background: var(--background-secondary, #2d3748);
 }
 
 .footer-info p {
   margin: 0;
-  color: #6b7280;
+  color: var(--text-secondary, #6b7280);
   font-size: 0.875rem;
+}
+
+.dark-mode .footer-info p {
+  color: var(--text-secondary-dark, #a0aec0);
 }
 
 .footer-actions {
