@@ -618,11 +618,24 @@ function AddImage() {
 
     setIsCancelling(true);
     try {
+      // Get CSRF token first
+      const csrfResponse = await fetch(
+        `${process.env.REACT_APP_API_URL}/csrf-token`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
+      const csrfData = await csrfResponse.json();
+
       const response = await fetch(
         `${process.env.REACT_APP_API_URL}/cancel_batch/${sessionId}`,
         {
           method: "POST",
           credentials: "include",
+          headers: {
+            "X-CSRF-Token": csrfData.csrf_token,
+          },
         }
       );
 
@@ -630,7 +643,7 @@ function AddImage() {
         const result = await response.json();
         console.log("Cancellation requested:", result.message);
       } else {
-        console.error("Failed to cancel operation");
+        console.error("Failed to cancel operation:", response.status);
       }
     } catch (error) {
       console.error("Error cancelling operation:", error);
@@ -739,6 +752,41 @@ function AddImage() {
     setBatchLoading(true);
     setShowBatchChart(false);
     setBatchProgress({ current: 0, total: validImages.length });
+
+    // Start listening to real-time progress updates via SSE
+    const progressUrl = `${process.env.REACT_APP_API_URL}/batch_progress/${generatedSessionId}`;
+    const es = new EventSource(progressUrl);
+
+    es.onmessage = function (event) {
+      try {
+        const progressData = JSON.parse(event.data);
+        console.log('Progress update:', progressData);
+        setBatchProgress({
+          current: progressData.current || 0,
+          total: progressData.total || validImages.length,
+        });
+
+        // Check if cancelled
+        if (progressData.cancelled) {
+          console.log('Operation cancelled via progress stream');
+          es.close();
+        }
+      } catch (e) {
+        console.error("Error parsing progress data:", e);
+      }
+    };
+
+    es.onerror = function (event) {
+      console.log("EventSource connection closed");
+      es.close();
+    };
+
+    // Close EventSource after 5 minutes
+    setTimeout(() => {
+      if (es.readyState !== EventSource.CLOSED) {
+        es.close();
+      }
+    }, 300000);
 
     try {
       const csrfResponse = await fetch(
@@ -924,6 +972,10 @@ function AddImage() {
       console.error("Batch analysis error:", error);
       alert("Batch analysis failed: " + error.message);
     } finally {
+      // Close EventSource if still open
+      if (es && es.readyState !== EventSource.CLOSED) {
+        es.close();
+      }
       setBatchLoading(false);
       setAnalysisInProgress(false); // Re-enable button
       setBatchProgress({ current: 0, total: 0 });
