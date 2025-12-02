@@ -1922,6 +1922,15 @@ chart-wrapper.full-width {
   }
 }
 
+.dark-mode .coral-coverage-table {
+  background-color: var(--color-dark);
+  color: #ffffff;
+}
+
+.dark-mode .coral-row {
+  color: #ffffff;
+}
+
 @media (max-width: 768px) {
   .distribution-container {
     background: #ffffff;

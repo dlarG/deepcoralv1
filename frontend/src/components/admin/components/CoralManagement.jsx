@@ -34,6 +34,8 @@ function CoralManagement(props = {}) {
     closeCoralModal = props.closeCoralModal || adminHook.closeCoralModal,
     handleCoralSubmit = props.handleCoralSubmit || adminHook.handleCoralSubmit,
     handleDeleteCoral = props.handleDeleteCoral || adminHook.handleDeleteCoral,
+    getCoralClassCodeOptions = props.getCoralClassCodeOptions ||
+      adminHook.getCoralClassCodeOptions,
     showModal = props.showModal || adminHook.showModal,
     modalConfig = props.modalConfig || adminHook.modalConfig,
     setShowModal = props.setShowModal || adminHook.setShowModal,
@@ -70,7 +72,7 @@ function CoralManagement(props = {}) {
         ? `/uploaded_coral_information/${coral.image}`
         : "/default-coral.jpg",
       alt: coral.common_name,
-      title: `${coral.common_name} (${coral.scientific_name})`,
+      title: `${coral.common_name} (${coral.coral_class_code})`,
       filename: coral.common_name.replace(/\s+/g, "-").toLowerCase(),
     });
     setImageViewerOpen(true);
@@ -169,7 +171,7 @@ function CoralManagement(props = {}) {
                     <h3 className="coral-card-title">
                       {coral.common_name}
                       <span className="coral-card-scientific">
-                        ({coral.scientific_name})
+                        ({coral.coral_class_code})
                       </span>
                     </h3>
                   </div>
@@ -351,16 +353,48 @@ function CoralManagement(props = {}) {
                           <label htmlFor="coral_type">
                             Coral Type <span className="required">*</span>
                           </label>
-                          <input
-                            type="text"
+                          <select
                             id="coral_type"
                             name="coral_type"
                             value={coralFormData.coral_type}
                             onChange={handleCoralInputChange}
                             required
-                            placeholder="e.g., Hard Coral, Soft Coral"
-                            className="form-input"
-                          />
+                            className="form-select"
+                          >
+                            <option value="">Select Coral Type</option>
+                            <option value="Acropora">Acropora</option>
+                            <option value="Non-acropora">Non-acropora</option>
+                          </select>
+                        </div>
+
+                        <div className="form-group">
+                          <label htmlFor="coral_class_code">
+                            Coral Class Code <span className="required">*</span>
+                          </label>
+                          <select
+                            id="coral_class_code"
+                            name="coral_class_code"
+                            value={coralFormData.coral_class_code}
+                            onChange={handleCoralInputChange}
+                            required
+                            disabled={!coralFormData.coral_type}
+                            className={`form-select ${
+                              !coralFormData.coral_type ? "disabled" : ""
+                            }`}
+                          >
+                            <option value="">
+                              {!coralFormData.coral_type
+                                ? "Select Coral Type first"
+                                : "Select Class Code"}
+                            </option>
+                            {getCoralClassCodeOptions(
+                              coralFormData.coral_type
+                            ).map((code) => (
+                              <option key={code} value={code}>
+                                {code}
+                              </option>
+                            ))}
+                          </select>
                         </div>
 
                         <div className="form-group">
@@ -421,7 +455,8 @@ function CoralManagement(props = {}) {
 
                       <div className="form-group">
                         <label htmlFor="scientific_name">
-                          Scientific Name <span className="required">*</span>
+                          Scientific Name{" "}
+                          <span className="optional">(optional)</span>
                         </label>
                         <input
                           type="text"
@@ -429,7 +464,6 @@ function CoralManagement(props = {}) {
                           name="scientific_name"
                           value={coralFormData.scientific_name}
                           onChange={handleCoralInputChange}
-                          required
                           placeholder="e.g., Acropora cervicornis"
                           className="form-input scientific"
                         />

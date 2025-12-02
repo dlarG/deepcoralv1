@@ -262,11 +262,11 @@
   margin: 0;
   font-size: 1rem;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--text-light);
 }
 
 .dark-mode .dropdown-header h3 {
-  color: var(--text-light);
+  color: var(--text-primary);
 }
 
 .mark-all-read {

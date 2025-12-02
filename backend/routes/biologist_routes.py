@@ -25,6 +25,11 @@ def add_coral():
         return jsonify({}), 200
     
     try:
+        print("Biologist adding coral - Starting process...")  # Debug log
+        print(f"Session user ID: {session.get('user_id')}")  # Debug log
+        print(f"Form data: {request.form}")  # Debug log
+        print(f"Files: {request.files}")  # Debug log
+        
         # Handle file upload
         image_filename = None
         if 'image' in request.files:
@@ -47,6 +52,7 @@ def add_coral():
                 file_path = os.path.join(upload_path, unique_filename)
                 file.save(file_path)
                 image_filename = unique_filename
+                print(f"Image saved as: {image_filename}")  # Debug log
 
         # Get form data
         coral_data = {
@@ -56,16 +62,19 @@ def add_coral():
             'scientific_name': request.form.get('scientific_name', '').strip(),
             'common_name': request.form.get('common_name', '').strip(),
             'identification': request.form.get('identification', '').strip(),
+            'coral_class_code': request.form.get('coral_class_code', '').strip(),
             'image': image_filename
         }
         
+        print(f"Processed coral data: {coral_data}")  # Debug log
 
-        # Validate required fields
+        # Validate required fields (scientific_name is now optional)
         required_fields = ['coral_type', 'coral_subtype', 'classification', 
-                          'scientific_name', 'common_name', 'identification']
+                          'common_name', 'identification', 'coral_class_code']
         missing_fields = [field for field in required_fields if not coral_data.get(field)]
         
         if missing_fields:
+            print(f"Missing fields: {missing_fields}")  # Debug log
             return jsonify({
                 'error': f'Missing required fields: {", ".join(missing_fields)}'
             }), 400
@@ -73,6 +82,7 @@ def add_coral():
         # Database connection
         conn = get_db_connection()
         if conn is None:
+            print("Database connection failed")  # Debug log
             return jsonify({'error': 'Database connection failed'}), 500
 
         with conn.cursor() as cur:
@@ -80,8 +90,8 @@ def add_coral():
             insert_query = """
                 INSERT INTO coral_information 
                 (coral_type, coral_subtype, classification, scientific_name, 
-                 common_name, identification, image) 
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                 common_name, identification, coral_class_code, image) 
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING *
             """
             
@@ -89,22 +99,24 @@ def add_coral():
                 coral_data['coral_type'],
                 coral_data['coral_subtype'], 
                 coral_data['classification'],
-                coral_data['scientific_name'],
+                coral_data['scientific_name'] if coral_data['scientific_name'] else None,
                 coral_data['common_name'],
                 coral_data['identification'],
+                coral_data['coral_class_code'],
                 coral_data['image']
             ))
             
             new_coral = cur.fetchone()
             conn.commit()
             
+            print(f"Coral inserted with ID: {new_coral[0]}")  # Debug log
 
             # Log the activity
             try:
                 log_coral_info_action(
                     user_id=session.get('user_id'),
                     action='created',
-                    coral_name=f"{coral_data['common_name']} ({coral_data['scientific_name']})"
+                    coral_name=f"{coral_data['common_name']} ({coral_data['coral_class_code']})"
                 )
             except Exception as log_error:
                 print(f"Logging error (non-critical): {log_error}")
@@ -120,9 +132,11 @@ def add_coral():
                 'identification': new_coral[6],
                 'created_at': new_coral[7].isoformat() if new_coral[7] else None,
                 'updated_at': new_coral[8].isoformat() if new_coral[8] else None,
-                'image': new_coral[9]
+                'image': new_coral[9],
+                'coral_class_code': new_coral[10] if len(new_coral) > 10 else None
             }
             
+            print(f"Returning coral response: {coral_response}")  # Debug log
             
             return jsonify({
                 'success': True,
@@ -138,6 +152,7 @@ def add_coral():
     except Exception as e:
         print(f"General error adding coral: {e}")
         import traceback
+        traceback.print_exc()  # Print full stack trace
         return jsonify({'error': f'Internal server error: {str(e)}'}), 500
     finally:
         if 'conn' in locals() and conn:
@@ -154,6 +169,9 @@ def update_coral(coral_id):
         return jsonify({}), 200
     
     try:
+        print(f"Biologist updating coral ID: {coral_id}")  # Debug log
+        print(f"Session user ID: {session.get('user_id')}")  # Debug log
+        
         conn = get_db_connection()
         if conn is None:
             return jsonify({'error': 'Database connection failed'}), 500
@@ -167,7 +185,7 @@ def update_coral(coral_id):
                 return jsonify({'error': 'Coral not found'}), 404
 
         # Handle file upload
-        image_filename = current_coral[9]  # Keep existing image
+        image_filename = current_coral[9]  # Keep existing image (assuming image is at index 9)
         if 'image' in request.files:
             file = request.files['image']
             if file and file.filename != '':
@@ -179,11 +197,16 @@ def update_coral(coral_id):
                         current_coral[9]
                     )
                     if os.path.exists(old_image_path):
-                        os.remove(old_image_path)
+                        try:
+                            os.remove(old_image_path)
+                        except:
+                            pass
 
                 # Save new image
                 filename = secure_filename(file.filename)
-                unique_filename = f"{uuid.uuid4().hex}_{filename}"
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                file_ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else 'jpg'
+                unique_filename = f"coral_{timestamp}_{uuid.uuid4().hex[:8]}.{file_ext}"
                 
                 upload_path = os.path.join(
                     current_app.root_path, 
@@ -199,16 +222,17 @@ def update_coral(coral_id):
                 UPDATE coral_information 
                 SET coral_type = %s, coral_subtype = %s, classification = %s,
                     scientific_name = %s, common_name = %s, identification = %s,
-                    image = %s, updated_at = CURRENT_TIMESTAMP
+                    coral_class_code = %s, image = %s, updated_at = CURRENT_TIMESTAMP
                 WHERE id = %s
                 RETURNING *
             """, (
                 request.form.get('coral_type'),
                 request.form.get('coral_subtype'),
                 request.form.get('classification'),
-                request.form.get('scientific_name'),
+                request.form.get('scientific_name') if request.form.get('scientific_name') else None,
                 request.form.get('common_name'),
                 request.form.get('identification'),
+                request.form.get('coral_class_code'),
                 image_filename,
                 coral_id
             ))
@@ -217,11 +241,14 @@ def update_coral(coral_id):
             conn.commit()
 
             # Log the activity
-            log_coral_info_action(
-                user_id=session.get('user_id'),
-                action='updated',
-                coral_name=f"{updated_coral[5]} ({updated_coral[4]})"
-            )
+            try:
+                log_coral_info_action(
+                    user_id=session.get('user_id'),
+                    action='updated',
+                    coral_name=f"{updated_coral[5]} ({updated_coral[10] if len(updated_coral) > 10 else updated_coral[4]})"
+                )
+            except Exception as log_error:
+                print(f"Logging error (non-critical): {log_error}")
             
             coral_response = {
                 'id': updated_coral[0],
@@ -231,9 +258,10 @@ def update_coral(coral_id):
                 'scientific_name': updated_coral[4],
                 'common_name': updated_coral[5],
                 'identification': updated_coral[6],
-                'created_at': updated_coral[7],
-                'updated_at': updated_coral[8],
-                'image': updated_coral[9]
+                'created_at': updated_coral[7].isoformat() if updated_coral[7] else None,
+                'updated_at': updated_coral[8].isoformat() if updated_coral[8] else None,
+                'image': updated_coral[9],
+                'coral_class_code': updated_coral[10] if len(updated_coral) > 10 else None
             }
             
             return jsonify({
@@ -242,11 +270,18 @@ def update_coral(coral_id):
                 'coral': coral_response
             }), 200
 
+    except psycopg2.Error as db_error:
+        print(f"Database error: {db_error}")
+        if 'conn' in locals():
+            conn.rollback()
+        return jsonify({'error': f'Database error: {str(db_error)}'}), 500
     except Exception as e:
         print(f"Error updating coral: {e}")
-        return jsonify({'error': str(e)}), 500
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
     finally:
-        if 'conn' in locals():
+        if 'conn' in locals() and conn:
             conn.close()
 
 @biologist_bp.route('/biologist/corals/<int:coral_id>', methods=['DELETE', 'OPTIONS'])
@@ -259,24 +294,27 @@ def delete_coral(coral_id):
         return jsonify({}), 200
     
     try:
+        print(f"Biologist deleting coral ID: {coral_id}")  # Debug log
+        print(f"Session user ID: {session.get('user_id')}")  # Debug log
+        
         conn = get_db_connection()
         if conn is None:
             return jsonify({'error': 'Database connection failed'}), 500
 
         with conn.cursor() as cur:
             # Get coral data to delete image file and for logging
-            cur.execute("SELECT common_name, scientific_name, image FROM coral_information WHERE id = %s", (coral_id,))
+            cur.execute("SELECT common_name, scientific_name, coral_class_code, image FROM coral_information WHERE id = %s", (coral_id,))
             coral_data = cur.fetchone()
             
             if not coral_data:
                 return jsonify({'error': 'Coral not found'}), 404
 
             # Delete image file if exists
-            if coral_data[2]:
+            if coral_data[3]:
                 image_path = os.path.join(
                     current_app.root_path, 
                     '..', 'frontend', 'public', 'uploaded_coral_information',
-                    coral_data[2]
+                    coral_data[3]
                 )
                 if os.path.exists(image_path):
                     try:
@@ -288,23 +326,33 @@ def delete_coral(coral_id):
             cur.execute("DELETE FROM coral_information WHERE id = %s", (coral_id,))
             conn.commit()
 
-            # Log the activity
-            log_coral_info_action(
-                user_id=session.get('user_id'),
-                action='deleted',
-                coral_name=f"{coral_data[0]} ({coral_data[1]})"
-            )
+            # Log the activity - use coral_class_code instead of scientific_name
+            try:
+                log_coral_info_action(
+                    user_id=session.get('user_id'),
+                    action='deleted',
+                    coral_name=f"{coral_data[0]} ({coral_data[2] or coral_data[1]})"  # Use coral_class_code if available, fallback to scientific_name
+                )
+            except Exception as log_error:
+                print(f"Logging error (non-critical): {log_error}")
             
             return jsonify({
                 'success': True,
                 'message': 'Coral information deleted successfully'
             }), 200
 
+    except psycopg2.Error as db_error:
+        print(f"Database error: {db_error}")
+        if 'conn' in locals():
+            conn.rollback()
+        return jsonify({'error': f'Database error: {str(db_error)}'}), 500
     except Exception as e:
         print(f"Error deleting coral: {e}")
-        return jsonify({'error': str(e)}), 500
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
     finally:
-        if 'conn' in locals():
+        if 'conn' in locals() and conn:
             conn.close()
 
 @biologist_bp.route('/biologist/users', methods=["GET"])

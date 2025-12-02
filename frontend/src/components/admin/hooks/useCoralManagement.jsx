@@ -15,6 +15,7 @@ export default function useCoralManagement() {
     scientific_name: "",
     common_name: "",
     identification: "",
+    coral_class_code: "",
     image: null,
   });
   const [imagePreview, setImagePreview] = useState(null);
@@ -79,7 +80,17 @@ export default function useCoralManagement() {
 
   const handleCoralInputChange = (e) => {
     const { name, value } = e.target;
-    setCoralFormData((prev) => ({ ...prev, [name]: value }));
+
+    // Reset coral_class_code when coral_type changes
+    if (name === "coral_type") {
+      setCoralFormData((prev) => ({
+        ...prev,
+        [name]: value,
+        coral_class_code: "", // Reset coral class code when type changes
+      }));
+    } else {
+      setCoralFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleCoralImageChange = (e) => {
@@ -123,17 +134,22 @@ export default function useCoralManagement() {
         scientific_name: "",
         common_name: "",
         identification: "",
+        coral_class_code: "",
         image: null,
       });
       setImagePreview(null);
     } else if (mode === "edit" && coral) {
+      console.log("Editing coral:", coral); // Debug log
+      console.log("Coral type from DB:", coral.coral_type); // Debug log
+
       setCoralFormData({
-        coral_type: coral.coral_type,
-        coral_subtype: coral.coral_subtype,
-        classification: coral.classification,
-        scientific_name: coral.scientific_name,
-        common_name: coral.common_name,
-        identification: coral.identification,
+        coral_type: coral.coral_type || "",
+        coral_subtype: coral.coral_subtype || "",
+        classification: coral.classification || "",
+        scientific_name: coral.scientific_name || "",
+        common_name: coral.common_name || "",
+        identification: coral.identification || "",
+        coral_class_code: coral.coral_class_code || "",
         image: null,
       });
       setImagePreview(
@@ -154,6 +170,7 @@ export default function useCoralManagement() {
       scientific_name: "",
       common_name: "",
       identification: "",
+      coral_class_code: "",
       image: null,
     });
     setImagePreview(null);
@@ -165,8 +182,8 @@ export default function useCoralManagement() {
     if (!coralFormData.coral_type?.trim()) {
       errors.push("Coral Type is required");
     }
-    if (!coralFormData.scientific_name?.trim()) {
-      errors.push("Scientific Name is required");
+    if (!coralFormData.coral_class_code?.trim()) {
+      errors.push("Coral Class Code is required");
     }
     if (!coralFormData.common_name?.trim()) {
       errors.push("Common Name is required");
@@ -174,6 +191,7 @@ export default function useCoralManagement() {
     if (!coralFormData.classification?.trim()) {
       errors.push("Classification is required");
     }
+    // Note: scientific_name is now optional
 
     if (errors.length > 0) {
       showErrorModal(
@@ -238,7 +256,7 @@ export default function useCoralManagement() {
         // Show success modal
         showSuccessModal(
           "Coral Added Successfully!",
-          `${coralFormData.common_name} (${coralFormData.scientific_name}) has been added to the coral database.`,
+          `${coralFormData.common_name} (${coralFormData.coral_class_code}) has been added to the coral database.`,
           false
         );
       } else if (coralModalMode === "edit") {
@@ -358,6 +376,16 @@ export default function useCoralManagement() {
     }
   };
 
+  const getCoralClassCodeOptions = (coralType) => {
+    console.log("Getting options for coral type:", coralType); // Debug log
+    if (coralType === "Acropora" || coralType === "Acropora-branching") {
+      return ["ACB", "ACE", "ACS", "ACD", "ACT"];
+    } else if (coralType === "Non-acropora" || coralType === "Non-Acropora") {
+      return ["CB", "CE", "CF", "CS", "CM", "CMR", "CHR", "CME", "CHL"];
+    }
+    return [];
+  };
+
   return {
     coralData,
     showCoralModal,
@@ -372,6 +400,7 @@ export default function useCoralManagement() {
     closeCoralModal,
     handleCoralSubmit,
     handleDeleteCoral,
+    getCoralClassCodeOptions,
 
     // Modal states and functions
     showModal,

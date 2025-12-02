@@ -138,15 +138,6 @@ function TopNavigation({
     }
   };
 
-  // Handle notification dropdown toggle
-  const handleNotificationToggle = () => {
-    setNotificationDropdownOpen(!notificationDropdownOpen);
-    // Close profile dropdown when opening notifications
-    if (!notificationDropdownOpen) {
-      setProfileDropdownOpen(false);
-    }
-  };
-
   // Handle profile dropdown toggle
   const handleProfileToggle = () => {
     setProfileDropdownOpen(!profileDropdownOpen);
