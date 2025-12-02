@@ -108,8 +108,9 @@ def get_sendgrid_api_key():
         return _cached_sendgrid_secret
     
     # Try to get from Secrets Manager
-    secret_name = "prod/sendgrid/apikey"
-    region_name = "ap-southeast-2"
+    # Support both EC2 (ap-southeast-2) and Hostinger (us-east-1) secrets
+    secret_name = os.getenv('SENDGRID_SECRET_NAME', 'prod/sendgrid/apikey')
+    region_name = os.getenv('SENDGRID_SECRET_REGION', 'ap-southeast-2')
     
     try:
         session = boto3.session.Session()
