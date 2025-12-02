@@ -88,6 +88,8 @@ function AddImage() {
   const [imageToOverride, setImageToOverride] = useState(null);
 
   const [analysisInProgress, setAnalysisInProgress] = useState(false);
+  const [sessionId, setSessionId] = useState(null);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   const [realTimeProgress, setRealTimeProgress] = useState({
     current: 0,
@@ -350,6 +352,8 @@ function AddImage() {
     setAnalysisCompleted(false);
     setValidationProgress({ current: 0, total: 0 });
     setBatchProgress({ current: 0, total: 0 });
+    setSessionId(null);
+    setIsCancelling(false);
   };
 
   const removeImage = (index, skipConfirmation = false) => {
@@ -604,6 +608,31 @@ function AddImage() {
     alert(validationSummary);
   };
 
+  const cancelBatchOperation = async () => {
+    if (!sessionId || isCancelling) return;
+
+    setIsCancelling(true);
+    try {
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/cancel_batch/${sessionId}`,
+        {
+          method: "POST",
+          credentials: "include",
+        }
+      );
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log("Cancellation requested:", result.message);
+      } else {
+        console.error("Failed to cancel operation");
+      }
+    } catch (error) {
+      console.error("Error cancelling operation:", error);
+    }
+    // Keep isCancelling true to prevent re-clicking
+  };
+
   const handleBatchAnalyze = async () => {
     if (images.length === 0) {
       alert("Please select images first!");
@@ -672,6 +701,8 @@ function AddImage() {
     setAnalysisInProgress(true);
     setBatchLoading(true);
     setShowBatchChart(false);
+    setSessionId(null); // Reset session ID
+    setIsCancelling(false); // Reset cancelling state
 
     // Initialize real-time progress
     setRealTimeProgress({
@@ -773,6 +804,20 @@ function AddImage() {
             setEventSource(null);
           }
         }, 10000); // Close after 10 seconds
+      }
+
+      console.log("✅ Batch analysis response:", data);
+      
+      // Capture session_id for cancellation support
+      if (data.session_id) {
+        setSessionId(data.session_id);
+        console.log("Session ID captured:", data.session_id);
+      }
+
+      // Check if operation was cancelled
+      if (data.cancelled) {
+        console.log("⚠️ Operation was cancelled by user");
+        alert(`Analysis cancelled after processing ${data.processing_details?.cancelled_at || 0} images`);
       }
 
       setBatchResults(data);

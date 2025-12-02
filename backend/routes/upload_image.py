@@ -23,13 +23,21 @@ progress_tracker = {}
 
 def send_progress_update(session_id, current, total, message="Processing"):
     """Send progress update to the progress tracker"""
-    progress_tracker[session_id] = {
+    if session_id not in progress_tracker:
+        progress_tracker[session_id] = {}
+    
+    progress_tracker[session_id].update({
         'current': current,
         'total': total,
         'percentage': round((current / total) * 100, 1) if total > 0 else 0,
         'message': message,
-        'timestamp': time.time()
-    }
+        'timestamp': time.time(),
+        'cancelled': progress_tracker[session_id].get('cancelled', False)
+    })
+
+def is_cancelled(session_id):
+    """Check if the batch analysis has been cancelled"""
+    return progress_tracker.get(session_id, {}).get('cancelled', False)
 
 
 warnings.filterwarnings("ignore")
@@ -276,6 +284,11 @@ def batch_progress_stream(session_id):
                 progress = progress_tracker[session_id]
                 yield f"data: {json.dumps(progress)}\n\n"
                 
+                # Check if cancelled
+                if progress.get('cancelled', False):
+                    time.sleep(1)  # Give client time to receive cancellation update
+                    break
+                
                 # Clean up completed sessions
                 if progress['current'] >= progress['total']:
                     time.sleep(2)  # Give client time to receive final update
@@ -288,6 +301,34 @@ def batch_progress_stream(session_id):
             time.sleep(0.5)  # Update every 500ms
     
     return Response(generate(), mimetype='text/event-stream')
+
+@image_bp.route("/cancel_batch/<session_id>", methods=["POST", "OPTIONS"])
+@cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
+def cancel_batch_analysis(session_id):
+    """Cancel an ongoing batch analysis or validation"""
+    if request.method == "OPTIONS":
+        return jsonify({}), 200
+    
+    try:
+        if session_id in progress_tracker:
+            progress_tracker[session_id]['cancelled'] = True
+            progress_tracker[session_id]['message'] = 'Cancellation requested - stopping...'
+            print(f"🛑 Operation {session_id} marked for cancellation")
+            
+            return jsonify({
+                "success": True, 
+                "message": "Cancellation requested - operation will stop after current image",
+                "session_id": session_id
+            }), 200
+        else:
+            return jsonify({
+                "success": False,
+                "error": "Session not found or already completed",
+                "session_id": session_id
+            }), 404
+    except Exception as e:
+        print(f"❌ Error cancelling operation: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 # Add system status endpoints
 @image_bp.route("/system_status", methods=["GET"])
@@ -1036,14 +1077,27 @@ def validate_quadrats():
         if not files:
             return jsonify({"error": "No image files provided"}), 400
 
+        # Generate session ID for tracking and cancellation
+        import uuid
+        session_id = str(uuid.uuid4())[:12]
+        
+        # Initialize progress
+        send_progress_update(session_id, 0, len(files), "Starting validation...")
+
         validation_results = []
         user_id = get_user_id_from_session()
-        valid_count = sum(1 for result in validation_results if result['valid'])
-        invalid_count = len(validation_results) - valid_count
 
-        for file in files:
+        for file_index, file in enumerate(files):
+            # Check for cancellation
+            if is_cancelled(session_id):
+                print(f"🛑 Validation cancelled by user at image {file_index + 1}/{len(files)}")
+                break
+            
             if not file or file.filename == '':
                 continue
+            
+            # Send progress update
+            send_progress_update(session_id, file_index, len(files), f"Validating {file.filename}...")
                 
             # Validate file extension
             allowed_extensions = {'png', 'jpg', 'jpeg', 'webp'}
@@ -1066,6 +1120,15 @@ def validate_quadrats():
             
             try:
                 file.save(temp_path)
+                
+                # Check cancellation before expensive detection operation
+                if is_cancelled(session_id):
+                    print(f"🛑 Validation cancelled before detection of {file.filename}")
+                    try:
+                        os.remove(temp_path)
+                    except:
+                        pass
+                    break
                 
                 # Run detection with STRICT validation
                 detection_results = detection_model(temp_path)
@@ -1170,6 +1233,18 @@ def validate_quadrats():
                 except:
                     pass
 
+        # Check if cancelled
+        was_cancelled = is_cancelled(session_id)
+        
+        # Final progress update
+        if was_cancelled:
+            send_progress_update(session_id, len(validation_results), len(files), "Validation cancelled")
+        else:
+            send_progress_update(session_id, len(files), len(files), "Validation completed!")
+        
+        valid_count = sum(1 for result in validation_results if result['valid'])
+        invalid_count = len(validation_results) - valid_count
+        
         log_image_validation_activity(
             user_id=user_id,
             total_images=len(validation_results),
@@ -1177,11 +1252,27 @@ def validate_quadrats():
             invalid_images=invalid_count
         )
         
+        # Clean up progress tracker after delay
+        def cleanup_progress():
+            import threading
+            import time
+            def delayed_cleanup():
+                time.sleep(5)
+                if session_id in progress_tracker:
+                    del progress_tracker[session_id]
+            thread = threading.Thread(target=delayed_cleanup)
+            thread.start()
+        
+        cleanup_progress()
+        
         return jsonify({
+            "session_id": session_id,
             "validation_results": validation_results,
             "total_images": len(validation_results),
             "valid_images": sum(1 for result in validation_results if result['valid']),
-            "invalid_images": sum(1 for result in validation_results if not result['valid'])
+            "invalid_images": sum(1 for result in validation_results if not result['valid']),
+            "cancelled": was_cancelled,
+            "images_validated": len(validation_results)
         })
         
     except Exception as e:
@@ -1476,6 +1567,11 @@ def batch_analyze_images():
         
         # Process each file with real-time updates
         for file_index, file in enumerate(files):
+            # Check for cancellation
+            if is_cancelled(session_id):
+                print(f"🛑 Batch analysis cancelled by user at file {file_index + 1}/{len(files)}")
+                break
+            
             if not file or file.filename == '':
                 continue
 
@@ -1629,6 +1725,11 @@ def batch_analyze_images():
             image_crops = []
             
             for i, box in enumerate(valid_detections):
+                # Check for cancellation before processing each crop
+                if is_cancelled(session_id):
+                    print(f"🛑 Batch analysis cancelled during crop processing")
+                    break
+                
                 try:
                     # Update progress for each crop within the file
                     crop_progress = file_index + 0.6 + (0.3 * (i + 1) / len(valid_detections))
@@ -1789,8 +1890,14 @@ def batch_analyze_images():
             except:
                 pass
         
+        # Check if cancelled
+        was_cancelled = is_cancelled(session_id)
+        
         # Final progress update
-        send_progress_update(session_id, len(files), len(files), "Analysis completed!")
+        if was_cancelled:
+            send_progress_update(session_id, len(all_results), len(files), "Analysis cancelled by user")
+        else:
+            send_progress_update(session_id, len(files), len(files), "Analysis completed!")
         
         # Calculate batch percentages
         for class_name in batch_coverage_data:
@@ -1840,6 +1947,7 @@ def batch_analyze_images():
             "session_id": session_id,  # Return session ID for frontend
             "results": all_results,
             "rejected_images": rejected_images,
+            "cancelled": was_cancelled,
             "batch_statistics": {
                 "total_images_processed": len(all_results),
                 "total_images_rejected": len(rejected_images),
@@ -1858,7 +1966,8 @@ def batch_analyze_images():
                 "confidence_threshold": CONFIDENCE_THRESHOLD,
                 "low_confidence_processed": sum(1 for result in all_results 
                                               if any(crop.get('below_threshold', False) for crop in result['crops'])),
-                "debug_info": debug_data
+                "debug_info": debug_data,
+                "cancelled_at": len(all_results) if was_cancelled else None
             }
         })
 

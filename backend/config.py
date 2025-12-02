@@ -37,7 +37,7 @@ class Config:
     # SESSION_COOKIE_DOMAIN = None
     
     # File upload configuration
-    MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # 50MB max upload size
+    MAX_CONTENT_LENGTH = 200 * 1024 * 1024  # 200MB max upload size for batch operations
     
     # Database configuration
     DB_HOST = os.getenv('DB_HOST') 
