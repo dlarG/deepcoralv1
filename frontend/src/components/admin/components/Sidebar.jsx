@@ -19,7 +19,6 @@ function Sidebar({ activeTab, setActiveTab, sidebarOpen, darkMode }) {
     pendingImages: 0,
   });
 
-  // NEW: Fetch notifications data
   const fetchNotifications = async () => {
     try {
       const response = await axios.get(
