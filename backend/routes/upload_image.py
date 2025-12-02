@@ -34,6 +34,7 @@ def send_progress_update(session_id, current, total, message="Processing"):
         'timestamp': time.time(),
         'cancelled': progress_tracker[session_id].get('cancelled', False)
     })
+    print(f"📊 Progress update [{session_id}]: {current}/{total} - {message}")
 
 def is_cancelled(session_id):
     """Check if the batch analysis has been cancelled"""
@@ -276,12 +277,15 @@ print(f"   Coral Segmentation: {'✅ Available' if SEGMENTATION_AVAILABLE else '
 
 
 @image_bp.route("/batch_progress/<session_id>")
+@cross_origin(origins=['http://localhost:3000', 'https://deepcoral.site'], supports_credentials=True)
 def batch_progress_stream(session_id):
     """Stream progress updates for a specific batch session"""
+    print(f"🔌 SSE connection established for session: {session_id}")
     def generate():
         while True:
             if session_id in progress_tracker:
                 progress = progress_tracker[session_id]
+                print(f"📤 Sending progress: {progress}")
                 yield f"data: {json.dumps(progress)}\n\n"
                 
                 # Check if cancelled
@@ -303,7 +307,7 @@ def batch_progress_stream(session_id):
     return Response(generate(), mimetype='text/event-stream')
 
 @image_bp.route("/cancel_batch/<session_id>", methods=["POST", "OPTIONS"])
-@cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
+@cross_origin(origins=['http://localhost:3000', 'https://deepcoral.site'], supports_credentials=True)
 def cancel_batch_analysis(session_id):
     """Cancel an ongoing batch analysis or validation"""
     if request.method == "OPTIONS":
