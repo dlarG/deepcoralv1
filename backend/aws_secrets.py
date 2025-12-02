@@ -4,15 +4,22 @@ import os
 from botocore.exceptions import ClientError
 
 
-def get_secret():
+def get_secret(secret_name=None, region_name=None):
     """
     Retrieve database credentials from AWS Secrets Manager.
+    
+    Args:
+        secret_name: Secret name or ARN (defaults to EC2 RDS: prod/mydb/postgres, Hostinger: rds!db-5261b6a8-95e9-42c9-b930-1fdc3d12f992)
+        region_name: AWS region (defaults to ap-southeast-2 for EC2, us-east-1 for Hostinger)
     
     Returns:
         dict: Database credentials (host, port, username, password, dbname)
     """
-    secret_name = "prod/mydb/postgres"
-    region_name = "ap-southeast-2"
+    # Default to EC2 RDS secret if not specified
+    if not secret_name:
+        secret_name = os.getenv('DB_SECRET_NAME', 'prod/mydb/postgres')
+    if not region_name:
+        region_name = os.getenv('DB_SECRET_REGION', 'ap-southeast-2')
 
     # Create a Secrets Manager client
     session = boto3.session.Session()
