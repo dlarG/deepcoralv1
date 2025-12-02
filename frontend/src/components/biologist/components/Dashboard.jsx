@@ -582,7 +582,7 @@ function Dashboard({ user, darkMode, onNavigate }) {
             ) : dashboardData.coral_distribution.length > 0 ? (
               <div className="species-list">
                 {dashboardData.coral_distribution.map((coral, index) => (
-                  <div key={coral.class_name} className="species-item">
+                  <div key={coral.class_name} className="dash-species-item">
                     <div className="species-info">
                       <span className="species-name">{coral.class_name}</span>
                       <span className="species-count">

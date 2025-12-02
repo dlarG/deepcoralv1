@@ -361,14 +361,15 @@ def add_coral():
             'scientific_name': request.form.get('scientific_name', '').strip(),
             'common_name': request.form.get('common_name', '').strip(),
             'identification': request.form.get('identification', '').strip(),
+            'coral_class_code': request.form.get('coral_class_code', '').strip(),
             'image': image_filename
         }
         
         print(f"Processed coral data: {coral_data}")  # Debug log
 
-        # Validate required fields
+        # Validate required fields (scientific_name is now optional)
         required_fields = ['coral_type', 'coral_subtype', 'classification', 
-                          'scientific_name', 'common_name', 'identification']
+                          'common_name', 'identification', 'coral_class_code']
         missing_fields = [field for field in required_fields if not coral_data.get(field)]
         
         if missing_fields:
@@ -388,8 +389,8 @@ def add_coral():
             insert_query = """
                 INSERT INTO coral_information 
                 (coral_type, coral_subtype, classification, scientific_name, 
-                 common_name, identification, image) 
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                 common_name, identification, coral_class_code, image) 
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING *
             """
             
@@ -397,9 +398,10 @@ def add_coral():
                 coral_data['coral_type'],
                 coral_data['coral_subtype'], 
                 coral_data['classification'],
-                coral_data['scientific_name'],
+                coral_data['scientific_name'] if coral_data['scientific_name'] else None,
                 coral_data['common_name'],
                 coral_data['identification'],
+                coral_data['coral_class_code'],
                 coral_data['image']
             ))
             
@@ -413,7 +415,7 @@ def add_coral():
                 log_coral_info_action(
                     user_id=session.get('user_id'),
                     action='created',
-                    coral_name=f"{coral_data['common_name']} ({coral_data['scientific_name']})"
+                    coral_name=f"{coral_data['common_name']} ({coral_data['coral_class_code']})"
                 )
             except Exception as log_error:
                 print(f"Logging error (non-critical): {log_error}")
@@ -429,7 +431,8 @@ def add_coral():
                 'identification': new_coral[6],
                 'created_at': new_coral[7].isoformat() if new_coral[7] else None,
                 'updated_at': new_coral[8].isoformat() if new_coral[8] else None,
-                'image': new_coral[9]
+                'image': new_coral[9],
+                'coral_class_code': new_coral[10] if len(new_coral) > 10 else None
             }
             
             print(f"Returning coral response: {coral_response}")  # Debug log
@@ -453,6 +456,7 @@ def add_coral():
     finally:
         if 'conn' in locals() and conn:
             conn.close()
+
 
 @admin_bp.route('/admin/corals/<int:coral_id>', methods=['PUT', 'OPTIONS'])
 @cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
@@ -478,7 +482,8 @@ def update_coral(coral_id):
             if not current_coral:
                 return jsonify({'error': 'Coral not found'}), 404
 
-        image_filename = current_coral[9]
+        # Handle file upload
+        image_filename = current_coral[9]  # Keep existing image (assuming image is at index 9)
         if 'image' in request.files:
             file = request.files['image']
             if file and file.filename != '':
@@ -514,16 +519,17 @@ def update_coral(coral_id):
                 UPDATE coral_information 
                 SET coral_type = %s, coral_subtype = %s, classification = %s,
                     scientific_name = %s, common_name = %s, identification = %s,
-                    image = %s, updated_at = CURRENT_TIMESTAMP
+                    coral_class_code = %s, image = %s, updated_at = CURRENT_TIMESTAMP
                 WHERE id = %s
                 RETURNING *
             """, (
                 request.form.get('coral_type'),
                 request.form.get('coral_subtype'),
                 request.form.get('classification'),
-                request.form.get('scientific_name'),
+                request.form.get('scientific_name') if request.form.get('scientific_name') else None,
                 request.form.get('common_name'),
                 request.form.get('identification'),
+                request.form.get('coral_class_code'),
                 image_filename,
                 coral_id
             ))
@@ -536,7 +542,7 @@ def update_coral(coral_id):
                 log_coral_info_action(
                     user_id=session.get('user_id'),
                     action='updated',
-                    coral_name=f"{updated_coral[5]} ({updated_coral[4]})"
+                    coral_name=f"{updated_coral[5]} ({updated_coral[10] if len(updated_coral) > 10 else updated_coral[4]})"
                 )
             except Exception as log_error:
                 print(f"Logging error (non-critical): {log_error}")
@@ -551,7 +557,8 @@ def update_coral(coral_id):
                 'identification': updated_coral[6],
                 'created_at': updated_coral[7].isoformat() if updated_coral[7] else None,
                 'updated_at': updated_coral[8].isoformat() if updated_coral[8] else None,
-                'image': updated_coral[9]
+                'image': updated_coral[9],
+                'coral_class_code': updated_coral[10] if len(updated_coral) > 10 else None
             }
             
             return jsonify({
@@ -573,6 +580,7 @@ def update_coral(coral_id):
     finally:
         if 'conn' in locals() and conn:
             conn.close()
+            
 
 @admin_bp.route('/admin/corals/<int:coral_id>', methods=['DELETE', 'OPTIONS'])
 @cross_origin(origins=['http://localhost:3000'], supports_credentials=True)

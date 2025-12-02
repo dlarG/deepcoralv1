@@ -272,7 +272,7 @@ const getBiologistStyle = (sidebarOpen, darkMode = false) => `
 
 .profile-details h3 {
   margin: 0 0 0.25rem;
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   font-weight: 700;
 }
 
@@ -820,12 +820,6 @@ const getBiologistStyle = (sidebarOpen, darkMode = false) => `
   justify-content: center;
   font-weight: 700;
   font-size: 1.25rem;
-}
-
-.profile-details h3 {
-  font-size: 1rem;
-  font-weight: 700;
-  margin: 0 0 0.25rem 0;
 }
 
 .profile-details p {
@@ -1567,10 +1561,13 @@ const getBiologistStyle = (sidebarOpen, darkMode = false) => `
   gap: 1.5rem;
 }
 
-.species-item {
+.dash-species-item {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .species-info {

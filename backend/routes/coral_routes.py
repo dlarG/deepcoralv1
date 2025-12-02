@@ -30,7 +30,8 @@ def get_coral_info():
                 'identification': coral[6],
                 'created_at': coral[7],
                 'updated_at': coral[8],
-                'image': coral[9] if len(coral) > 9 else None  # Include image
+                'image': coral[9] if len(coral) > 9 else None,  # Include image
+                'coral_class_code': coral[10] if len(coral) > 10 else None  # Include coral_code
             })
         return jsonify({
             'status': 'success',

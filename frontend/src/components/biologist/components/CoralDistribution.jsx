@@ -35,6 +35,7 @@ import {
   Title,
   Tooltip,
   Legend,
+  ChartDataLabels,
 } from "chart.js";
 import { Bar, Line, Pie } from "react-chartjs-2";
 import CoralCoverageTable from "../../admin/components/CoralCoverageTable";
@@ -1281,6 +1282,30 @@ function CoralDistribution() {
       );
     }
 
+    // Calculate the maximum percentage value
+    const maxValue = Math.max(
+      ...locationAnalytics.coral_analytics.map(
+        (coral) => coral.avg_coverage_percent || 0
+      )
+    );
+
+    // Calculate dynamic max value for better visualization
+    // Add 20-30% buffer above the highest value, with minimum of 10%
+    const bufferPercentage = 0.25; // 25% buffer
+    const minChartMax = 10; // Minimum chart maximum
+    const calculatedMax = maxValue * (1 + bufferPercentage);
+    const dynamicMax = Math.max(calculatedMax, minChartMax);
+
+    // Round up to nearest 5 or 10 for cleaner appearance
+    let roundedMax;
+    if (dynamicMax <= 20) {
+      roundedMax = Math.ceil(dynamicMax / 5) * 5; // Round to nearest 5
+    } else if (dynamicMax <= 50) {
+      roundedMax = Math.ceil(dynamicMax / 10) * 10; // Round to nearest 10
+    } else {
+      roundedMax = Math.ceil(dynamicMax / 25) * 25; // Round to nearest 25
+    }
+
     const data = {
       labels: locationAnalytics.coral_analytics.map(
         (coral) => coral.class_name
@@ -1327,16 +1352,76 @@ function CoralDistribution() {
             },
           },
         },
+        // Add data labels plugin
+        datalabels: {
+          display: true,
+          anchor: "end",
+          align: "top",
+          formatter: function (value) {
+            return value.toFixed(1) + "%";
+          },
+          color: "#374151",
+          font: {
+            weight: "bold",
+            size: 12,
+          },
+          offset: 4,
+        },
       },
       scales: {
         y: {
           beginAtZero: true,
-          max: 100,
+          max: roundedMax, // Use dynamic max instead of fixed 100
           ticks: {
             callback: function (value) {
               return value + "%";
             },
+            // Add more tick marks for better readability
+            stepSize: roundedMax <= 20 ? 2 : roundedMax <= 50 ? 5 : 10,
           },
+          grid: {
+            color: "rgba(0, 0, 0, 0.1)",
+          },
+        },
+        x: {
+          grid: {
+            display: false, // Hide vertical grid lines for cleaner look
+          },
+        },
+      },
+      // Enable data labels
+      layout: {
+        padding: {
+          top: 30, // Add extra padding at the top to accommodate labels
+        },
+      },
+      // Animation with labels
+      animation: {
+        onComplete: function (context) {
+          const chart = context.chart;
+          const ctx = chart.ctx;
+
+          chart.data.datasets.forEach((dataset, datasetIndex) => {
+            const meta = chart.getDatasetMeta(datasetIndex);
+
+            meta.data.forEach((bar, index) => {
+              const value = dataset.data[index];
+              if (value > 0) {
+                // Position the label above the bar
+                const x = bar.x;
+                const y = bar.y - 8; // 8px above the bar
+
+                // Style the text
+                ctx.fillStyle = "#374151";
+                ctx.font = "bold 12px system-ui";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "bottom";
+
+                // Draw the percentage
+                ctx.fillText(`${value.toFixed(1)}%`, x, y);
+              }
+            });
+          });
         },
       },
     };

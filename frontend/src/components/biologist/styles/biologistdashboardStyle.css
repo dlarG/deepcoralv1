@@ -121,6 +121,7 @@
 
 .researcher-info {
   flex: 1;
+  text-align: center;
 }
 
 .researcher-username {
@@ -303,6 +304,12 @@
   background: #f8fafc;
   color: #475569;
   border: 2px solid #e2e8f0;
+}
+
+.dark-mode .dashboard-action-btn.secondary {
+  background: #334155;
+  color: #e2e8f0;
+  border: 2px solid #475569;
 }
 
 .dark-mode.dashboard-action-btn.secondary {
