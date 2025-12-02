@@ -729,13 +729,16 @@ function AddImage() {
       if (!proceed) return;
     }
 
+    // Generate session ID on frontend BEFORE sending request for immediate cancellation support
+    const generatedSessionId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    setSessionId(generatedSessionId);
+    setIsCancelling(false); // Reset cancelling state
+
     // Set analysis in progress - FIXED: Set initial progress to 0
     setAnalysisInProgress(true);
     setBatchLoading(true);
     setShowBatchChart(false);
     setBatchProgress({ current: 0, total: validImages.length });
-    setSessionId(null); // Reset session ID
-    setIsCancelling(false); // Reset cancelling state
 
     try {
       const csrfResponse = await fetch(
@@ -753,6 +756,7 @@ function AddImage() {
       });
       formData.append("csrf_token", csrfData.csrf_token);
       formData.append("intensity", cropIntensity);
+      formData.append("session_id", generatedSessionId); // Send session_id to backend
       formData.append(
         "manually_included",
         JSON.stringify(manuallyIncludedIndices)
@@ -832,12 +836,6 @@ function AddImage() {
       const data = resBody;
 
       console.log("✅ Batch analysis response:", data);
-      
-      // Capture session_id for cancellation support
-      if (data.session_id) {
-        setSessionId(data.session_id);
-        console.log("Session ID captured:", data.session_id);
-      }
 
       // Check if operation was cancelled
       if (data.cancelled) {

@@ -1508,9 +1508,9 @@ def batch_analyze_images():
         if not files:
             return jsonify({"error": "No image files provided"}), 400
 
-        # Generate unique session ID for this batch
+        # Get session_id from frontend (for immediate cancellation support) or generate one
         import uuid
-        session_id = str(uuid.uuid4())[:12]
+        session_id = request.form.get('session_id') or str(uuid.uuid4())[:12]
         
         # Initialize progress
         send_progress_update(session_id, 0, len(files), "Starting batch analysis...")
