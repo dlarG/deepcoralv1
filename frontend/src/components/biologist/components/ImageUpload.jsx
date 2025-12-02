@@ -1008,16 +1008,18 @@ function AddImage() {
             )}
           </div>
 
-          {/* Cancel Button for Long Operations */}
+          {/* Cancel button for validation or analysis */}
           {(isValidating || isAnalyzing) && (
             <button
               className="cancel-operation-btn"
-              onClick={() => {
-                // You can implement cancellation logic here if needed
-                console.log("Operation cancellation requested");
+              onClick={cancelBatchOperation}
+              disabled={isCancelling}
+              style={{
+                opacity: isCancelling ? 0.6 : 1,
+                cursor: isCancelling ? 'not-allowed' : 'pointer'
               }}
             >
-              Cancel Operation
+              {isCancelling ? 'Cancelling...' : 'Cancel Operation'}
             </button>
           )}
         </div>

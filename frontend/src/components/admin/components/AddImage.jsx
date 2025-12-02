@@ -1022,26 +1022,18 @@ function AddImage() {
             </div>
           )}
 
-          {/* Cancel Button for Long Operations */}
+          {/* Cancel button for validation or analysis */}
           {(isValidating || isAnalyzing || isFallbackAnalyzing) && (
             <button
               className="cancel-operation-btn"
-              onClick={() => {
-                if (eventSource) {
-                  eventSource.close();
-                  setEventSource(null);
-                }
-                setRealTimeProgress({
-                  current: 0,
-                  total: 0,
-                  percentage: 0,
-                  message: "",
-                  isActive: false,
-                });
-                console.log("Operation cancellation requested");
+              onClick={cancelBatchOperation}
+              disabled={isCancelling}
+              style={{
+                opacity: isCancelling ? 0.6 : 1,
+                cursor: isCancelling ? 'not-allowed' : 'pointer'
               }}
             >
-              Cancel Operation
+              {isCancelling ? 'Cancelling...' : 'Cancel Operation'}
             </button>
           )}
         </div>
