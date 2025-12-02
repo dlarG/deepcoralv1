@@ -1,14 +1,29 @@
+# Environment files
 .env
 backend/.env
 **/.env
 backend/.env.staging
 backend/.env.production
 backend/.env.development
+frontend/.env
+frontend/.env.local
+frontend/.env.development
+frontend/.env.production
+frontend/.env.test
+
+# Python cache
 backend/__pycache__
 backend/routes/__pycache__
 backend/utils/__pycache__
+backend/decorators/__pycache__
+
+# Upload directories
 backend/coral_uploads
 backend/coral_uploads/*
+backend/profile_uploads/*
+backend/shared_uploads/*
+backend/elements/*
+backend/coral_lifeforms/*
 
 # Model files (large ML models)
 backend/models/*.pt
@@ -18,9 +33,40 @@ backend/models/**/*.pth
 
 # Test files
 backend/test_sendgrid.py
-**/test_sendgrid.py
+backend/test_sendgrid_live.py
+**/test_sendgrid*.py
 
-# Elastic Beanstalk
+# Protected/Sensitive files
+PROTECTED/
+PROTECTED/**
+*.pem
+*.key
+*.dump
+*.sql
+!backend/init_db.sql
+**/quick-fix-credentials.sh
+**/setup-*-secret.sh
+
+# AWS and deployment
 .elasticbeanstalk/
 backend/.elasticbeanstalk/
 **/.elasticbeanstalk/
+*.pem
+
+# SSH keys
+*.ppk
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+
+# Credentials and secrets
+**/credentials
+**/secrets
+**/*password*
+**/*secret*
+**/*credential*
+!frontend/src/components/ForgotPassword.jsx
+!frontend/src/components/ResetPassword.jsx
+!frontend/src/styles/forgot-password.css
+!frontend/src/styles/reset-password.css

@@ -42,7 +42,32 @@ def get_secret(secret_name=None, region_name=None):
     secret = get_secret_value_response['SecretString']
     secret_dict = json.loads(secret)
     
-    return secret_dict
+    # Normalize keys for RDS-managed secrets
+    # RDS secrets use 'host'/'endpoint', regular secrets use 'host'
+    # RDS secrets use 'dbname'/'dbInstanceIdentifier', regular secrets use 'dbname'
+    normalized = {}
+    
+    # Handle host/endpoint
+    normalized['host'] = secret_dict.get('host') or secret_dict.get('endpoint')
+    
+    # Handle port (convert to int if string)
+    port = secret_dict.get('port', 5432)
+    normalized['port'] = int(port) if port else 5432
+    
+    # Handle database name
+    normalized['dbname'] = (
+        secret_dict.get('dbname') or 
+        secret_dict.get('dbInstanceIdentifier') or 
+        secret_dict.get('database')
+    )
+    
+    # Handle username/user
+    normalized['username'] = secret_dict.get('username') or secret_dict.get('user')
+    
+    # Handle password
+    normalized['password'] = secret_dict.get('password')
+    
+    return normalized
 
 
 # Cache the secrets to avoid multiple AWS API calls
