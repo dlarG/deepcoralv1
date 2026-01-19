@@ -281,7 +281,7 @@ def check_auth():
                     description=f"Auth check failed - user not found for session user_id: {session.get('user_id')}",
                     details={'session_user_id': session.get('user_id')}
                 )
-                return jsonify({'authenticated': False}), 200
+                return jsonify({'authenticated': False}), 200  # Add return here
                 
             return jsonify({
                 'authenticated': True,
@@ -297,7 +297,7 @@ def check_auth():
                     'status': user[8],
                     'last_login': user[9].isoformat() if user[9] else None,
                     'institution': user[10],
-                    'email': user[11],  # Make sure email is included here
+                    'email': user[11],  # This should be working
                     'phone': user[12]
                 }
             }), 200

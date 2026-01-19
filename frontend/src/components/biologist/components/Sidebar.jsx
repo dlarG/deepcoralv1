@@ -108,18 +108,18 @@ function Sidebar({ activeTab, setActiveTab, sidebarOpen }) {
     },
   ];
 
-  const quickActions = [
-    {
-      label: "Upload Images",
-      icon: FiUpload,
-      className: "primary",
-    },
-    {
-      label: "Generate Report",
-      icon: FiFileText,
-      className: "success",
-    },
-  ];
+  // const quickActions = [
+  //   {
+  //     label: "Upload Images",
+  //     icon: FiUpload,
+  //     className: "primary",
+  //   },
+  //   {
+  //     label: "Generate Report",
+  //     icon: FiFileText,
+  //     className: "success",
+  //   },
+  // ];
 
   // NEW: Enhanced navigation item rendering with notification support
   const renderNavItem = (item) => {
@@ -174,7 +174,7 @@ function Sidebar({ activeTab, setActiveTab, sidebarOpen }) {
               <div className="nav-section">
                 <h3 className="nav-section-title">Quick Actions</h3>
                 <div className="quick-actions">
-                  {quickActions.map((action, index) => (
+                  {/* {quickActions.map((action, index) => (
                     <button
                       key={index}
                       className={`quick-action-btn ${action.className}`}
@@ -182,7 +182,7 @@ function Sidebar({ activeTab, setActiveTab, sidebarOpen }) {
                       <action.icon size={16} />
                       <span>{action.label}</span>
                     </button>
-                  ))}
+                  ))} */}
                 </div>
               </div>
             </>

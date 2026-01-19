@@ -4,7 +4,6 @@ import {
   FiLogIn,
   FiUserPlus,
   FiCamera,
-  FiDatabase,
   FiBarChart2,
   FiChevronDown,
   FiPlay,
@@ -15,22 +14,19 @@ import {
   FiPhone,
   FiMapPin,
   FiCheckCircle,
-  FiHeart,
   FiMap,
-  FiLocation,
-  //FiLinkedin,
-  FiGithub,
-  //FiTwitter,
   FiMenu,
   FiX,
 } from "react-icons/fi";
 import Logo from "./Logo";
+import VideoModal from "./VideoModal"; // Import the VideoModal component
 import "../styles/homepage.css";
 
 function HomePage() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [activeSection, setActiveSection] = useState("home");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false); // Add video modal state
 
   useEffect(() => {
     document.title = "DeepCoral - AI-Powered Marine Conservation";
@@ -69,6 +65,16 @@ function HomePage() {
     setMobileMenuOpen(false);
   };
 
+  // Function to handle demo button click
+  const handleDemoClick = () => {
+    setIsVideoModalOpen(true);
+  };
+
+  // Function to close video modal
+  const handleCloseVideoModal = () => {
+    setIsVideoModalOpen(false);
+  };
+
   const services = [
     {
       icon: <FiCamera />,
@@ -104,6 +110,7 @@ function HomePage() {
         <div className="gradient-overlay"></div>
         <div className="particle-overlay"></div>
       </div>
+
       {/* Navbar */}
       <nav className={`navbar ${isScrolled ? "scrolled" : ""}`}>
         <div className="navbar-content">
@@ -176,6 +183,7 @@ function HomePage() {
           </button>
         </div>
       </nav>
+
       {/* Hero Section */}
       <section id="home" className="hero-section">
         <div className="hero-content">
@@ -207,7 +215,7 @@ function HomePage() {
               <span>Start Free Trial</span>
               <FiArrowRight className="button-arrow" />
             </Link>
-            <button className="cta-button secondary">
+            <button className="cta-button secondary" onClick={handleDemoClick}>
               <FiPlay className="button-icon" />
               <span>Watch Demo</span>
             </button>
@@ -222,6 +230,7 @@ function HomePage() {
           </div>
         </div>
       </section>
+
       {/* Services Section */}
       <section id="services" className="services-section">
         <div className="section-container">
@@ -265,19 +274,7 @@ function HomePage() {
           </div>
         </div>
       </section>
-      {/* About Section
-      <section id="about" className="about-section">
-        <div className="section-container">
-          <div className="about-content">
-            <div className="about-text">
-              <div className="section-badge">
-                <FiHeart className="badge-icon" />
-                <span>About Us</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section> */}
+
       {/* Contact Section */}
       <section id="contact" className="contact-section">
         <div className="section-container">
@@ -348,6 +345,7 @@ function HomePage() {
           </div>
         </div>
       </section>
+
       {/* Footer */}
       <footer className="footer">
         <div className="footer-content">
@@ -359,17 +357,7 @@ function HomePage() {
                   Advancing marine conservation through artificial intelligence
                   and innovative research.
                 </p>
-                <div className="social-links">
-                  {/* <a href="#" className="social-link">
-                    <FiLinkedin />
-                  </a> */}
-                  {/* <a href="https://github.com/dlarG/" className="social-link">
-                    <FiGithub />
-                  </a> */}
-                  {/* <a href="#" className="social-link">
-                    <FiTwitter />
-                  </a> */}
-                </div>
+                <div className="social-links">{/* Social links here */}</div>
               </div>
             </div>
 
@@ -418,6 +406,14 @@ function HomePage() {
           </div>
         </div>
       </footer>
+
+      {/* Video Modal */}
+      <VideoModal
+        isOpen={isVideoModalOpen}
+        onClose={handleCloseVideoModal}
+        videoSrc="/demo/demo.mp4"
+        title="DeepCoral AI Demo"
+      />
     </div>
   );
 }

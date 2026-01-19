@@ -1,5 +1,6 @@
 import React, { useState, useRef } from "react";
 import { useAuth } from "../../../context/AuthContext";
+import InteractiveCoralAnalysis from "./InteractiveCoralAnalysis";
 import {
   FiUpload,
   FiSettings,
@@ -1330,12 +1331,19 @@ function AddImage() {
       ],
     };
 
+    // **ENHANCED: Bar chart data with better formatting**
     const barData = {
-      labels: coverageData.map((coral) => coral.class_name),
+      labels: coverageData.map((coral) => {
+        // Truncate long class names for better display
+        const name = coral.class_name;
+        return name.length > 15 ? `${name.substring(0, 15)}...` : name;
+      }),
       datasets: [
         {
           label: "Coverage Percentage",
-          data: coverageData.map((coral) => coral.coverage_percent),
+          data: coverageData.map((coral) =>
+            parseFloat(coral.coverage_percent.toFixed(1))
+          ), // Fix decimal precision
           backgroundColor: coverageData.map((coral) => coral.color),
           borderColor: coverageData.map((coral) => coral.color),
           borderWidth: 1,
@@ -1353,27 +1361,104 @@ function AddImage() {
           callbacks: {
             label: function (context) {
               const coral = coverageData[context.dataIndex];
-              return `${coral.class_name}: ${
-                coral.coverage_percent
-              }% (${coral.total_pixels.toLocaleString()} pixels)`;
+              return `${coral.class_name}: ${coral.coverage_percent.toFixed(
+                1
+              )}% (${coral.total_pixels.toLocaleString()} pixels)`;
             },
           },
+        },
+        datalabels: {
+          display: false,
         },
       },
     };
 
+    // **ENHANCED: Bar chart options with percentage labels and better formatting**
     const barOptions = {
-      ...chartOptions,
-      scales: {
-        y: {
-          beginAtZero: true,
-          max: Math.max(...coverageData.map((c) => c.coverage_percent)) * 1.1,
-          ticks: {
-            callback: function (value) {
-              return value + "%";
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: "bottom",
+          display: false, // Hide legend for cleaner look
+        },
+        tooltip: {
+          callbacks: {
+            title: function (context) {
+              // Show full class name in tooltip
+              const coral = coverageData[context[0].dataIndex];
+              return coral.class_name;
+            },
+            label: function (context) {
+              const coral = coverageData[context.dataIndex];
+              return [
+                `Coverage: ${coral.coverage_percent.toFixed(1)}%`,
+                `Pixels: ${coral.total_pixels.toLocaleString()}`,
+                `Category: ${coral.category || "Unknown"}`,
+              ];
             },
           },
         },
+        // **NEW: Data labels plugin for percentage on top of bars**
+        datalabels: {
+          anchor: "end",
+          align: "top",
+          color: "#2d3748",
+          font: {
+            weight: "bold",
+            size: 12,
+          },
+          formatter: function (value, context) {
+            return value.toFixed(1) + "%";
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: {
+            maxRotation: 45, // Rotate labels for better readability
+            minRotation: 45,
+            font: {
+              size: 11,
+            },
+            callback: function (value, index) {
+              const coral = coverageData[index];
+              if (coral) {
+                // Further truncate if still too long
+                const name = coral.class_name;
+                return name.length > 12 ? `${name.substring(0, 12)}...` : name;
+              }
+              return value;
+            },
+          },
+          grid: {
+            display: false,
+          },
+        },
+        y: {
+          beginAtZero: true,
+          max: Math.max(...coverageData.map((c) => c.coverage_percent)) * 1.2, // Add more space for labels
+          ticks: {
+            callback: function (value) {
+              return value.toFixed(1) + "%"; // Fix decimal precision
+            },
+            font: {
+              size: 11,
+            },
+          },
+          grid: {
+            color: "#f1f3f4",
+            lineWidth: 1,
+          },
+        },
+      },
+      animation: {
+        duration: 1500,
+        easing: "easeOutQuart",
+      },
+      interaction: {
+        intersect: false,
+        mode: "index",
       },
     };
 
@@ -1446,11 +1531,10 @@ function AddImage() {
         <div className="coverage-details">
           <h4>Detailed Coverage Results</h4>
           <div className="coverage-table">
-            <div className="table-header">
+            <div className="table-headers">
               <span>Coral Type</span>
               <span>Category</span>
               <span>Coverage %</span>
-              <span>Pixel Count</span>
             </div>
             {coverageData
               .sort((a, b) => b.coverage_percent - a.coverage_percent)
@@ -1465,11 +1549,20 @@ function AddImage() {
                   </div>
                   <span className="category">{coral.category}</span>
                   <span className="percentage">{coral.coverage_percent}%</span>
-                  <span className="pixels">
-                    {coral.total_pixels.toLocaleString()}
-                  </span>
                 </div>
               ))}
+          </div>
+          <div className="total-coverage">
+            <span>Total Coral Coverage:</span>
+            <span>
+              {Math.round(
+                coverageData.reduce(
+                  (sum, coral) => sum + coral.coverage_percent,
+                  0
+                )
+              )}
+              %
+            </span>
           </div>
         </div>
       </div>
@@ -1492,182 +1585,15 @@ function AddImage() {
       );
     }
 
-    const segmentationData = currentImage.segmentationData;
-    const isManuallyIncluded =
-      segmentationData.manually_included ||
-      currentImage.status === "manually_included";
-
     return (
-      <div className="image-upload-analysis-results">
-        <div className="analysis-header">
-          <h3 className="up-title">Coral Analysis Results</h3>
-          <div className="analysis-stats">
-            <span className="uploaded-num">
-              {segmentationData.total_crops} quadrats analyzed
-            </span>
-            <span className="method-tag">
-              {cropIntensity.charAt(0).toUpperCase() + cropIntensity.slice(1)}
-            </span>
-            {isManuallyIncluded && (
-              <span className="manual-override-badge">
-                ⚠️ Manually Included
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="quadrats-analysis">
-          {segmentationData.crops.map((cropData, cropIndex) => {
-            const isLowConfidence =
-              cropData.confidence && cropData.confidence < 0.87;
-            const isManualOverride =
-              cropData.manually_included || cropData.below_threshold;
-
-            return (
-              <div key={cropIndex} className="quadrat-analysis-card">
-                <div className="quadrat-header">
-                  <h4>
-                    Quadrat {cropIndex + 1} - {cropData.detection_label}
-                    {isManualOverride && (
-                      <span className="manual-override-indicator">
-                        {isLowConfidence
-                          ? ` (Manual Override - ${(
-                              cropData.confidence * 100
-                            ).toFixed(1)}% confidence)`
-                          : " (Manual Override)"}
-                      </span>
-                    )}
-                  </h4>
-                  <div className="quadrat-actions">
-                    <button
-                      className="download-btn small"
-                      onClick={() => downloadCrop(cropData.crop_url, cropIndex)}
-                    >
-                      <FiDownload size={12} />
-                      Crop
-                    </button>
-                    <button
-                      className="download-btn small"
-                      onClick={() =>
-                        downloadSegmentationOverlay(
-                          cropData.overlay_url || cropData.visualization_url,
-                          cropIndex
-                        )
-                      }
-                    >
-                      <FiDownload size={12} />
-                      Overlay
-                    </button>
-                    {cropData.mask_url && (
-                      <button
-                        className="download-btn small"
-                        onClick={() =>
-                          downloadSegmentationMask(cropData.mask_url, cropIndex)
-                        }
-                      >
-                        <FiDownload size={12} />
-                        Mask
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <div className="quadrat-content">
-                  <div className="quadrat-visuals">
-                    <div className="visual-item">
-                      <img
-                        src={`${process.env.REACT_APP_API_URL}/${cropData.crop_url}`}
-                        alt={`Crop ${cropIndex + 1}`}
-                        className="analysis-image"
-                      />
-                      <span className="visual-label">Original Crop</span>
-                    </div>
-                    <div className="visual-item">
-                      <img
-                        src={`${process.env.REACT_APP_API_URL}/${
-                          cropData.overlay_url || cropData.visualization_url
-                        }`}
-                        alt={`Segmentation Overlay ${cropIndex + 1}`}
-                        className="analysis-image"
-                      />
-                      <span className="visual-label">Coral Overlay</span>
-                    </div>
-                    {cropData.mask_url && (
-                      <div className="visual-item">
-                        <img
-                          src={`${process.env.REACT_APP_API_URL}/${cropData.mask_url}`}
-                          alt={`Segmentation Mask ${cropIndex + 1}`}
-                          className="analysis-image"
-                        />
-                        <span className="visual-label">Coral Mask</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {cropData.coverage_data &&
-                  cropData.coverage_data.length > 0 ? (
-                    <div className="coverage-analysis">
-                      <h5>Coral Coverage</h5>
-                      <div className="coverage-stats">
-                        {cropData.coverage_data.map((coral, coralIndex) => (
-                          <div key={coralIndex} className="coral-stat">
-                            <div
-                              className="coral-color"
-                              style={{ backgroundColor: coral.color }}
-                            ></div>
-                            <div className="coral-info">
-                              <span className="coral-name">
-                                {coral.class_name}
-                              </span>
-                              <span className="coral-category">
-                                {coral.category}
-                              </span>
-                            </div>
-                            <div className="coral-coverage">
-                              <span className="coverage-percent">
-                                {coral.coverage_percent}%
-                              </span>
-                              <span className="pixel-count">
-                                ({coral.pixel_count.toLocaleString()} px)
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="total-coverage">
-                        <strong>Total Coral Coverage: </strong>
-                        {cropData.coverage_data
-                          .reduce(
-                            (sum, coral) => sum + coral.coverage_percent,
-                            0
-                          )
-                          .toFixed(1)}
-                        %
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="no-coverage-found">
-                      <p>ℹ️ No coral coverage detected in this quadrat.</p>
-                      {isManualOverride && (
-                        <p className="manual-override-note">
-                          {isLowConfidence
-                            ? `This quadrat was detected with ${(
-                                cropData.confidence * 100
-                              ).toFixed(
-                                1
-                              )}% confidence (below 87% threshold) but was manually included. The segmentation model processed it but may not have found distinct coral features to classify.`
-                            : "This image was manually included despite no automatic quadrat detection. The segmentation model may not have found coral features to classify."}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      <InteractiveCoralAnalysis
+        segmentationData={currentImage.segmentationData}
+        cropIntensity={cropIntensity}
+        currentImageIndex={currentImageIndex}
+        onDownloadCrop={downloadCrop}
+        onDownloadOverlay={downloadSegmentationOverlay}
+        onDownloadMask={downloadSegmentationMask}
+      />
     );
   };
 

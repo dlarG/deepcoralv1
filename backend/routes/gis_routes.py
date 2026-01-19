@@ -265,6 +265,48 @@ def save_images_with_location():
         if conn:
             conn.close()
 
+@gis_bp.route('/barangays', methods=['GET'])
+@cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
+def get_barangays_by_municipality():
+    """Get barangays for a specific municipality from existing data"""
+    try:
+        municipality = request.args.get('municipality')
+        
+        if not municipality:
+            return jsonify({"error": "Municipality parameter is required"}), 400
+            
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({"error": "Database connection failed"}), 500
+            
+        with conn.cursor() as cur:
+            # Get distinct barangays for the municipality from existing images
+            cur.execute("""
+                SELECT DISTINCT barangay
+                FROM images 
+                WHERE municipality ILIKE %s
+                AND barangay IS NOT NULL 
+                AND barangay != ''
+                ORDER BY barangay
+            """, (f"%{municipality}%",))
+            
+            barangays = [row[0] for row in cur.fetchall()]
+            
+        conn.close()
+        
+        return jsonify({
+            "municipality": municipality,
+            "barangays": barangays,
+            "count": len(barangays)
+        })
+        
+    except Exception as e:
+        print(f"Error fetching barangays: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
 @gis_bp.route('/location/<float:lat>/<float:lng>', methods=['GET', 'OPTIONS'])
 @cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
 def get_location_details(lat, lng):

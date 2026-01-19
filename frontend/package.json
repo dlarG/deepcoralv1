@@ -10,6 +10,7 @@
     "@testing-library/user-event": "^13.5.0",
     "axios": "^1.10.0",
     "chart.js": "^4.5.1",
+    "chartjs-plugin-datalabels": "^2.2.0",
     "crypto-js": "^4.2.0",
     "dayjs": "^1.11.13",
     "html2canvas": "^1.4.1",

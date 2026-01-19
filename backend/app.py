@@ -51,7 +51,7 @@ def create_app():
                 'validation.manage_image_uploads',
                 'validation.delete_pending_images',
                 'admin.manage_user_validation',
-                'approved.analyze_approved_image',   
+                'approved.an"""  """alyze_approved_image',   
                 'approved.batch_analyze_approved',   
                 'approved.delete_guest_images',      
                 'approved.analyze_pending_approved_image',  

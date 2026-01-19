@@ -2510,6 +2510,7 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
   border: 1px solid ${
     darkMode ? "rgba(51, 65, 85, 0.6)" : "rgba(226, 232, 240, 0.6)"
   };
+  padding: 1.5rem;
   border-radius: 16px;
   backdrop-filter: blur(10px);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
@@ -3276,7 +3277,7 @@ export const getAdminStyles = (sidebarOpen, darkMode = false) => `
   .filter-actions {
     display: none;
   }
-  
+
   .report-content {
     grid-template-columns: 1fr;
   }
