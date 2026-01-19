@@ -10,6 +10,7 @@ import {
   FiCheckCircle,
   FiPlus,
   FiLoader,
+  FiRefreshCw,
   FiAlertTriangle,
 } from "react-icons/fi";
 import {
@@ -101,8 +102,287 @@ const LocationSelector = ({
   const [loadingTransectCounts, setLoadingTransectCounts] = useState(false);
   const [imagesToSaveCount, setImagesToSaveCount] = useState(0);
 
+  const [geocoding, setGeocoding] = useState(false);
+  const [availableBarangays, setAvailableBarangays] = useState([]);
+  const [geocodingError, setGeocodingError] = useState(null);
+  const [manualEntry, setManualEntry] = useState(false);
+
   // Constants
   const MAX_IMAGES_PER_TRANSECT = 50;
+
+  const reverseGeocode = async (lat, lng) => {
+    setGeocoding(true);
+    setGeocodingError(null);
+
+    try {
+      console.log(`🔍 Starting reverse geocoding for: ${lat}, ${lng}`);
+
+      // Try multiple geocoding services in order of preference
+      const results = await tryMultipleGeocodingServices(lat, lng);
+
+      if (results.municipality || results.barangay) {
+        console.log(`✅ Geocoding successful:`, results);
+        setMunicipality(results.municipality || "");
+
+        // If we got barangay directly, set it
+        if (results.barangay) {
+          setBarangay(results.barangay);
+          setAvailableBarangays([results.barangay]);
+        } else if (results.municipality) {
+          // If we only got municipality, try to get barangays
+          await fetchBarangaysForMunicipality(results.municipality, lat, lng);
+        }
+
+        setManualEntry(false);
+      } else {
+        console.log(`⚠️ No municipality/barangay found, enabling manual entry`);
+        setGeocodingError("Location details not found. Please enter manually.");
+        setManualEntry(true);
+      }
+    } catch (error) {
+      console.error(`❌ Geocoding failed:`, error);
+      setGeocodingError(
+        "Failed to fetch location details. Please enter manually."
+      );
+      setManualEntry(true);
+    } finally {
+      setGeocoding(false);
+    }
+  };
+
+  const tryMultipleGeocodingServices = async (lat, lng) => {
+    const services = [
+      () => geocodeWithNominatim(lat, lng),
+      () => geocodeWithGeoNames(lat, lng),
+      () => geocodeWithMapbox(lat, lng), // If you have API key
+    ];
+
+    for (const service of services) {
+      try {
+        const result = await service();
+        if (result.municipality || result.barangay) {
+          return result;
+        }
+      } catch (error) {
+        console.log(`Service failed, trying next:`, error.message);
+        continue;
+      }
+    }
+
+    return { municipality: null, barangay: null };
+  };
+
+  const geocodeWithNominatim = async (lat, lng) => {
+    console.log(`🌍 Trying Nominatim geocoding...`);
+
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?` +
+        `format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&` +
+        `accept-language=en&countrycodes=ph`,
+      {
+        headers: {
+          "User-Agent": "DeepCoralAI-LocationSelector/1.0",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Nominatim API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log(`📍 Nominatim response:`, data);
+
+    const address = data.address || {};
+
+    // Extract municipality (city, town, municipality)
+    const municipality =
+      address.city ||
+      address.town ||
+      address.municipality ||
+      address.county ||
+      null;
+
+    // Extract barangay (village, suburb, neighbourhood)
+    const barangay =
+      address.village ||
+      address.suburb ||
+      address.neighbourhood ||
+      address.hamlet ||
+      null;
+
+    return {
+      municipality,
+      barangay,
+      source: "nominatim",
+      raw_address: address,
+    };
+  };
+
+  const geocodeWithGeoNames = async (lat, lng) => {
+    console.log(`🌐 Trying GeoNames geocoding...`);
+
+    // You need to register at geonames.org for a username
+    const username = "your_geonames_username"; // Register at geonames.org
+
+    if (!username || username === "your_geonames_username") {
+      throw new Error("GeoNames username not configured");
+    }
+
+    const response = await fetch(
+      `http://api.geonames.org/findNearbyPlaceNameJSON?` +
+        `lat=${lat}&lng=${lng}&radius=10&maxRows=5&username=${username}&country=PH`
+    );
+
+    if (!response.ok) {
+      throw new Error(`GeoNames API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log(`📍 GeoNames response:`, data);
+
+    if (data.geonames && data.geonames.length > 0) {
+      const place = data.geonames[0];
+      return {
+        municipality: place.adminName2 || place.name,
+        barangay: place.name,
+        source: "geonames",
+        raw_data: place,
+      };
+    }
+
+    return { municipality: null, barangay: null };
+  };
+
+  const geocodeWithMapbox = async (lat, lng) => {
+    const accessToken = process.env.REACT_APP_MAPBOX_ACCESS_TOKEN;
+
+    if (!accessToken) {
+      throw new Error("Mapbox access token not configured");
+    }
+
+    console.log(`🗺️ Trying Mapbox geocoding...`);
+
+    const response = await fetch(
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?` +
+        `access_token=${accessToken}&types=place,locality,neighborhood&country=ph`
+    );
+
+    if (!response.ok) {
+      throw new Error(`Mapbox API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log(`📍 Mapbox response:`, data);
+
+    if (data.features && data.features.length > 0) {
+      let municipality = null;
+      let barangay = null;
+
+      for (const feature of data.features) {
+        const placeType = feature.place_type[0];
+
+        if (placeType === "place" && !municipality) {
+          municipality = feature.text;
+        }
+        if (placeType === "neighborhood" && !barangay) {
+          barangay = feature.text;
+        }
+      }
+
+      return { municipality, barangay, source: "mapbox" };
+    }
+
+    return { municipality: null, barangay: null };
+  };
+
+  const fetchBarangaysForMunicipality = async (municipalityName, lat, lng) => {
+    try {
+      console.log(
+        `🔍 Fetching barangays for municipality: ${municipalityName}`
+      );
+
+      // Try to get barangays from your database first
+      const dbBarangays = await fetchBarangaysFromDatabase(municipalityName);
+
+      if (dbBarangays.length > 0) {
+        setAvailableBarangays(dbBarangays);
+        console.log(`✅ Found ${dbBarangays.length} barangays in database`);
+        return;
+      }
+
+      // If no database results, try geocoding APIs for nearby barangays
+      const nearbyBarangays = await fetchNearbyBarangays(
+        lat,
+        lng,
+        municipalityName
+      );
+      setAvailableBarangays(nearbyBarangays);
+    } catch (error) {
+      console.error(`❌ Error fetching barangays:`, error);
+      setAvailableBarangays([]);
+    }
+  };
+
+  const fetchBarangaysFromDatabase = async (municipalityName) => {
+    try {
+      const response = await fetch(
+        `${
+          process.env.REACT_APP_API_URL
+        }/gis/barangays?municipality=${encodeURIComponent(municipalityName)}`
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        return data.barangays || [];
+      }
+    } catch (error) {
+      console.log(`Database barangay fetch failed:`, error);
+    }
+    return [];
+  };
+
+  const fetchNearbyBarangays = async (lat, lng, municipalityName) => {
+    try {
+      // Use Nominatim to search for villages/barangays in the area
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?` +
+          `format=json&q=barangay+${encodeURIComponent(municipalityName)}&` +
+          `limit=20&countrycodes=ph&addressdetails=1`,
+        {
+          headers: {
+            "User-Agent": "DeepCoralAI-LocationSelector/1.0",
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const barangays = data
+          .filter(
+            (item) =>
+              item.address &&
+              (item.address.village ||
+                item.address.suburb ||
+                item.address.neighbourhood)
+          )
+          .map(
+            (item) =>
+              item.address.village ||
+              item.address.suburb ||
+              item.address.neighbourhood
+          )
+          .filter((barangay, index, array) => array.indexOf(barangay) === index) // Remove duplicates
+          .sort();
+
+        console.log(`📍 Found ${barangays.length} barangays via Nominatim`);
+        return barangays;
+      }
+    } catch (error) {
+      console.log(`Nominatim barangay search failed:`, error);
+    }
+    return [];
+  };
 
   const getLocationDisplayName = (location, index) => {
     if (location.municipality && location.barangay) {
@@ -405,18 +685,30 @@ const LocationSelector = ({
     }
   };
 
-  const handleMapClick = (latlng) => {
+  const handleMapClick = async (latlng) => {
     if (mode === "create") {
       setSelectedLocation({
         lat: latlng.lat,
         lng: latlng.lng,
         isNew: true,
       });
-      // Clear municipality and barangay for new location
+
+      // Clear previous values
       setMunicipality("");
       setBarangay("");
-      // Reset transect selection
+      setAvailableBarangays([]);
       setTransect("");
+      setGeocodingError(null);
+      setManualEntry(false);
+
+      // Automatically reverse geocode the location
+      await reverseGeocode(latlng.lat, latlng.lng);
+    }
+  };
+
+  const refreshGeocoding = async () => {
+    if (selectedLocation && selectedLocation.isNew) {
+      await reverseGeocode(selectedLocation.lat, selectedLocation.lng);
     }
   };
 
@@ -671,7 +963,7 @@ const LocationSelector = ({
   return (
     <div className="location-selector-overlay">
       <div className="location-selector-modal">
-        <div className="location-header">
+        <div className="save-location-header">
           <div className="header-left">
             <FiMap size={24} />
             <div>
@@ -689,9 +981,9 @@ const LocationSelector = ({
         </div>
 
         <div className="location-content">
-          <div className="map-controls">
+          <div className="save-map-controls">
             <div className="search-section">
-              <div className="search-bar">
+              <div className="save-search-bar">
                 <input
                   type="text"
                   placeholder="Search for a location..."
@@ -744,7 +1036,7 @@ const LocationSelector = ({
             </div>
 
             {selectedLocation && (
-              <div className="selected-location-info">
+              <div className="save-selected-location-info">
                 <FiCheckCircle size={16} />
                 <div>
                   <strong>
@@ -902,44 +1194,183 @@ const LocationSelector = ({
 
             {/* Additional Location Information - Only show for new locations */}
             {selectedLocation && selectedLocation.isNew && (
-              <div className="location-details-form">
-                <h4>Additional Location Information</h4>
+              <div className="location-details-form enhanced">
+                <div className="form-header">
+                  <h4>📍 Location Information</h4>
+                  {geocoding && (
+                    <div className="geocoding-status">
+                      <FiLoader className="spinning" size={16} />
+                      <span>Fetching location details...</span>
+                    </div>
+                  )}
+                  {!geocoding && !manualEntry && (
+                    <button
+                      className="refresh-geocoding-btn"
+                      onClick={refreshGeocoding}
+                      title="Refresh location details"
+                    >
+                      <FiRefreshCw size={14} />
+                      Refresh
+                    </button>
+                  )}
+                </div>
+
+                {geocodingError && (
+                  <div className="geocoding-error">
+                    <FiAlertTriangle size={16} />
+                    <span>{geocodingError}</span>
+                  </div>
+                )}
+
+                <div className="coordinates-display">
+                  <p>
+                    <strong>Coordinates:</strong>{" "}
+                    {selectedLocation.lat.toFixed(6)},{" "}
+                    {selectedLocation.lng.toFixed(6)}
+                  </p>
+                </div>
+
                 <div className="form-row">
                   <div className="form-group">
                     <label htmlFor="municipality">
                       Municipality: <span className="required">*</span>
                     </label>
-                    <input
-                      id="municipality"
-                      type="text"
-                      value={municipality}
-                      onChange={(e) => setMunicipality(e.target.value)}
-                      placeholder="Enter municipality name"
-                      className="location-input"
-                      required
-                    />
+                    <div className="input-with-status">
+                      <input
+                        id="municipality"
+                        type="text"
+                        value={municipality}
+                        onChange={(e) => {
+                          setMunicipality(e.target.value);
+                          // Clear barangays when municipality changes manually
+                          if (e.target.value !== municipality) {
+                            setBarangay("");
+                            setAvailableBarangays([]);
+                          }
+                        }}
+                        placeholder={
+                          geocoding ? "Loading..." : "Enter municipality name"
+                        }
+                        className="location-input"
+                        disabled={geocoding}
+                        required
+                      />
+                      {!geocoding && !manualEntry && municipality && (
+                        <div className="auto-detected">
+                          <FiCheckCircle size={14} />
+                          <span>Auto-detected</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
+
                   <div className="form-group">
                     <label htmlFor="barangay">
                       Barangay: <span className="required">*</span>
                     </label>
+                    <div className="input-with-status">
+                      {availableBarangays.length > 0 ? (
+                        <select
+                          id="barangay"
+                          value={barangay}
+                          onChange={(e) => setBarangay(e.target.value)}
+                          className="location-select"
+                          required
+                        >
+                          <option value="">Select Barangay</option>
+                          {availableBarangays.map((brgy) => (
+                            <option key={brgy} value={brgy}>
+                              {brgy}
+                            </option>
+                          ))}
+                          <option value="__manual__">Enter manually...</option>
+                        </select>
+                      ) : (
+                        <input
+                          id="barangay"
+                          type="text"
+                          value={barangay}
+                          onChange={(e) => setBarangay(e.target.value)}
+                          placeholder={
+                            geocoding ? "Loading..." : "Enter barangay name"
+                          }
+                          className="location-input"
+                          disabled={geocoding}
+                          required
+                        />
+                      )}
+                      {!geocoding &&
+                        !manualEntry &&
+                        barangay &&
+                        availableBarangays.length === 1 && (
+                          <div className="auto-detected">
+                            <FiCheckCircle size={14} />
+                            <span>Auto-detected</span>
+                          </div>
+                        )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Show manual entry option */}
+                {!manualEntry && !geocoding && (
+                  <div className="manual-entry-option">
+                    <button
+                      type="button"
+                      className="manual-entry-btn"
+                      onClick={() => {
+                        setManualEntry(true);
+                        setAvailableBarangays([]);
+                      }}
+                    >
+                      Enter location details manually
+                    </button>
+                  </div>
+                )}
+
+                {/* Show geocoding success info */}
+                {!geocoding &&
+                  (municipality || barangay) &&
+                  !geocodingError && (
+                    <div className="geocoding-success">
+                      <FiCheckCircle size={16} />
+                      <span>Location details retrieved automatically</span>
+                    </div>
+                  )}
+
+                <p className="form-help">
+                  <span className="required">*</span> Required fields for new
+                  locations
+                  <br />
+                  <small>
+                    Location details are automatically detected when you click
+                    on the map. You can edit them if needed or enter manually.
+                  </small>
+                </p>
+              </div>
+            )}
+
+            {selectedLocation &&
+              selectedLocation.isNew &&
+              barangay === "__manual__" && (
+                <div className="manual-barangay-input">
+                  <div className="form-group">
+                    <label htmlFor="manual-barangay">
+                      Enter Barangay Name: <span className="required">*</span>
+                    </label>
                     <input
-                      id="barangay"
+                      id="manual-barangay"
                       type="text"
-                      value={barangay}
+                      value=""
                       onChange={(e) => setBarangay(e.target.value)}
-                      placeholder="Enter barangay name"
+                      placeholder="Type barangay name"
                       className="location-input"
+                      autoFocus
                       required
                     />
                   </div>
                 </div>
-                <p className="form-help">
-                  <span className="required">*</span> Required fields for new
-                  locations
-                </p>
-              </div>
-            )}
+              )}
           </div>
 
           <div className="map-container">
@@ -1080,7 +1511,7 @@ const LocationSelector = ({
             )}
           </div>
 
-          <div className="existing-locations-panel">
+          <div className="select-existing-locations-panel">
             <h3>
               <FiMapPin size={16} />
               Existing Locations ({existingLocations.length})
@@ -1102,7 +1533,7 @@ const LocationSelector = ({
                 existingLocations.map((location, index) => (
                   <div
                     key={`location-item-${index}`}
-                    className={`location-item ${
+                    className={`select-location-item ${
                       selectedLocation &&
                       selectedLocation.lat === location.latitude &&
                       selectedLocation.lng === location.longitude

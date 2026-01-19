@@ -160,7 +160,7 @@ function ProfileManagement({ user }) {
                 <div className="profile-avatar-modern">
                   {user.profile_image ? (
                     <img
-                      src={`${process.env.REACT_APP_API_URL}/profile_uploads/${user.profile_image}`}
+                      src={`/profile_uploads/${user.profile_image}`}
                       alt={`${user.firstname} ${user.lastname}`}
                       onError={(e) => {
                         e.target.style.display = "none";

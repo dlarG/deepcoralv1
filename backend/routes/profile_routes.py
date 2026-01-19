@@ -10,8 +10,6 @@ from flask import current_app
 profile_bp = Blueprint('profile', __name__)
 
 
-# klasjdjlkas
-
 
 @profile_bp.route('/profile', methods=['GET'])
 @login_required
@@ -22,13 +20,7 @@ def get_profile():
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
-            # Make sure email is included in the query
-            cur.execute("""
-                SELECT id, username, firstname, lastname, roletype, bio, 
-                       profile_image, created_at, email, status, last_login 
-                FROM users 
-                WHERE id = %s
-            """, (session['user_id'],))
+            cur.execute("SELECT id, username, firstname, lastname, roletype, bio, profile_image, created_at, email FROM users WHERE id = %s", (session['user_id'],))
             user = cur.fetchone()
             
             if not user:
@@ -44,10 +36,8 @@ def get_profile():
                     'roletype': user[4],
                     'bio': user[5],
                     'profile_image': user[6],
-                    'created_at': user[7].isoformat() if user[7] else None,
-                    'email': user[8],  # Email is now at index 8
-                    'status': user[9],
-                    'last_login': user[10].isoformat() if user[10] else None
+                    'created_at': user[7],
+                    'email': user[8],
                 }
             }), 200
     except Exception as e:
@@ -56,7 +46,6 @@ def get_profile():
         if conn:
             conn.close()
 
-            
 @profile_bp.route('/profile', methods=['PUT'])
 @login_required
 def update_profile():
@@ -92,21 +81,21 @@ def update_profile():
                 # Delete old image if exists
                 if current_user[7]:  # profile_image column
                     old_image_path = os.path.join(
-                        current_app.root_path,
-                        'profile_uploads',
+                        current_app.root_path, 
+                        '..', 'frontend', 'public', 'profile_uploads',
                         current_user[7]
                     )
                     if os.path.exists(old_image_path):
                         os.remove(old_image_path)
 
-                # Save new image to backend
+                # Save new image
                 filename = secure_filename(file.filename)
                 import uuid
                 unique_filename = f"{uuid.uuid4().hex}_{filename}"
                 
                 upload_path = os.path.join(
-                    current_app.root_path,
-                    'profile_uploads'
+                    current_app.root_path, 
+                    '..', 'frontend', 'public', 'profile_uploads'
                 )
                 os.makedirs(upload_path, exist_ok=True)
                 file.save(os.path.join(upload_path, unique_filename))
@@ -145,9 +134,9 @@ def update_profile():
             
             password_hash = generate_password_hash(new_password)
 
-        # Check if username is taken by another user (case-insensitive)
+        # Check if username is taken by another user
         with conn.cursor() as cur:
-            cur.execute("SELECT id FROM users WHERE LOWER(username) = LOWER(%s) AND id != %s", (username, user_id))
+            cur.execute("SELECT id FROM users WHERE username = %s AND id != %s", (username, user_id))
             if cur.fetchone():
                 return jsonify({'error': 'Username already taken'}), 409
         
@@ -376,7 +365,7 @@ def cleanup_user_files(user_images, mask_paths, profile_image):
         # Clean up profile image
         if profile_image:
             profile_file_path = os.path.join(
-                current_app.root_path, 'profile_uploads', profile_image
+                current_app.root_path, '..', 'frontend', 'public', 'profile_uploads', profile_image
             )
             if os.path.exists(profile_file_path):
                 os.remove(profile_file_path)

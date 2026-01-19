@@ -1907,10 +1907,6 @@ chart-wrapper.full-width {
     height: auto;
   }
 
-  .location-details-sidebar {
-    max-height: 500px;
-  }
-
   .date-range-filter {
     flex-direction: column;
     align-items: stretch;

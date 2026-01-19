@@ -49,7 +49,6 @@ const CoralCoverageTable = ({
     const headers = [
       "Class Code",
       "Class Name",
-      "Weighted Coverage %",
       "Avg Coverage %",
       "Occurrences",
     ];
@@ -60,7 +59,6 @@ const CoralCoverageTable = ({
         [
           coral.class_code || "N/A",
           `"${coral.class_name || ""}"`,
-          (coral.weighted_coverage_percent || 0).toFixed(2),
           (coral.avg_coverage_percent || 0).toFixed(2),
           coral.occurrence_count || 0,
         ].join(",")

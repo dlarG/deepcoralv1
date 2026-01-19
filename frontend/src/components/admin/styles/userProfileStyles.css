@@ -1272,6 +1272,7 @@
   cursor: pointer;
   text-align: left;
   width: 100%;
+  text-align: center;
 }
 
 .action-btn:hover {
@@ -1295,6 +1296,12 @@
   border-color: var(--color-secondary);
   background: var(--color-secondary);
   color: white;
+}
+
+.action-btn.info:hover {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--text-primary);
 }
 
 .action-icon {

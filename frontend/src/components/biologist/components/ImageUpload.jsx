@@ -1,5 +1,6 @@
 import React, { useState, useRef } from "react";
 import { useAuth } from "../../../context/AuthContext";
+import InteractiveCoralAnalysis from "../../admin/components/InteractiveCoralAnalysis";
 import {
   FiUpload,
   FiSettings,
@@ -89,8 +90,6 @@ function AddImage() {
   const [imageToOverride, setImageToOverride] = useState(null);
 
   const [analysisInProgress, setAnalysisInProgress] = useState(false);
-  const [sessionId, setSessionId] = useState(null);
-  const [isCancelling, setIsCancelling] = useState(false);
 
   const processCrops = async (file, intensity) => {
     try {
@@ -336,8 +335,6 @@ function AddImage() {
     setAnalysisCompleted(false);
     setValidationProgress({ current: 0, total: 0 });
     setBatchProgress({ current: 0, total: 0 });
-    setSessionId(null);
-    setIsCancelling(false);
   };
 
   const removeImage = (index, skipConfirmation = false) => {
@@ -613,44 +610,6 @@ function AddImage() {
     });
   };
 
-  const cancelBatchOperation = async () => {
-    if (!sessionId || isCancelling) return;
-
-    setIsCancelling(true);
-    try {
-      // Get CSRF token first
-      const csrfResponse = await fetch(
-        `${process.env.REACT_APP_API_URL}/csrf-token`,
-        {
-          method: "GET",
-          credentials: "include",
-        }
-      );
-      const csrfData = await csrfResponse.json();
-
-      const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/cancel_batch/${sessionId}`,
-        {
-          method: "POST",
-          credentials: "include",
-          headers: {
-            "X-CSRF-Token": csrfData.csrf_token,
-          },
-        }
-      );
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log("Cancellation requested:", result.message);
-      } else {
-        console.error("Failed to cancel operation:", response.status);
-      }
-    } catch (error) {
-      console.error("Error cancelling operation:", error);
-    }
-    // Keep isCancelling true to prevent re-clicking
-  };
-
   const handleBatchAnalyze = async () => {
     if (images.length === 0) {
       alert("Please select images first!");
@@ -742,51 +701,11 @@ function AddImage() {
       if (!proceed) return;
     }
 
-    // Generate session ID on frontend BEFORE sending request for immediate cancellation support
-    const generatedSessionId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    setSessionId(generatedSessionId);
-    setIsCancelling(false); // Reset cancelling state
-
     // Set analysis in progress - FIXED: Set initial progress to 0
     setAnalysisInProgress(true);
     setBatchLoading(true);
     setShowBatchChart(false);
     setBatchProgress({ current: 0, total: validImages.length });
-
-    // Start listening to real-time progress updates via SSE
-    const progressUrl = `${process.env.REACT_APP_API_URL}/batch_progress/${generatedSessionId}`;
-    const es = new EventSource(progressUrl);
-
-    es.onmessage = function (event) {
-      try {
-        const progressData = JSON.parse(event.data);
-        console.log('Progress update:', progressData);
-        setBatchProgress({
-          current: progressData.current || 0,
-          total: progressData.total || validImages.length,
-        });
-
-        // Check if cancelled
-        if (progressData.cancelled) {
-          console.log('Operation cancelled via progress stream');
-          es.close();
-        }
-      } catch (e) {
-        console.error("Error parsing progress data:", e);
-      }
-    };
-
-    es.onerror = function (event) {
-      console.log("EventSource connection closed");
-      es.close();
-    };
-
-    // Close EventSource after 5 minutes
-    setTimeout(() => {
-      if (es.readyState !== EventSource.CLOSED) {
-        es.close();
-      }
-    }, 300000);
 
     try {
       const csrfResponse = await fetch(
@@ -804,7 +723,6 @@ function AddImage() {
       });
       formData.append("csrf_token", csrfData.csrf_token);
       formData.append("intensity", cropIntensity);
-      formData.append("session_id", generatedSessionId); // Send session_id to backend
       formData.append(
         "manually_included",
         JSON.stringify(manuallyIncludedIndices)
@@ -882,14 +800,6 @@ function AddImage() {
       }
 
       const data = resBody;
-
-      console.log("✅ Batch analysis response:", data);
-
-      // Check if operation was cancelled
-      if (data.cancelled) {
-        console.log("⚠️ Operation was cancelled by user");
-        alert(`Analysis cancelled after processing ${data.processing_details?.cancelled_at || 0} images`);
-      }
 
       setBatchResults(data);
       setShowBatchChart(true);
@@ -972,10 +882,6 @@ function AddImage() {
       console.error("Batch analysis error:", error);
       alert("Batch analysis failed: " + error.message);
     } finally {
-      // Close EventSource if still open
-      if (es && es.readyState !== EventSource.CLOSED) {
-        es.close();
-      }
       setBatchLoading(false);
       setAnalysisInProgress(false); // Re-enable button
       setBatchProgress({ current: 0, total: 0 });
@@ -1058,20 +964,18 @@ function AddImage() {
             )}
           </div>
 
-          {/* Cancel button for validation or analysis */}
-          {(isValidating || isAnalyzing) && (
+          {/* Cancel Button for Long Operations */}
+          {/* {(isValidating || isAnalyzing) && (
             <button
               className="cancel-operation-btn"
-              onClick={cancelBatchOperation}
-              disabled={isCancelling}
-              style={{
-                opacity: isCancelling ? 0.6 : 1,
-                cursor: isCancelling ? 'not-allowed' : 'pointer'
+              onClick={() => {
+                // You can implement cancellation logic here if needed
+                console.log("Operation cancellation requested");
               }}
             >
-              {isCancelling ? 'Cancelling...' : 'Cancel Operation'}
+              Cancel Operation
             </button>
-          )}
+          )} */}
         </div>
       </div>
     );
@@ -1548,12 +1452,11 @@ function AddImage() {
               <span>Coral Type</span>
               <span>Category</span>
               <span>Coverage %</span>
-              <span>Pixel Count</span>
             </div>
             {coverageData
               .sort((a, b) => b.coverage_percent - a.coverage_percent)
               .map((coral, index) => (
-                <div key={index} className="table-row">
+                <div key={index} className="up-table-row">
                   <div className="coral-name">
                     <div
                       className="color-indicator"
@@ -1563,9 +1466,6 @@ function AddImage() {
                   </div>
                   <span className="category">{coral.category}</span>
                   <span className="percentage">{coral.coverage_percent}%</span>
-                  <span className="pixels">
-                    {coral.total_pixels.toLocaleString()}
-                  </span>
                 </div>
               ))}
           </div>
@@ -1598,182 +1498,15 @@ function AddImage() {
       );
     }
 
-    const segmentationData = currentImage.segmentationData;
-    const isManuallyIncluded =
-      segmentationData.manually_included ||
-      currentImage.status === "manually_included";
-
     return (
-      <div className="image-upload-analysis-results">
-        <div className="analysis-header">
-          <h3 className="up-title">Coral Analysis Results</h3>
-          <div className="analysis-stats">
-            <span className="uploaded-num">
-              {segmentationData.total_crops} quadrats analyzed
-            </span>
-            <span className="method-tag">
-              {cropIntensity.charAt(0).toUpperCase() + cropIntensity.slice(1)}
-            </span>
-            {isManuallyIncluded && (
-              <span className="manual-override-badge">
-                ⚠️ Manually Included
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="quadrats-analysis">
-          {segmentationData.crops.map((cropData, cropIndex) => {
-            const isLowConfidence =
-              cropData.confidence && cropData.confidence < 0.87;
-            const isManualOverride =
-              cropData.manually_included || cropData.below_threshold;
-
-            return (
-              <div key={cropIndex} className="quadrat-analysis-card">
-                <div className="quadrat-header">
-                  <h4>
-                    Quadrat {cropIndex + 1} - {cropData.detection_label}
-                    {isManualOverride && (
-                      <span className="manual-override-indicator">
-                        {isLowConfidence
-                          ? ` (Manual Override - ${(
-                              cropData.confidence * 100
-                            ).toFixed(1)}% confidence)`
-                          : " (Manual Override)"}
-                      </span>
-                    )}
-                  </h4>
-                  <div className="quadrat-actions">
-                    <button
-                      className="download-btn small"
-                      onClick={() => downloadCrop(cropData.crop_url, cropIndex)}
-                    >
-                      <FiDownload size={12} />
-                      Crop
-                    </button>
-                    <button
-                      className="download-btn small"
-                      onClick={() =>
-                        downloadSegmentationOverlay(
-                          cropData.overlay_url || cropData.visualization_url,
-                          cropIndex
-                        )
-                      }
-                    >
-                      <FiDownload size={12} />
-                      Overlay
-                    </button>
-                    {cropData.mask_url && (
-                      <button
-                        className="download-btn small"
-                        onClick={() =>
-                          downloadSegmentationMask(cropData.mask_url, cropIndex)
-                        }
-                      >
-                        <FiDownload size={12} />
-                        Mask
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <div className="quadrat-content">
-                  <div className="quadrat-visuals">
-                    <div className="visual-item">
-                      <img
-                        src={`${process.env.REACT_APP_API_URL}/${cropData.crop_url}`}
-                        alt={`Crop ${cropIndex + 1}`}
-                        className="analysis-image"
-                      />
-                      <span className="visual-label">Original Crop</span>
-                    </div>
-                    <div className="visual-item">
-                      <img
-                        src={`${process.env.REACT_APP_API_URL}/${
-                          cropData.overlay_url || cropData.visualization_url
-                        }`}
-                        alt={`Segmentation Overlay ${cropIndex + 1}`}
-                        className="analysis-image"
-                      />
-                      <span className="visual-label">Coral Overlay</span>
-                    </div>
-                    {cropData.mask_url && (
-                      <div className="visual-item">
-                        <img
-                          src={`${process.env.REACT_APP_API_URL}/${cropData.mask_url}`}
-                          alt={`Segmentation Mask ${cropIndex + 1}`}
-                          className="analysis-image"
-                        />
-                        <span className="visual-label">Coral Mask</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {cropData.coverage_data &&
-                  cropData.coverage_data.length > 0 ? (
-                    <div className="coverage-analysis">
-                      <h5>Coral Coverage</h5>
-                      <div className="coverage-stats">
-                        {cropData.coverage_data.map((coral, coralIndex) => (
-                          <div key={coralIndex} className="coral-stat">
-                            <div
-                              className="coral-color"
-                              style={{ backgroundColor: coral.color }}
-                            ></div>
-                            <div className="coral-info">
-                              <span className="coral-name">
-                                {coral.class_name}
-                              </span>
-                              <span className="coral-category">
-                                {coral.category}
-                              </span>
-                            </div>
-                            <div className="coral-coverage">
-                              <span className="coverage-percent">
-                                {coral.coverage_percent}%
-                              </span>
-                              <span className="pixel-count">
-                                ({coral.pixel_count.toLocaleString()} px)
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="total-coverage">
-                        <strong>Total Coral Coverage: </strong>
-                        {cropData.coverage_data
-                          .reduce(
-                            (sum, coral) => sum + coral.coverage_percent,
-                            0
-                          )
-                          .toFixed(1)}
-                        %
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="no-coverage-found">
-                      <p>ℹ️ No coral coverage detected in this quadrat.</p>
-                      {isManualOverride && (
-                        <p className="manual-override-note">
-                          {isLowConfidence
-                            ? `This quadrat was detected with ${(
-                                cropData.confidence * 100
-                              ).toFixed(
-                                1
-                              )}% confidence (below 87% threshold) but was manually included. The segmentation model processed it but may not have found distinct coral features to classify.`
-                            : "This image was manually included despite no automatic quadrat detection. The segmentation model may not have found coral features to classify."}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      <InteractiveCoralAnalysis
+        segmentationData={currentImage.segmentationData}
+        cropIntensity={cropIntensity}
+        currentImageIndex={currentImageIndex}
+        onDownloadCrop={downloadCrop}
+        onDownloadOverlay={downloadSegmentationOverlay}
+        onDownloadMask={downloadSegmentationMask}
+      />
     );
   };
 

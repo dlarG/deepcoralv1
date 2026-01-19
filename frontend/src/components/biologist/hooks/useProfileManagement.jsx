@@ -13,8 +13,8 @@ export default function useProfileManagement(user) {
     username: "",
     firstname: "",
     lastname: "",
-    email: "",
     bio: "",
+    email: "",
     profile_image: null,
     current_password: "",
     new_password: "",
@@ -103,17 +103,23 @@ export default function useProfileManagement(user) {
   };
 
   const openProfileModal = () => {
+    console.log("User data:", user); // Debug line
+    console.log("User email:", user.email); // Debug line
+
     setProfileFormData({
-      username: user.username,
-      firstname: user.firstname,
-      lastname: user.lastname,
-      email: user.email || "",
+      username: user.username || "",
+      firstname: user.firstname || "",
+      lastname: user.lastname || "",
       bio: user.bio || "",
+      email: user.email || "",
       profile_image: null,
       current_password: "",
       new_password: "",
       confirm_password: "",
     });
+
+    console.log("Profile form data set with email:", user.email); // Debug line
+
     setProfileImagePreview(
       user.profile_image ? `/profile_uploads/${user.profile_image}` : null
     );
@@ -127,8 +133,8 @@ export default function useProfileManagement(user) {
       username: "",
       firstname: "",
       lastname: "",
-      email: "",
       bio: "",
+      email: "",
       profile_image: null,
       current_password: "",
       new_password: "",
@@ -162,6 +168,16 @@ export default function useProfileManagement(user) {
     }
     if (!profileFormData.lastname?.trim()) {
       errors.push("Last name is required");
+    }
+    if (!profileFormData.email?.trim()) {
+      errors.push("Email is required");
+    }
+
+    if (profileFormData.email?.trim()) {
+      const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      if (!emailPattern.test(profileFormData.email)) {
+        errors.push("Please enter a valid email address");
+      }
     }
 
     if (profileFormData.new_password) {
@@ -200,8 +216,8 @@ export default function useProfileManagement(user) {
       formData.append("username", profileFormData.username);
       formData.append("firstname", profileFormData.firstname);
       formData.append("lastname", profileFormData.lastname);
-      formData.append("email", profileFormData.email);
       formData.append("bio", profileFormData.bio);
+      formData.append("email", profileFormData.email); // ADD THIS LINE - email was missing!
 
       if (profileFormData.new_password) {
         formData.append("current_password", profileFormData.current_password);

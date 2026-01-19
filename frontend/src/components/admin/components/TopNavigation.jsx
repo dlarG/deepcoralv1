@@ -12,8 +12,9 @@ import {
   FiActivity,
   FiTrendingUp,
   FiFileText,
+  FiX, // Add this import
 } from "react-icons/fi";
-import SystemSettingsModal from "./SystemSettingsModal"; // Add this import
+import SystemSettingsModal from "./SystemSettingsModal";
 import "../styles/topnav.css";
 
 function TopNavigation({
@@ -24,17 +25,30 @@ function TopNavigation({
   setDarkMode,
   handleLogout,
   setActiveTab,
-  activeTab, // Add this prop to track current tab
+  activeTab,
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationDropdownOpen, setNotificationDropdownOpen] =
     useState(false);
-  const [systemSettingsOpen, setSystemSettingsOpen] = useState(false); // Add this state
+  const [systemSettingsOpen, setSystemSettingsOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false); // Add this state
 
   // Refs for click outside detection
   const profileDropdownRef = useRef(null);
   const notificationDropdownRef = useRef(null);
+
+  // Check if we're on mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 480);
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   // Apply dark mode class to body
   useEffect(() => {
@@ -80,7 +94,7 @@ function TopNavigation({
       if (event.key === "Escape") {
         setProfileDropdownOpen(false);
         setNotificationDropdownOpen(false);
-        setSystemSettingsOpen(false); // Add this
+        setSystemSettingsOpen(false);
       }
     };
 
@@ -123,31 +137,45 @@ function TopNavigation({
     return activeTab === "Profile Management";
   };
 
+  // Handle profile dropdown close
+  const handleCloseProfileDropdown = () => {
+    setProfileDropdownOpen(false);
+  };
+
+  // Handle dropdown header click (for mobile close functionality)
+  const handleDropdownHeaderClick = (event) => {
+    // Only close on mobile and if clicking in the close button area
+    if (isMobile) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      const clickX = event.clientX - rect.left;
+      const clickY = event.clientY - rect.top;
+
+      // Close button area (top-right corner, roughly 40x40px area)
+      if (clickX > rect.width - 40 && clickY < 40) {
+        setProfileDropdownOpen(false);
+      }
+    }
+  };
+
   // Handle profile dropdown menu item clicks
   const handleProfileMenuClick = (action) => {
     setProfileDropdownOpen(false);
 
     switch (action) {
       case "profile":
-        // Navigate to Profile Management section
         setActiveTab("Profile Management");
         console.log("Navigated to Profile Management");
         break;
       case "settings":
-        // Open System Settings Modal
         setSystemSettingsOpen(true);
         console.log("Opening System Settings Modal");
         break;
       case "reports":
-        // Navigate to Generate Report section
         setActiveTab("Generate Report");
         console.log("Navigate to reports");
         break;
       case "help":
-        // You could open a help modal or external link
         console.log("Open help center");
-        // For now, you could navigate to a help section if you have one
-        // setActiveTab("Help");
         break;
       case "logout":
         handleLogout();
@@ -215,19 +243,14 @@ function TopNavigation({
               className="profile-trigger"
               onClick={() => {
                 setProfileDropdownOpen(!profileDropdownOpen);
-                setNotificationDropdownOpen(false); // Close notification dropdown
+                setNotificationDropdownOpen(false);
               }}
             >
               <div className="profile-avatar">
                 {user?.profile_image ? (
                   <img
-                    src={`${process.env.REACT_APP_API_URL}/profile_uploads/${user.profile_image}`}
+                    src={`/profile_uploads/${user.profile_image}`}
                     alt={`${user.firstname} ${user.lastname}`}
-                    onError={(e) => {
-                      console.error("Profile image failed to load:", e.target.src);
-                      e.target.style.display = "none";
-                      e.target.nextSibling.style.display = "flex";
-                    }}
                   />
                 ) : (
                   <div className="avatar-initials">
@@ -248,18 +271,32 @@ function TopNavigation({
 
             {profileDropdownOpen && (
               <div className="profile-dropdown">
-                <div className="dropdown-header">
+                <div
+                  className={`dropdown-header ${
+                    isMobile ? "has-close-btn" : ""
+                  }`}
+                  onClick={handleDropdownHeaderClick}
+                >
+                  {/* Add real close button for mobile */}
+                  {isMobile && (
+                    <button
+                      className="mobile-close-btn"
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent header click
+                        handleCloseProfileDropdown();
+                      }}
+                      aria-label="Close profile menu"
+                    >
+                      <FiX size={16} />
+                    </button>
+                  )}
+
                   <div className="profile-summary">
                     <div className="profile-avatar-larges">
                       {user?.profile_image ? (
                         <img
-                          src={`${process.env.REACT_APP_API_URL}/profile_uploads/${user.profile_image}`}
+                          src={`/profile_uploads/${user.profile_image}`}
                           alt={`${user.firstname} ${user.lastname}`}
-                          onError={(e) => {
-                            console.error("Profile image failed to load:", e.target.src);
-                            e.target.style.display = "none";
-                            e.target.nextSibling.style.display = "flex";
-                          }}
                         />
                       ) : (
                         <div className="avatar-initials-large">

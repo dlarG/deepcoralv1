@@ -348,40 +348,6 @@ function CoralDistribution() {
         <div className="chart-wrapper">
           <Bar data={coverageData} options={coverageOptions} />
         </div>
-
-        {/* Summary Statistics */}
-        <div className="comparison-summary">
-          <h4>Comparison Summary</h4>
-          <div className="summary-grid">
-            <div className="summary-item">
-              <span className="summary-label">Total Locations:</span>
-              <span className="summary-value">
-                {comparisonData.comparison_summary.total_locations}
-              </span>
-            </div>
-            <div className="summary-item">
-              <span className="summary-label">Locations with Data:</span>
-              <span className="summary-value">
-                {comparisonData.comparison_summary.locations_with_data}
-              </span>
-            </div>
-            <div className="summary-item">
-              <span className="summary-label">Unique Coral Types:</span>
-              <span className="summary-value">
-                {comparisonData.comparison_summary.total_coral_types}
-              </span>
-            </div>
-            <div className="summary-item">
-              <span className="summary-label">Average Coverage:</span>
-              <span className="summary-value">
-                {comparisonData.comparison_summary.avg_coverage_across_locations?.toFixed(
-                  2
-                )}
-                %
-              </span>
-            </div>
-          </div>
-        </div>
       </div>
     );
   };
@@ -438,16 +404,20 @@ function CoralDistribution() {
         console.log("Loaded images:", imagesData.images?.length, "images");
         setLocationImages(imagesData.images || []);
 
-        // Update available transects based on the data
-        const transects =
-          [
-            ...new Set(
-              imagesData.images
-                ?.map((img) => img.transect)
-                .filter((t) => t !== null)
-            ),
-          ] || [];
-        setAvailableTransects(transects.sort());
+        // FIXED: Update available transects from backend response
+        if (imagesData.available_transects) {
+          setAvailableTransects(imagesData.available_transects);
+          console.log("Available transects:", imagesData.available_transects);
+        }
+
+        // Debug logging for transect filtering
+        if (transect !== "all") {
+          const filteredImages =
+            imagesData.images?.filter(
+              (img) => img.transect === parseInt(transect)
+            ) || [];
+          console.log(`Images in transect ${transect}:`, filteredImages.length);
+        }
       }
 
       // Load analytics for this location with filtering
@@ -468,7 +438,6 @@ function CoralDistribution() {
         typeof mapRef.current.setView === "function"
       ) {
         try {
-          // Add a small delay to ensure map is fully rendered
           setTimeout(() => {
             if (
               mapRef.current &&

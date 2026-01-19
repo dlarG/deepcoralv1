@@ -1,11 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import VideoModal from './VideoModal';
 import {
   FiLogIn,
   FiUserPlus,
   FiCamera,
-  FiDatabase,
   FiBarChart2,
   FiChevronDown,
   FiPlay,
@@ -16,30 +14,22 @@ import {
   FiPhone,
   FiMapPin,
   FiCheckCircle,
-  FiHeart,
   FiMap,
-  FiLocation,
-  //FiLinkedin,
-  FiGithub,
-  //FiTwitter,
   FiMenu,
   FiX,
 } from "react-icons/fi";
 import Logo from "./Logo";
+import VideoModal from "./VideoModal"; // Import the VideoModal component
 import "../styles/homepage.css";
 
 function HomePage() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [activeSection, setActiveSection] = useState("home");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [showVideoModal, setShowVideoModal] = useState(false);
-
-  // API URL for video
-  const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-  const videoUrl = `${API_BASE_URL}/elements/demo-video.mp4`;
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false); // Add video modal state
 
   useEffect(() => {
-    document.title = "DeepCoral - AI-Powered Coral Reef Analysis";
+    document.title = "DeepCoral - AI-Powered Marine Conservation";
 
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
@@ -75,29 +65,39 @@ function HomePage() {
     setMobileMenuOpen(false);
   };
 
+  // Function to handle demo button click
+  const handleDemoClick = () => {
+    setIsVideoModalOpen(true);
+  };
+
+  // Function to close video modal
+  const handleCloseVideoModal = () => {
+    setIsVideoModalOpen(false);
+  };
+
   const services = [
     {
       icon: <FiCamera />,
       title: "AI Image Analysis",
       description:
-        "Advanced deep learning algorithms powered by YOLOv11 and U-Net to analyze coral reef images with high accuracy, providing instant coral coverage and species identification.",
-      features: ["Real-time Processing", "Automated Segmentation", "Batch Analysis"],
+        "Advanced deep learning algorithms analyze coral reef images with 99.5% accuracy, providing instant coral coverage estimates.",
+      features: ["Real-time Processing", "Auto Cropping", "Batch Analysis"],
       gradient: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
     },
     {
       icon: <FiMap />,
       title: "GIS Integration",
       description:
-        "Seamlessly integrate analyzed data with Geographic Information Systems to map coral health trends, track conservation progress, and support marine spatial planning.",
-      features: ["Spatial Analysis", "Interactive Maps", "Data Export (Shapefile, GeoJSON)"],
+        "Seamlessly integrate analyzed data with GIS platforms to visualize coral health trends and support marine conservation efforts.",
+      features: ["Trend Analysis", "Data Visualization", "Export Options"],
       gradient: "linear-gradient(135deg, #10b981, #059669)",
     },
     {
       icon: <FiBarChart2 />,
-      title: "Comprehensive Reporting",
+      title: "Dynamic Reporting",
       description:
-        "Generate detailed, publication-ready reports with interactive visualizations, statistical analysis, and customizable templates for research and conservation planning.",
-      features: ["Custom Reports", "Statistical Analysis", "Multi-format Export (PDF, CSV)"],
+        "Generate beautiful, interactive reports and visualizations to share insights with your research team and stakeholders.",
+      features: ["Custom Reports", "Interactive Charts", "Multi-format Export"],
       gradient: "linear-gradient(135deg, #f59e0b, #d97706)",
     },
   ];
@@ -110,6 +110,7 @@ function HomePage() {
         <div className="gradient-overlay"></div>
         <div className="particle-overlay"></div>
       </div>
+
       {/* Navbar */}
       <nav className={`navbar ${isScrolled ? "scrolled" : ""}`}>
         <div className="navbar-content">
@@ -182,6 +183,7 @@ function HomePage() {
           </button>
         </div>
       </nav>
+
       {/* Hero Section */}
       <section id="home" className="hero-section">
         <div className="hero-content">
@@ -210,13 +212,10 @@ function HomePage() {
 
           <div className="cta-buttons">
             <Link to="/register" className="cta-button primary">
-              <span>Get Started</span>
+              <span>Start Free Trial</span>
               <FiArrowRight className="button-arrow" />
             </Link>
-            <button 
-              className="cta-button secondary"
-              onClick={() => setShowVideoModal(true)}
-            >
+            <button className="cta-button secondary" onClick={handleDemoClick}>
               <FiPlay className="button-icon" />
               <span>Watch Demo</span>
             </button>
@@ -231,6 +230,7 @@ function HomePage() {
           </div>
         </div>
       </section>
+
       {/* Services Section */}
       <section id="services" className="services-section">
         <div className="section-container">
@@ -274,19 +274,7 @@ function HomePage() {
           </div>
         </div>
       </section>
-      {/* About Section
-      <section id="about" className="about-section">
-        <div className="section-container">
-          <div className="about-content">
-            <div className="about-text">
-              <div className="section-badge">
-                <FiHeart className="badge-icon" />
-                <span>About Us</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section> */}
+
       {/* Contact Section */}
       <section id="contact" className="contact-section">
         <div className="section-container">
@@ -357,6 +345,7 @@ function HomePage() {
           </div>
         </div>
       </section>
+
       {/* Footer */}
       <footer className="footer">
         <div className="footer-content">
@@ -368,17 +357,7 @@ function HomePage() {
                   Advancing marine conservation through artificial intelligence
                   and innovative research.
                 </p>
-                <div className="social-links">
-                  {/* <a href="#" className="social-link">
-                    <FiLinkedin />
-                  </a> */}
-                  {/* <a href="https://github.com/dlarG/" className="social-link">
-                    <FiGithub />
-                  </a> */}
-                  {/* <a href="#" className="social-link">
-                    <FiTwitter />
-                  </a> */}
-                </div>
+                <div className="social-links">{/* Social links here */}</div>
               </div>
             </div>
 
@@ -430,9 +409,10 @@ function HomePage() {
 
       {/* Video Modal */}
       <VideoModal
-        isOpen={showVideoModal}
-        onClose={() => setShowVideoModal(false)}
-        videoUrl={videoUrl}
+        isOpen={isVideoModalOpen}
+        onClose={handleCloseVideoModal}
+        videoSrc="/demo/demo.mp4"
+        title="DeepCoral AI Demo"
       />
     </div>
   );

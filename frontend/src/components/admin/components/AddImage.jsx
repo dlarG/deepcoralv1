@@ -1,5 +1,6 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import { useAuth } from "../../../context/AuthContext";
+import InteractiveCoralAnalysis from "./InteractiveCoralAnalysis";
 import {
   FiUpload,
   FiSettings,
@@ -30,7 +31,7 @@ import {
   BarElement,
 } from "chart.js";
 import { Pie, Bar } from "react-chartjs-2";
-import LocationSelector from "./LocationSelector";
+import LocationSelector from "../../admin/components/LocationSelector";
 
 ChartJS.register(
   ArcElement,
@@ -88,25 +89,6 @@ function AddImage() {
   const [imageToOverride, setImageToOverride] = useState(null);
 
   const [analysisInProgress, setAnalysisInProgress] = useState(false);
-  const [sessionId, setSessionId] = useState(null);
-  const [isCancelling, setIsCancelling] = useState(false);
-
-  const [realTimeProgress, setRealTimeProgress] = useState({
-    current: 0,
-    total: 0,
-    percentage: 0,
-    message: "",
-    isActive: false,
-  });
-  const [eventSource, setEventSource] = useState(null);
-
-  useEffect(() => {
-    return () => {
-      if (eventSource) {
-        eventSource.close();
-      }
-    };
-  }, [eventSource]);
 
   const processCrops = async (file, intensity) => {
     try {
@@ -352,8 +334,6 @@ function AddImage() {
     setAnalysisCompleted(false);
     setValidationProgress({ current: 0, total: 0 });
     setBatchProgress({ current: 0, total: 0 });
-    setSessionId(null);
-    setIsCancelling(false);
   };
 
   const removeImage = (index, skipConfirmation = false) => {
@@ -608,29 +588,25 @@ function AddImage() {
     alert(validationSummary);
   };
 
-  const cancelBatchOperation = async () => {
-    if (!sessionId || isCancelling) return;
-
-    setIsCancelling(true);
-    try {
-      const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/cancel_batch/${sessionId}`,
-        {
-          method: "POST",
-          credentials: "include",
-        }
-      );
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log("Cancellation requested:", result.message);
-      } else {
-        console.error("Failed to cancel operation");
+  const downloadBatchCrops = () => {
+    let totalCrops = 0;
+    images.forEach((image, imgIndex) => {
+      if (image.crops && image.crops.length > 0) {
+        image.crops.forEach((crop, cropIndex) => {
+          setTimeout(() => {
+            const link = document.createElement("a");
+            link.href = `${process.env.REACT_APP_API_URL}/${crop}`;
+            link.download = `img_${imgIndex + 1}_crop_${cropIndex + 1}_${
+              image.file.name
+            }`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }, totalCrops * 200);
+          totalCrops++;
+        });
       }
-    } catch (error) {
-      console.error("Error cancelling operation:", error);
-    }
-    // Keep isCancelling true to prevent re-clicking
+    });
   };
 
   const handleBatchAnalyze = async () => {
@@ -639,6 +615,7 @@ function AddImage() {
       return;
     }
 
+    // Prevent multiple clicks and check if analysis already completed
     if (analysisInProgress || analysisCompleted) {
       if (analysisCompleted) {
         alert("Analysis already completed! Clear images to analyze new ones.");
@@ -648,6 +625,7 @@ function AddImage() {
       return;
     }
 
+    // Get valid images AND manually included images
     const validImages = images.filter(
       (img) =>
         img.status === "valid" ||
@@ -656,10 +634,11 @@ function AddImage() {
         (img.status === "pending" && img.processed !== false)
     );
 
+    // FIXED: Calculate manually_included_indices based on the validImages array indices
     const manuallyIncludedIndices = [];
     validImages.forEach((img, validIndex) => {
       if (img.status === "manually_included") {
-        manuallyIncludedIndices.push(validIndex);
+        manuallyIncludedIndices.push(validIndex); // Use validIndex, not original index
       }
     });
 
@@ -692,29 +671,40 @@ function AddImage() {
 
     confirmMessage += ` Proceed with analyzing ${validImages.length} total image(s)?`;
 
+    // Enhanced debug logging
+    console.log("=== BATCH ANALYSIS DEBUG ===");
+    console.log(
+      "All images:",
+      images.map((img, idx) => ({
+        index: idx,
+        filename: img.file.name,
+        status: img.status,
+      }))
+    );
+    console.log(
+      "Valid images:",
+      validImages.map((img, idx) => ({
+        validIndex: idx,
+        filename: img.file.name,
+        status: img.status,
+      }))
+    );
+    console.log(
+      "Manually included indices (in validImages array):",
+      manuallyIncludedIndices
+    );
+    console.log("Manually included count:", manuallyIncludedCount);
+
     if (invalidCount > 0 || manuallyIncludedCount > 0) {
       const proceed = window.confirm(confirmMessage);
       if (!proceed) return;
     }
 
-    // Generate session ID on frontend BEFORE sending request for immediate cancellation support
-    const generatedSessionId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    setSessionId(generatedSessionId);
-    setIsCancelling(false); // Reset cancelling state
-
-    // Set analysis in progress
+    // Set analysis in progress - FIXED: Set initial progress to 0
     setAnalysisInProgress(true);
     setBatchLoading(true);
     setShowBatchChart(false);
-
-    // Initialize real-time progress
-    setRealTimeProgress({
-      current: 0,
-      total: validImages.length,
-      percentage: 0,
-      message: "Starting analysis...",
-      isActive: true,
-    });
+    setBatchProgress({ current: 0, total: validImages.length });
 
     try {
       const csrfResponse = await fetch(
@@ -727,18 +717,55 @@ function AddImage() {
       const csrfData = await csrfResponse.json();
 
       const formData = new FormData();
-      validImages.forEach((image) => {
+      validImages.forEach((image, index) => {
         formData.append("images", image.file);
       });
       formData.append("csrf_token", csrfData.csrf_token);
       formData.append("intensity", cropIntensity);
-      formData.append("session_id", generatedSessionId); // Send session_id to backend
       formData.append(
         "manually_included",
         JSON.stringify(manuallyIncludedIndices)
       );
 
-      // Start the batch analysis
+      // Additional debug info
+      formData.append(
+        "debug_info",
+        JSON.stringify({
+          total_valid_images: validImages.length,
+          manually_included_count: manuallyIncludedCount,
+          manually_included_indices: manuallyIncludedIndices,
+          valid_images_filenames: validImages.map((img) => img.file.name),
+          manually_included_filenames: validImages
+            .filter((img, idx) => manuallyIncludedIndices.includes(idx))
+            .map((img) => img.file.name),
+        })
+      );
+
+      let progressStep = 0;
+      const totalSteps = validImages.length;
+
+      const updateProgress = () => {
+        setBatchProgress({ current: progressStep, total: totalSteps });
+      };
+
+      // ADDED: Progress simulation for better UX while waiting for server response
+      const simulateProgress = () => {
+        let currentProgress = 0;
+        const progressInterval = setInterval(() => {
+          currentProgress += Math.random() * 10; // Random increment between 0-10%
+          if (progressStep < totalSteps - 1) {
+            progressStep++;
+            updateProgress();
+          } else {
+            clearInterval(progressInterval);
+          }
+        }, 1000); // Update every 500ms
+
+        return progressInterval;
+      };
+
+      const progressInterval = simulateProgress();
+
       const res = await fetch(
         `${process.env.REACT_APP_API_URL}/batch_analyze`,
         {
@@ -750,6 +777,12 @@ function AddImage() {
           },
         }
       );
+
+      // ADDED: Clear the progress simulation once we get response
+      clearInterval(progressInterval);
+
+      // ADDED: Set to 100% when complete
+      setBatchProgress({ current: totalSteps, total: totalSteps });
 
       const contentType = res.headers.get("content-type") || "";
       const resBody = contentType.includes("application/json")
@@ -767,64 +800,13 @@ function AddImage() {
 
       const data = resBody;
 
-      // If we got a session_id, start listening to progress updates
-      if (data.session_id) {
-        const progressUrl = `${process.env.REACT_APP_API_URL}/batch_progress/${data.session_id}`;
-        const es = new EventSource(progressUrl);
-
-        es.onmessage = function (event) {
-          try {
-            const progressData = JSON.parse(event.data);
-            setRealTimeProgress({
-              current: progressData.current || 0,
-              total: progressData.total || validImages.length,
-              percentage: progressData.percentage || 0,
-              message: progressData.message || "Processing...",
-              isActive: true,
-            });
-
-            // Update the existing batch progress for backward compatibility
-            setBatchProgress({
-              current: progressData.current || 0,
-              total: progressData.total || validImages.length,
-            });
-          } catch (e) {
-            console.error("Error parsing progress data:", e);
-          }
-        };
-
-        es.onerror = function (event) {
-          console.log("EventSource failed:", event);
-          es.close();
-          setEventSource(null);
-        };
-
-        setEventSource(es);
-
-        // Close EventSource after analysis is complete
-        setTimeout(() => {
-          if (es) {
-            es.close();
-            setEventSource(null);
-          }
-        }, 10000); // Close after 10 seconds
-      }
-
-      console.log("✅ Batch analysis response:", data);
-
-      // Check if operation was cancelled
-      if (data.cancelled) {
-        console.log("⚠️ Operation was cancelled by user");
-        alert(`Analysis cancelled after processing ${data.processing_details?.cancelled_at || 0} images`);
-      }
-
       setBatchResults(data);
       setShowBatchChart(true);
       setActiveTab("batch-analysis");
       setShowSaveButton(true);
       setAnalysisCompleted(true);
 
-      // Process results (same as before)
+      // FIXED: Process results with proper manual override handling
       const processedImagesWithData = validImages.map((image) => {
         const result = data.results.find((r) => r.filename === image.file.name);
         if (result && result.crops) {
@@ -836,10 +818,11 @@ function AddImage() {
             segmentationData: {
               crops: result.crops.map((crop) => ({
                 ...crop,
+                // Ensure both field names are available for backward compatibility
                 overlay_url: crop.overlay_url || crop.visualization_url,
                 visualization_url: crop.overlay_url || crop.visualization_url,
-                mask_url: crop.mask_url,
-                manually_included: crop.manually_included || false,
+                mask_url: crop.mask_url, // Add mask URL
+                manually_included: crop.manually_included || false, // Track manual override
               })),
               total_crops: result.crops.length,
               filename: result.filename,
@@ -852,6 +835,7 @@ function AddImage() {
 
       setProcessedImagesForSaving(processedImagesWithData);
 
+      // FIXED: Update images with results, preserving manual override status
       const updatedImages = images.map((image) => {
         const result = data.results.find((r) => r.filename === image.file.name);
         if (result && result.crops) {
@@ -879,7 +863,7 @@ function AddImage() {
 
       setImages(updatedImages);
 
-      // Show success message
+      // Show success message with manual override info
       let successMessage = `Analysis completed successfully!\n`;
       successMessage += `${data.batch_statistics.total_images_processed} images processed\n`;
       successMessage += `${data.batch_statistics.total_crops} total crops generated\n`;
@@ -898,19 +882,8 @@ function AddImage() {
       alert("Batch analysis failed: " + error.message);
     } finally {
       setBatchLoading(false);
-      setAnalysisInProgress(false);
-      setRealTimeProgress({
-        current: 0,
-        total: 0,
-        percentage: 0,
-        message: "",
-        isActive: false,
-      });
-      // Clean up EventSource
-      if (eventSource) {
-        eventSource.close();
-        setEventSource(null);
-      }
+      setAnalysisInProgress(false); // Re-enable button
+      setBatchProgress({ current: 0, total: 0 });
     }
   };
 
@@ -932,16 +905,13 @@ function AddImage() {
     if (!loading && !batchLoading) return null;
 
     const isValidating = loading && validationProgress.total > 0;
-    const isAnalyzing = batchLoading && realTimeProgress.isActive;
-    const isFallbackAnalyzing =
-      batchLoading && batchProgress.total > 0 && !realTimeProgress.isActive;
+    const isAnalyzing = batchLoading && batchProgress.total > 0;
 
     let progressPercentage = 0;
     let currentStep = 0;
     let totalSteps = 0;
     let statusText = "";
     let subText = "";
-    let detailedMessage = "";
 
     if (isValidating) {
       currentStep = validationProgress.current;
@@ -951,15 +921,6 @@ function AddImage() {
       statusText = "Validating Images...";
       subText = `Processing ${currentStep} of ${totalSteps} images`;
     } else if (isAnalyzing) {
-      // Use real-time progress
-      currentStep = realTimeProgress.current;
-      totalSteps = realTimeProgress.total;
-      progressPercentage = realTimeProgress.percentage;
-      statusText = "Analyzing Batch...";
-      subText = `${currentStep} of ${totalSteps} images processed`;
-      detailedMessage = realTimeProgress.message;
-    } else if (isFallbackAnalyzing) {
-      // Fallback to old progress system
       currentStep = batchProgress.current;
       totalSteps = batchProgress.total;
       progressPercentage =
@@ -983,21 +944,11 @@ function AddImage() {
           <div className="loading-text">{statusText}</div>
           <div className="loading-subtext">{subText}</div>
 
-          {/* Real-time detailed message */}
-          {detailedMessage && (
-            <div className="loading-detail-message">{detailedMessage}</div>
-          )}
-
           {/* Enhanced Progress Bar */}
           <div className="progress-bar-container">
             <div
               className="progress-bar"
-              style={{
-                width: `${progressPercentage}%`,
-                transition: isAnalyzing
-                  ? "width 0.3s ease-in-out"
-                  : "width 0.1s ease",
-              }}
+              style={{ width: `${progressPercentage}%` }}
             ></div>
           </div>
 
@@ -1012,26 +963,16 @@ function AddImage() {
             )}
           </div>
 
-          {/* Real-time status indicator */}
-          {isAnalyzing && (
-            <div className="real-time-indicator">
-              <span className="real-time-dot"></span>
-              Real-time updates
-            </div>
-          )}
-
-          {/* Cancel button for validation or analysis */}
-          {(isValidating || isAnalyzing || isFallbackAnalyzing) && (
+          {/* Cancel Button for Long Operations */}
+          {(isValidating || isAnalyzing) && (
             <button
               className="cancel-operation-btn"
-              onClick={cancelBatchOperation}
-              disabled={isCancelling}
-              style={{
-                opacity: isCancelling ? 0.6 : 1,
-                cursor: isCancelling ? 'not-allowed' : 'pointer'
+              onClick={() => {
+                // You can implement cancellation logic here if needed
+                console.log("Operation cancellation requested");
               }}
             >
-              {isCancelling ? 'Cancelling...' : 'Cancel Operation'}
+              Cancel Operation
             </button>
           )}
         </div>
@@ -1390,12 +1331,19 @@ function AddImage() {
       ],
     };
 
+    // **ENHANCED: Bar chart data with better formatting**
     const barData = {
-      labels: coverageData.map((coral) => coral.class_name),
+      labels: coverageData.map((coral) => {
+        // Truncate long class names for better display
+        const name = coral.class_name;
+        return name.length > 15 ? `${name.substring(0, 15)}...` : name;
+      }),
       datasets: [
         {
           label: "Coverage Percentage",
-          data: coverageData.map((coral) => coral.coverage_percent),
+          data: coverageData.map((coral) =>
+            parseFloat(coral.coverage_percent.toFixed(1))
+          ), // Fix decimal precision
           backgroundColor: coverageData.map((coral) => coral.color),
           borderColor: coverageData.map((coral) => coral.color),
           borderWidth: 1,
@@ -1413,27 +1361,104 @@ function AddImage() {
           callbacks: {
             label: function (context) {
               const coral = coverageData[context.dataIndex];
-              return `${coral.class_name}: ${
-                coral.coverage_percent
-              }% (${coral.total_pixels.toLocaleString()} pixels)`;
+              return `${coral.class_name}: ${coral.coverage_percent.toFixed(
+                1
+              )}% (${coral.total_pixels.toLocaleString()} pixels)`;
             },
           },
+        },
+        datalabels: {
+          display: false,
         },
       },
     };
 
+    // **ENHANCED: Bar chart options with percentage labels and better formatting**
     const barOptions = {
-      ...chartOptions,
-      scales: {
-        y: {
-          beginAtZero: true,
-          max: Math.max(...coverageData.map((c) => c.coverage_percent)) * 1.1,
-          ticks: {
-            callback: function (value) {
-              return value + "%";
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: "bottom",
+          display: false, // Hide legend for cleaner look
+        },
+        tooltip: {
+          callbacks: {
+            title: function (context) {
+              // Show full class name in tooltip
+              const coral = coverageData[context[0].dataIndex];
+              return coral.class_name;
+            },
+            label: function (context) {
+              const coral = coverageData[context.dataIndex];
+              return [
+                `Coverage: ${coral.coverage_percent.toFixed(1)}%`,
+                `Pixels: ${coral.total_pixels.toLocaleString()}`,
+                `Category: ${coral.category || "Unknown"}`,
+              ];
             },
           },
         },
+        // **NEW: Data labels plugin for percentage on top of bars**
+        datalabels: {
+          anchor: "end",
+          align: "top",
+          color: "#2d3748",
+          font: {
+            weight: "bold",
+            size: 12,
+          },
+          formatter: function (value, context) {
+            return value.toFixed(1) + "%";
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: {
+            maxRotation: 45, // Rotate labels for better readability
+            minRotation: 45,
+            font: {
+              size: 11,
+            },
+            callback: function (value, index) {
+              const coral = coverageData[index];
+              if (coral) {
+                // Further truncate if still too long
+                const name = coral.class_name;
+                return name.length > 12 ? `${name.substring(0, 12)}...` : name;
+              }
+              return value;
+            },
+          },
+          grid: {
+            display: false,
+          },
+        },
+        y: {
+          beginAtZero: true,
+          max: Math.max(...coverageData.map((c) => c.coverage_percent)) * 1.2, // Add more space for labels
+          ticks: {
+            callback: function (value) {
+              return value.toFixed(1) + "%"; // Fix decimal precision
+            },
+            font: {
+              size: 11,
+            },
+          },
+          grid: {
+            color: "#f1f3f4",
+            lineWidth: 1,
+          },
+        },
+      },
+      animation: {
+        duration: 1500,
+        easing: "easeOutQuart",
+      },
+      interaction: {
+        intersect: false,
+        mode: "index",
       },
     };
 
@@ -1506,16 +1531,15 @@ function AddImage() {
         <div className="coverage-details">
           <h4>Detailed Coverage Results</h4>
           <div className="coverage-table">
-            <div className="table-header">
+            <div className="table-headers">
               <span>Coral Type</span>
               <span>Category</span>
               <span>Coverage %</span>
-              <span>Pixel Count</span>
             </div>
             {coverageData
               .sort((a, b) => b.coverage_percent - a.coverage_percent)
               .map((coral, index) => (
-                <div key={index} className="table-row">
+                <div key={index} className="up-table-row">
                   <div className="coral-name">
                     <div
                       className="color-indicator"
@@ -1525,24 +1549,25 @@ function AddImage() {
                   </div>
                   <span className="category">{coral.category}</span>
                   <span className="percentage">{coral.coverage_percent}%</span>
-                  <span className="pixels">
-                    {coral.total_pixels.toLocaleString()}
-                  </span>
                 </div>
               ))}
+          </div>
+          <div className="total-coverage">
+            <span>Total Coral Coverage:</span>
+            <span>
+              {Math.round(
+                coverageData.reduce(
+                  (sum, coral) => sum + coral.coverage_percent,
+                  0
+                )
+              )}
+              %
+            </span>
           </div>
         </div>
       </div>
     );
   };
-
-  // const formatFileSize = (bytes) => {
-  //   if (bytes === 0) return "0 Bytes";
-  //   const k = 1024;
-  //   const sizes = ["Bytes", "KB", "MB", "GB"];
-  //   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  //   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-  // };
 
   const totalCrops = images.reduce(
     (sum, img) => sum + (img.crops?.length || 0),
@@ -1560,182 +1585,15 @@ function AddImage() {
       );
     }
 
-    const segmentationData = currentImage.segmentationData;
-    const isManuallyIncluded =
-      segmentationData.manually_included ||
-      currentImage.status === "manually_included";
-
     return (
-      <div className="image-upload-analysis-results">
-        <div className="analysis-header">
-          <h3 className="up-title">Coral Analysis Results</h3>
-          <div className="analysis-stats">
-            <span className="uploaded-num">
-              {segmentationData.total_crops} quadrats analyzed
-            </span>
-            <span className="method-tag">
-              {cropIntensity.charAt(0).toUpperCase() + cropIntensity.slice(1)}
-            </span>
-            {isManuallyIncluded && (
-              <span className="manual-override-badge">
-                ⚠️ Manually Included
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="quadrats-analysis">
-          {segmentationData.crops.map((cropData, cropIndex) => {
-            const isLowConfidence =
-              cropData.confidence && cropData.confidence < 0.87;
-            const isManualOverride =
-              cropData.manually_included || cropData.below_threshold;
-
-            return (
-              <div key={cropIndex} className="quadrat-analysis-card">
-                <div className="quadrat-header">
-                  <h4>
-                    Quadrat {cropIndex + 1} - {cropData.detection_label}
-                    {isManualOverride && (
-                      <span className="manual-override-indicator">
-                        {isLowConfidence
-                          ? ` (Manual Override - ${(
-                              cropData.confidence * 100
-                            ).toFixed(1)}% confidence)`
-                          : " (Manual Override)"}
-                      </span>
-                    )}
-                  </h4>
-                  <div className="quadrat-actions">
-                    <button
-                      className="download-btn small"
-                      onClick={() => downloadCrop(cropData.crop_url, cropIndex)}
-                    >
-                      <FiDownload size={12} />
-                      Crop
-                    </button>
-                    <button
-                      className="download-btn small"
-                      onClick={() =>
-                        downloadSegmentationOverlay(
-                          cropData.overlay_url || cropData.visualization_url,
-                          cropIndex
-                        )
-                      }
-                    >
-                      <FiDownload size={12} />
-                      Overlay
-                    </button>
-                    {cropData.mask_url && (
-                      <button
-                        className="download-btn small"
-                        onClick={() =>
-                          downloadSegmentationMask(cropData.mask_url, cropIndex)
-                        }
-                      >
-                        <FiDownload size={12} />
-                        Mask
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <div className="quadrat-content">
-                  <div className="quadrat-visuals">
-                    <div className="visual-item">
-                      <img
-                        src={`${process.env.REACT_APP_API_URL}/${cropData.crop_url}`}
-                        alt={`Crop ${cropIndex + 1}`}
-                        className="analysis-image"
-                      />
-                      <span className="visual-label">Original Crop</span>
-                    </div>
-                    <div className="visual-item">
-                      <img
-                        src={`${process.env.REACT_APP_API_URL}/${
-                          cropData.overlay_url || cropData.visualization_url
-                        }`}
-                        alt={`Segmentation Overlay ${cropIndex + 1}`}
-                        className="analysis-image"
-                      />
-                      <span className="visual-label">Coral Overlay</span>
-                    </div>
-                    {cropData.mask_url && (
-                      <div className="visual-item">
-                        <img
-                          src={`${process.env.REACT_APP_API_URL}/${cropData.mask_url}`}
-                          alt={`Segmentation Mask ${cropIndex + 1}`}
-                          className="analysis-image"
-                        />
-                        <span className="visual-label">Coral Mask</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {cropData.coverage_data &&
-                  cropData.coverage_data.length > 0 ? (
-                    <div className="coverage-analysis">
-                      <h5>Coral Coverage</h5>
-                      <div className="coverage-stats">
-                        {cropData.coverage_data.map((coral, coralIndex) => (
-                          <div key={coralIndex} className="coral-stat">
-                            <div
-                              className="coral-color"
-                              style={{ backgroundColor: coral.color }}
-                            ></div>
-                            <div className="coral-info">
-                              <span className="coral-name">
-                                {coral.class_name}
-                              </span>
-                              <span className="coral-category">
-                                {coral.category}
-                              </span>
-                            </div>
-                            <div className="coral-coverage">
-                              <span className="coverage-percent">
-                                {coral.coverage_percent}%
-                              </span>
-                              <span className="pixel-count">
-                                ({coral.pixel_count.toLocaleString()} px)
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="total-coverage">
-                        <strong>Total Coral Coverage: </strong>
-                        {cropData.coverage_data
-                          .reduce(
-                            (sum, coral) => sum + coral.coverage_percent,
-                            0
-                          )
-                          .toFixed(1)}
-                        %
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="no-coverage-found">
-                      <p>ℹ️ No coral coverage detected in this quadrat.</p>
-                      {isManualOverride && (
-                        <p className="manual-override-note">
-                          {isLowConfidence
-                            ? `This quadrat was detected with ${(
-                                cropData.confidence * 100
-                              ).toFixed(
-                                1
-                              )}% confidence (below 87% threshold) but was manually included. The segmentation model processed it but may not have found distinct coral features to classify.`
-                            : "This image was manually included despite no automatic quadrat detection. The segmentation model may not have found coral features to classify."}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      <InteractiveCoralAnalysis
+        segmentationData={currentImage.segmentationData}
+        cropIntensity={cropIntensity}
+        currentImageIndex={currentImageIndex}
+        onDownloadCrop={downloadCrop}
+        onDownloadOverlay={downloadSegmentationOverlay}
+        onDownloadMask={downloadSegmentationMask}
+      />
     );
   };
 

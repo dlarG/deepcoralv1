@@ -137,7 +137,7 @@ function CoralManagement(props = {}) {
                   <img
                     src={
                       coral.image
-                        ? `${process.env.REACT_APP_API_URL}/coral_images/${coral.image}`
+                        ? `/uploaded_coral_information/${coral.image}`
                         : "/default-coral.jpg"
                     }
                     alt={coral.common_name}
@@ -275,7 +275,7 @@ function CoralManagement(props = {}) {
                     <img
                       src={
                         currentCoral?.image
-                          ? `${process.env.REACT_APP_API_URL}/coral_images/${currentCoral.image}`
+                          ? `/uploaded_coral_information/${currentCoral.image}`
                           : "/default-coral.jpg"
                       }
                       alt={currentCoral?.common_name}

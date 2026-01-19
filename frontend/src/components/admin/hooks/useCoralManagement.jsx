@@ -153,9 +153,7 @@ export default function useCoralManagement() {
         image: null,
       });
       setImagePreview(
-        coral.image 
-          ? `${process.env.REACT_APP_API_URL}/coral_images/${coral.image}` 
-          : null
+        coral.image ? `/uploaded_coral_information/${coral.image}` : null
       );
     }
 
