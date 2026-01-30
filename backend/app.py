@@ -13,9 +13,9 @@ def create_app():
     # Set debug mode from config
     app.debug = Config.DEBUG
     
-    # Simple CORS configuration
+    # CORS configuration using environment-based origins
     CORS(app,
-         origins=['https://deepcoral.site', 'https://www.deepcoral.site'],
+         origins=Config.CORS_ORIGINS,
          supports_credentials=True,
          allow_headers=['Content-Type', 'Authorization', 'X-CSRF-Token', 'x-csrf-token'],
          expose_headers=['Set-Cookie'],
@@ -26,7 +26,7 @@ def create_app():
     @app.after_request
     def after_request_cors(response):
         origin = request.headers.get('Origin')
-        if origin in ['https://deepcoral.site', 'https://www.deepcoral.site']:
+        if origin in Config.CORS_ORIGINS:
             response.headers['Access-Control-Allow-Origin'] = origin
             response.headers['Access-Control-Allow-Credentials'] = 'true'
             response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-CSRF-Token, x-csrf-token'
@@ -107,6 +107,9 @@ def create_app():
             
         if request.method in ['POST', 'PUT', 'DELETE', 'PATCH']:
             if request.endpoint in [
+                'auth.register_user',
+                'auth.login',
+                'auth.logout',
                 'image.detect_custom', 
                 'image.detect', 
                 'image.detect_and_segment',

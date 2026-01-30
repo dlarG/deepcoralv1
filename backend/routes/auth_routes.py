@@ -24,6 +24,7 @@ def register_user():
     data = request.get_json()
     secret = Config.RECAPTCHA_SECRET
     if not data:
+        current_app.logger.error("Registration failed: No data provided")
         return jsonify({"error": "No data provided"}), 400
     
     username = data.get('username')
@@ -37,34 +38,46 @@ def register_user():
     
     # Validate reCAPTCHA
     if not captcha_response:
+        current_app.logger.error("Registration failed: No captcha response provided")
         return jsonify({"error": "Captcha verification failed"}), 400
     
     # Validate password strength
     if len(password) < 8:
+        current_app.logger.error(f"Registration failed for {username}: Password too short")
         return jsonify({"error": "Password must be at least 8 characters"}), 400
     
     # Update validation to include email
     if not all([username, password, firstname, lastname, email]):
+        current_app.logger.error(f"Registration failed: Missing required fields - username:{username}, firstname:{firstname}, lastname:{lastname}, email:{email}")
         return jsonify({"error": "All fields are required"}), 400
     
     # Validate email format
     import re
     email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     if not re.match(email_pattern, email):
+        current_app.logger.error(f"Registration failed for {username}: Invalid email format: {email}")
         return jsonify({"error": "Please enter a valid email address"}), 400
     
     # Verify reCAPTCHA
-    captcha_verify_url = "https://www.google.com/recaptcha/api/siteverify"
-    response = requests.post(
-        captcha_verify_url,
-        data={
-            "secret": secret,
-            "response": captcha_response
-        }
-    )
-    result = response.json()
-    if not result.get("success"):
-        return jsonify({"error": "Failed captcha verification"}), 400
+    current_app.logger.info(f"Verifying reCAPTCHA for user: {username}")
+    
+    # DEVELOPMENT MODE: Skip reCAPTCHA verification in development
+    if Config.DEBUG and Config.DB_HOST in ['localhost', '127.0.0.1']:
+        current_app.logger.warning("⚠️ DEVELOPMENT MODE: Skipping reCAPTCHA verification")
+    else:
+        captcha_verify_url = "https://www.google.com/recaptcha/api/siteverify"
+        response = requests.post(
+            captcha_verify_url,
+            data={
+                "secret": secret,
+                "response": captcha_response
+            }
+        )
+        result = response.json()
+        current_app.logger.info(f"reCAPTCHA verification result: {result}")
+        if not result.get("success"):
+            current_app.logger.error(f"Registration failed for {username}: reCAPTCHA verification failed - {result}")
+            return jsonify({"error": "Failed captcha verification"}), 400
 
     conn = get_db_connection()
     if conn is None:
@@ -167,17 +180,19 @@ def register_user():
         
     except Exception as e:
         conn.rollback()
+        current_app.logger.error(f"❌ REGISTRATION ERROR for {username}: {str(e)}", exc_info=True)
         log_system_action(
             user_id=None,
             action='registration_failed',
             description=f"Registration failed for username: {username}",
             details={'error': str(e), 'username': username, 'email': email}
         )
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": f"Registration failed: {str(e)}"}), 500
     finally:
         if 'cur' in locals():
             cur.close()
-        conn.close()
+        if conn:
+            conn.close()
 
 @auth_bp.route('/logout', methods=['POST', 'OPTIONS'])
 @cross_origin(origins=['http://localhost:3000'], supports_credentials=True)
@@ -468,7 +483,7 @@ def login_user():
         return jsonify({'error': 'Login failed'}), 500
         
     finally:
-        if 'conn' in locals():
+        if 'conn' in locals() and conn is not None:
             conn.close()
 
 @auth_bp.route('/auth/login-stats', methods=['GET'])
