@@ -249,7 +249,7 @@ function TopNavigation({
               <div className="profile-avatar">
                 {user?.profile_image ? (
                   <img
-                    src={`/profile_uploads/${user.profile_image}`}
+                    src={`${process.env.REACT_APP_API_URL}/profile_uploads/${user.profile_image}`}
                     alt={`${user.firstname} ${user.lastname}`}
                   />
                 ) : (
@@ -295,7 +295,7 @@ function TopNavigation({
                     <div className="profile-avatar-larges">
                       {user?.profile_image ? (
                         <img
-                          src={`/profile_uploads/${user.profile_image}`}
+                          src={`${process.env.REACT_APP_API_URL}/profile_uploads/${user.profile_image}`}
                           alt={`${user.firstname} ${user.lastname}`}
                         />
                       ) : (
