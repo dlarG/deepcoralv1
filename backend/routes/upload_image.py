@@ -114,15 +114,15 @@ if PYTORCH_AVAILABLE:
         from albumentations.pytorch import ToTensorV2
         print("✅ Segmentation models imported successfully")
         
-        BASE_DIR = Path(__file__).parent.parent
-        MODEL_PATH = BASE_DIR / "models" / "segmentation" / "version4" / "coral_unet_best.pth"
+        # Use same relative path pattern as YOLO model
+        MODEL_PATH = "./models/segmentation/version4/coral_unet_best.pth"
         
         print(f"🔄 Loading segmentation model from: {MODEL_PATH}")
-        print(f"📁 Model exists: {MODEL_PATH.exists()}")
+        print(f"📁 Model exists: {os.path.exists(MODEL_PATH)}")
         
         NUM_CLASSES = 9
         
-        if MODEL_PATH.exists():
+        if os.path.exists(MODEL_PATH):
             try:
                 segmentation_model = smp.Unet(
                     encoder_name="resnet34",
