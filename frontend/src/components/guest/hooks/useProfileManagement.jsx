@@ -40,7 +40,7 @@ export default function useProfileManagement(user) {
 
       // Set image preview from current user image
       if (user.profile_image) {
-        setProfileImagePreview(`/profile_uploads/${user.profile_image}`);
+        setProfileImagePreview(`${process.env.REACT_APP_API_URL}/profile_uploads/${user.profile_image}`);
       } else {
         setProfileImagePreview(null);
       }
@@ -172,7 +172,7 @@ export default function useProfileManagement(user) {
 
       // Set current image preview
       if (user.profile_image) {
-        setProfileImagePreview(`/profile_uploads/${user.profile_image}`);
+        setProfileImagePreview(`${process.env.REACT_APP_API_URL}/profile_uploads/${user.profile_image}`);
       } else {
         setProfileImagePreview(null);
       }
@@ -199,7 +199,7 @@ export default function useProfileManagement(user) {
 
       // Reset image preview to current user image
       if (user.profile_image) {
-        setProfileImagePreview(`/profile_uploads/${user.profile_image}`);
+        setProfileImagePreview(`${process.env.REACT_APP_API_URL}/profile_uploads/${user.profile_image}`);
       } else {
         setProfileImagePreview(null);
       }

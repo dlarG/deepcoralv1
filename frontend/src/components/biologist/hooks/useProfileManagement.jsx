@@ -121,7 +121,7 @@ export default function useProfileManagement(user) {
     console.log("Profile form data set with email:", user.email); // Debug line
 
     setProfileImagePreview(
-      user.profile_image ? `/profile_uploads/${user.profile_image}` : null
+      user.profile_image ? `${process.env.REACT_APP_API_URL}/profile_uploads/${user.profile_image}` : null
     );
     setShowProfileModal(true);
     setProfileTab("info");

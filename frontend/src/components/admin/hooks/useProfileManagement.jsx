@@ -179,7 +179,7 @@ export default function useProfileManagement(user) {
       confirm_password: "",
     });
     setProfileImagePreview(
-      user.profile_image ? `/profile_uploads/${user.profile_image}` : null
+      user.profile_image ? `${process.env.REACT_APP_API_URL}/profile_uploads/${user.profile_image}` : null
     );
     // Reset password strength
     setPasswordStrength({ score: 0, feedback: [], color: "#e5e7eb" });
