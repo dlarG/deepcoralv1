@@ -82,7 +82,7 @@ def update_profile():
                 if current_user[7]:  # profile_image column
                     old_image_path = os.path.join(
                         current_app.root_path, 
-                        '..', 'frontend', 'public', 'profile_uploads',
+                        'profile_uploads',
                         current_user[7]
                     )
                     if os.path.exists(old_image_path):
@@ -95,7 +95,7 @@ def update_profile():
                 
                 upload_path = os.path.join(
                     current_app.root_path, 
-                    '..', 'frontend', 'public', 'profile_uploads'
+                    'profile_uploads'
                 )
                 os.makedirs(upload_path, exist_ok=True)
                 file.save(os.path.join(upload_path, unique_filename))
@@ -365,7 +365,7 @@ def cleanup_user_files(user_images, mask_paths, profile_image):
         # Clean up profile image
         if profile_image:
             profile_file_path = os.path.join(
-                current_app.root_path, '..', 'frontend', 'public', 'profile_uploads', profile_image
+                current_app.root_path, 'profile_uploads', profile_image
             )
             if os.path.exists(profile_file_path):
                 os.remove(profile_file_path)
@@ -379,3 +379,10 @@ def cleanup_user_files(user_images, mask_paths, profile_image):
         current_app.logger.error(f"Error during file cleanup: {str(e)}")
         # Don't fail the whole operation if file cleanup fails
         return files_deleted
+
+@profile_bp.route('/profile_uploads/<filename>')
+def serve_profile_image(filename):
+    """Serve uploaded profile images"""
+    from flask import send_from_directory
+    upload_path = os.path.join(current_app.root_path, 'profile_uploads')
+    return send_from_directory(upload_path, filename)
