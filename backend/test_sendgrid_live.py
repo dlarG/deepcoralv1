@@ -6,25 +6,26 @@ Run this on EC2 to verify SendGrid integration
 
 import sys
 import os
+from dotenv import load_dotenv
 
-# Add parent directory to path
-sys.path.insert(0, '/home/ec2-user/deepcoralv1/backend')
+# Load environment variables from .env.production
+load_dotenv('.env.production')
 
 print("=" * 60)
 print("SendGrid API Key Test")
 print("=" * 60)
 
-# Test 1: Import and get API key
-print("\n1. Testing AWS Secrets Manager retrieval...")
+# Test 1: Get API key from environment
+print("\n1. Testing environment variable retrieval...")
 try:
-    from aws_secrets import get_sendgrid_api_key
-    api_key = get_sendgrid_api_key()
+    api_key = os.getenv('SENDGRID_API_KEY')
     
     if api_key:
         print(f"   ✅ API Key retrieved: {api_key[:10]}...{api_key[-10:]}")
         print(f"   ✅ Key length: {len(api_key)} characters")
     else:
         print("   ❌ API Key is None or empty")
+        print("   ❌ Make sure SENDGRID_API_KEY is set in .env.production")
         sys.exit(1)
 except Exception as e:
     print(f"   ❌ Error retrieving API key: {e}")
@@ -42,6 +43,8 @@ except Exception as e:
 
 # Test 3: Try to send a test email
 print("\n3. Testing email send (to test address)...")
+from_email = os.getenv('SENDGRID_FROM_EMAIL', 'noreply@em2602.deepcoral.site')
+print(f"   From email: {from_email}")
 print("   Enter test email address (or press Enter to skip): ", end='')
 test_email = input().strip()
 
@@ -50,7 +53,7 @@ if test_email:
         from sendgrid.helpers.mail import Mail
         
         message = Mail(
-            from_email='noreply@em2602.deepcoral.site',
+            from_email=from_email,
             to_emails=test_email,
             subject='DeepCoral SendGrid Test',
             html_content='<strong>This is a test email from DeepCoral backend.</strong><br>If you received this, SendGrid is working correctly!'
