@@ -115,7 +115,7 @@ if PYTORCH_AVAILABLE:
         print("✅ Segmentation models imported successfully")
         
         BASE_DIR = Path(__file__).parent.parent
-        MODEL_PATH = BASE_DIR.parent / "backend" / "models" / "segmentation" / "version4" / "coral_unet_best.pth"
+        MODEL_PATH = BASE_DIR / "models" / "segmentation" / "version4" / "coral_unet_best.pth"
         
         print(f"🔄 Loading segmentation model from: {MODEL_PATH}")
         print(f"📁 Model exists: {MODEL_PATH.exists()}")
