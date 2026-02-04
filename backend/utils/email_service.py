@@ -41,6 +41,7 @@ class EmailService:
             response = self.ses_client.send_email(
                 Source=f"{self.from_name} <{self.from_email}>",
                 Destination={'ToAddresses': to_emails},
+                ReplyToAddresses=[self.support_email],
                 Message={
                     'Subject': {
                         'Data': subject,
