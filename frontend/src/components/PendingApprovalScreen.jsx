@@ -172,7 +172,7 @@ function PendingApprovalScreen({ userData }) {
             </div>
 
             <div className="note-box note-important">
-              <FiMaybe size={20} />
+              <FiHelpCircle size={20} />
               <div>
                 <h4>⏱️ Beyond 24 Hours?</h4>
                 <p>
