@@ -4,7 +4,6 @@ import {
   FiClock,
   FiMail,
   FiArrowRight,
-  FiMaybe,
   FiHelpCircle,
 } from "react-icons/fi";
 import "../styles/pending-approval.css";
