@@ -188,7 +188,7 @@ function Register() {
     }
 
     try {
-      axios.post(
+      const response = await axios.post(
         `${process.env.REACT_APP_API_URL}/register`,
         {
           username: form.username,
@@ -205,24 +205,26 @@ function Register() {
         }
       );
 
-      // Store user data and show pending approval screen
-      setRegisteredUser({
-        firstname: form.firstname,
-        lastname: form.lastname,
-        username: form.username,
-        email: form.email,
-      });
-      setRegistrationSuccess(true);
-      
-      // Clear form on successful registration
-      setForm({
-        username: "",
-        password: "",
-        confirmPassword: "",
-        firstname: "",
-        lastname: "",
-        email: "",
-      });
+      // Only show pending approval screen if registration was successful (201)
+      if (response.status === 201) {
+        setRegisteredUser({
+          firstname: form.firstname,
+          lastname: form.lastname,
+          username: form.username,
+          email: form.email,
+        });
+        setRegistrationSuccess(true);
+        
+        // Clear form on successful registration
+        setForm({
+          username: "",
+          password: "",
+          confirmPassword: "",
+          firstname: "",
+          lastname: "",
+          email: "",
+        });
+      }
     } catch (err) {
       const errorMsg = err.response?.data?.error || "Registration failed";
       setMessage(errorMsg);
