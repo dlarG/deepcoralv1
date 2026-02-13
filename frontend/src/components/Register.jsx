@@ -15,6 +15,7 @@ import {
 } from "react-icons/fi";
 import ReCAPTCHA from "react-google-recaptcha";
 import Logo from "./Logo";
+import PendingApprovalScreen from "./PendingApprovalScreen";
 import "../styles/register.css";
 // import {API_BASE_URL} from "../config/api";
 
@@ -36,6 +37,8 @@ function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [bubbles, setBubbles] = useState([]);
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
+  const [registeredUser, setRegisteredUser] = useState(null);
   const navigate = useNavigate();
   const [captchaValue, setCaptchaValue] = useState(null);
 
@@ -202,7 +205,15 @@ function Register() {
         }
       );
 
-      setMessage("Registration successful! Redirecting to login...");
+      // Store user data and show pending approval screen
+      setRegisteredUser({
+        firstname: form.firstname,
+        lastname: form.lastname,
+        username: form.username,
+        email: form.email,
+      });
+      setRegistrationSuccess(true);
+      
       // Clear form on successful registration
       setForm({
         username: "",
@@ -212,8 +223,6 @@ function Register() {
         lastname: "",
         email: "",
       });
-
-      setTimeout(() => navigate("/login"), 2000);
     } catch (err) {
       const errorMsg = err.response?.data?.error || "Registration failed";
       setMessage(errorMsg);
@@ -224,6 +233,11 @@ function Register() {
 
   const passwordStrength = getPasswordStrength(form.password);
   const passwordMatch = getPasswordMatch();
+
+  // Show pending approval screen after successful registration
+  if (registrationSuccess) {
+    return <PendingApprovalScreen userData={registeredUser} />;
+  }
 
   return (
     <div className="register-container">

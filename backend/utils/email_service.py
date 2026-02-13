@@ -261,10 +261,10 @@ class EmailService:
                     </div>
                     
                     <div class="action-buttons">
-                        <a href="localhost/admin-dashboard" class="btn btn-review">
+                        <a href="{self.company_website}/admin/dashboard" class="btn btn-review">
                             📋 Review in Admin Panel
                         </a>
-                        <a href="localhost/admin-dashboard" class="btn btn-approve">
+                        <a href="{self.company_website}/admin/dashboard" class="btn btn-approve">
                             ✅ Manage Users
                         </a>
                     </div>
