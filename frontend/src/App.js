@@ -15,12 +15,14 @@ import SuccessMessage from "./components/SuccessMessage";
 import ForgotPassword from "./components/ForgotPassword";
 import VerifyOTP from "./components/VerifyOTP";
 import ResetPassword from "./components/ResetPassword";
+import PendingApprovalDemo from "./pages/PendingApprovalDemo";
 
 function App() {
   return (
     <Router>
       <AuthProvider>
         <Routes>
+          <Route path="/demo/pending-approval" element={<PendingApprovalDemo />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/verify-otp" element={<VerifyOTP />} />
           <Route path="/reset-password" element={<ResetPassword />} />
