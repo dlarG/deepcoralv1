@@ -1,35 +1,38 @@
 import os
-import boto3
-from botocore.exceptions import ClientError
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail, Email, To, Content
 from datetime import datetime
 import json
 from flask import current_app
 
 class EmailService:
     def __init__(self):
-        # AWS SES Configuration
-        self.from_email = os.getenv('SES_FROM_EMAIL', 'noreply@deepcoral.site')
-        self.from_name = os.getenv('SES_FROM_NAME', 'DeepCoral AI System')
+        # SendGrid Configuration
+        self.api_key = os.getenv('SENDGRID_API_KEY')
+        self.from_email = os.getenv('SENDGRID_FROM_EMAIL', 'noreply@deepcoral.site')
+        self.from_name = os.getenv('SENDGRID_FROM_NAME', 'DeepCoral AI System')
         self.company_name = os.getenv('COMPANY_NAME', 'DeepCoral AI')
         self.company_website = os.getenv('COMPANY_WEBSITE', 'https://deepcoral.site')
         self.support_email = os.getenv('SUPPORT_EMAIL', 'support@deepcoral.site')
-        self.aws_region = os.getenv('AWS_REGION', 'ap-southeast-2')
         
-        try:
-            # Initialize SES client
-            self.ses_client = boto3.client('ses', region_name=self.aws_region)
-            print(f"AWS SES initialized successfully (Region: {self.aws_region})")
-        except Exception as e:
-            print(f"Warning: AWS SES initialization failed: {e}")
-            self.ses_client = None
+        if not self.api_key:
+            print("Warning: SendGrid API key not configured")
+            self.sg = None
+        else:
+            try:
+                self.sg = SendGridAPIClient(api_key=self.api_key)
+                print("SendGrid initialized successfully")
+            except Exception as e:
+                print(f"Warning: SendGrid initialization failed: {e}")
+                self.sg = None
     
     def send_email(self, to_emails, subject, html_content, plain_content=None):
-        """Send email using AWS SES"""
-        if not self.ses_client:
+        """Send email using SendGrid"""
+        if not self.sg:
             try:
-                current_app.logger.error("AWS SES not configured, email not sent")
+                current_app.logger.error("SendGrid not configured, email not sent")
             except RuntimeError:
-                print("AWS SES not configured, email not sent")
+                print("SendGrid not configured, email not sent")
             return False
         
         try:
@@ -37,44 +40,28 @@ class EmailService:
             if isinstance(to_emails, str):
                 to_emails = [to_emails]
             
-            # Send the email using SES
-            response = self.ses_client.send_email(
-                Source=f"{self.from_name} <{self.from_email}>",
-                Destination={'ToAddresses': to_emails},
-                ReplyToAddresses=[self.support_email],
-                Message={
-                    'Subject': {
-                        'Data': subject,
-                        'Charset': 'UTF-8'
-                    },
-                    'Body': {
-                        'Html': {
-                            'Data': html_content,
-                            'Charset': 'UTF-8'
-                        },
-                        'Text': {
-                            'Data': plain_content or self._html_to_text(html_content),
-                            'Charset': 'UTF-8'
-                        }
-                    }
-                }
+            # Create mail object
+            from_email = Email(self.from_email, self.from_name)
+            
+            mail = Mail(
+                from_email=from_email,
+                to_emails=to_emails,
+                subject=subject,
+                html_content=html_content,
+                plain_text_content=plain_content or self._html_to_text(html_content)
             )
             
-            message_id = response.get('MessageId')
+            # Add reply-to
+            mail.reply_to = Email(self.support_email)
+            
+            # Send the email
+            response = self.sg.send(mail)
             try:
-                current_app.logger.info(f"Email sent successfully via SES. Message ID: {message_id}")
+                current_app.logger.info(f"Email sent successfully via SendGrid. Status: {response.status_code}")
             except RuntimeError:
-                print(f"Email sent successfully via SES. Message ID: {message_id}")
+                print(f"Email sent successfully via SendGrid. Status: {response.status_code}")
             return True
             
-        except ClientError as e:
-            error_code = e.response['Error']['Code']
-            error_msg = e.response['Error']['Message']
-            try:
-                current_app.logger.error(f"SES Error ({error_code}): {error_msg}")
-            except RuntimeError:
-                print(f"SES Error ({error_code}): {error_msg}")
-            return False
         except Exception as e:
             try:
                 current_app.logger.error(f"Error sending email: {str(e)}")
