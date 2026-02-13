@@ -5,27 +5,21 @@ import secrets
 env = os.getenv('FLASK_ENV', 'production')
 local_prod = os.getenv('LOCAL_PRODUCTION', 'False').lower() == 'true'
 
-# Only load dotenv in non-production environments
-if env != 'production':
-    try:
-        from dotenv import load_dotenv
-        if env == 'staging':
-            load_dotenv('.env.staging')
-        elif local_prod:
-            load_dotenv('.env.local-production')
-        else:
-            load_dotenv('.env.development')
-    except ImportError:
-        # dotenv not installed, skip loading (production will use env vars)
-        pass
-
-
-# Determine environment and load appropriate .env file
-# env = os.getenv('FLASK_ENV', 'production')
-# if env == 'production':
-#     load_dotenv('.env.production')
-# else:
-#     load_dotenv('.env.development')
+# Load dotenv files based on environment
+try:
+    from dotenv import load_dotenv
+    if env == 'production':
+        # Load production environment variables
+        load_dotenv('.env.production')
+    elif env == 'staging':
+        load_dotenv('.env.staging')
+    elif local_prod:
+        load_dotenv('.env.local-production')
+    else:
+        load_dotenv('.env.development')
+except ImportError:
+    # dotenv not installed, skip loading (production will use env vars)
+    pass
 
 class Config:
     # App configuration
