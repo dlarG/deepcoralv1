@@ -1228,10 +1228,6 @@ function CoralDistribution() {
         ? `${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/images?${paramString}`
         : `${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/images`;
 
-      const imagesUrl = paramString
-        ? `${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/images?${paramString}`
-        : `${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/images`;
-
       const imagesResponse = await fetch(imagesUrl);
       const imagesData = await imagesResponse.json();
 
