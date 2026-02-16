@@ -1187,13 +1187,10 @@ function CoralDistribution() {
         ? `${process.env.REACT_APP_API_URL}/distribution/locations?${params}`
         : `${process.env.REACT_APP_API_URL}/distribution/locations`;
 
-      console.log("Loading locations from:", url); // Debug log
-
       const response = await fetch(url);
       const data = await response.json();
 
       if (response.ok) {
-        console.log("Loaded locations:", data.locations); // Debug log
         setLocations(data.locations || []);
       } else {
         console.error("Failed to load locations:", data.error);
@@ -1231,13 +1228,14 @@ function CoralDistribution() {
         ? `${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/images?${paramString}`
         : `${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/images`;
 
-      console.log("Loading images from:", imagesUrl); // Debug log
+      const imagesUrl = paramString
+        ? `${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/images?${paramString}`
+        : `${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/images`;
 
       const imagesResponse = await fetch(imagesUrl);
       const imagesData = await imagesResponse.json();
 
       if (imagesResponse.ok) {
-        console.log("Loaded images:", imagesData.images?.length, "images"); // Debug log
         setLocationImages(imagesData.images || []);
       }
 
@@ -1250,7 +1248,6 @@ function CoralDistribution() {
       const analyticsData = await analyticsResponse.json();
 
       if (analyticsResponse.ok) {
-        console.log("Loaded analytics:", analyticsData); // Debug log
         setLocationAnalytics(analyticsData);
       }
 
@@ -1271,11 +1268,6 @@ function CoralDistribution() {
   };
 
   const handleDateRangeChange = async () => {
-    // Applying date filters with current date range
-      start: dateRange.start,
-      end: dateRange.end,
-    });
-
     // Reload locations with new date range
     await loadLocations();
 
