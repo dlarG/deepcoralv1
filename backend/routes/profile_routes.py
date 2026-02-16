@@ -284,7 +284,9 @@ def delete_profile():
                 """, (user_id,))
                 deleted_instances = cur.rowcount
                 current_app.logger.info(f"Delete profile for {user_id}: Deleted {deleted_instances} coral instances")
+                conn.commit()
             except Exception as e:
+                conn.rollback()
                 error_msg = str(e)
                 if "coral_instances" in error_msg and "does not exist" in error_msg:
                     current_app.logger.warning(f"Delete profile for {user_id}: coral_instances table not found, skipping")
@@ -301,7 +303,9 @@ def delete_profile():
                 """, (user_id,))
                 deleted_results = cur.rowcount
                 current_app.logger.info(f"Delete profile for {user_id}: Deleted {deleted_results} segmentation results")
+                conn.commit()
             except Exception as e:
+                conn.rollback()
                 error_msg = str(e)
                 if "segmentation_results" in error_msg and "does not exist" in error_msg:
                     current_app.logger.warning(f"Delete profile for {user_id}: segmentation_results table not found, skipping")
@@ -313,23 +317,28 @@ def delete_profile():
                 cur.execute("DELETE FROM images WHERE uploader_id = %s", (user_id,))
                 deleted_images = cur.rowcount
                 current_app.logger.info(f"Delete profile for {user_id}: Deleted {deleted_images} images")
+                conn.commit()
             except Exception as e:
+                conn.rollback()
                 current_app.logger.warning(f"Delete profile for {user_id}: Error deleting images: {str(e)}")
             
             # 4. Delete the user account
-            cur.execute("DELETE FROM users WHERE id = %s RETURNING id", (user_id,))
-            delete_result = cur.fetchone()
-            
-            if not delete_result:
+            try:
+                cur.execute("DELETE FROM users WHERE id = %s RETURNING id", (user_id,))
+                delete_result = cur.fetchone()
+                
+                if not delete_result:
+                    conn.rollback()
+                    current_app.logger.error(f"Delete profile for {user_id}: Failed to delete user from database")
+                    return jsonify({"error": "Failed to delete user account"}), 500
+                
+                deleted_user_id = delete_result[0]
+                conn.commit()
+                current_app.logger.info(f"Delete profile: Successfully deleted user {deleted_user_id} from database")
+            except Exception as e:
                 conn.rollback()
-                current_app.logger.error(f"Delete profile for {user_id}: Failed to delete user from database")
-                return jsonify({"error": "Failed to delete user account"}), 500
-            
-            deleted_user_id = delete_result[0]
-            
-            # Commit database changes
-            conn.commit()
-            current_app.logger.info(f"Delete profile: Successfully deleted user {deleted_user_id} from database")
+                current_app.logger.error(f"Delete profile for {user_id}: Database error: {str(e)}", exc_info=True)
+                return jsonify({"error": f"Database error: {str(e)}"}), 500
             
             # Clean up physical files after successful database deletion
             try:
