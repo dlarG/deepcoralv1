@@ -20,6 +20,7 @@ const SuccessModal = ({
   customActions = false,
   onConfirm = null,
   onCancel = null,
+  isLoading = false,
 }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -434,6 +435,20 @@ const SuccessModal = ({
           transform: translateY(-2px);
         }
 
+        .success-modal-button:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+          transform: none !important;
+        }
+
+        .success-modal-button.primary:disabled:hover,
+        .success-modal-button.danger:disabled:hover,
+        .success-modal-button.approve:disabled:hover,
+        .success-modal-button.reject:disabled:hover {
+          transform: none !important;
+          box-shadow: none !important;
+        }
+
         .progress-bar {
           position: absolute;
           bottom: 0;
@@ -535,6 +550,7 @@ const SuccessModal = ({
                         : "danger"
                     }`}
                     onClick={handleConfirm}
+                    disabled={isLoading}
                   >
                     {buttonConfig.confirmIcon}
                     {buttonConfig.confirmText}
@@ -542,6 +558,7 @@ const SuccessModal = ({
                   <button
                     className="success-modal-button secondary"
                     onClick={handleCancel}
+                    disabled={isLoading}
                   >
                     {buttonConfig.cancelIcon}
                     {buttonConfig.cancelText}

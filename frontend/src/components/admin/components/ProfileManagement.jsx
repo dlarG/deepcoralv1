@@ -656,6 +656,7 @@ function ProfileManagement({ user }) {
         customActions={modalConfig.customActions}
         onConfirm={modalConfig.customActions ? confirmDeleteProfile : null}
         onCancel={modalConfig.customActions ? cancelDeleteProfile : null}
+        isLoading={deleteLoading}
       />
     </div>
   );
