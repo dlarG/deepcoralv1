@@ -305,6 +305,8 @@ export default function useProfileManagement(user) {
       return;
     }
 
+    // Close the password input modal first
+    setShowDeleteModal(false);
     setPendingDeleteProfile(true);
     setModalConfig({
       title: "⚠️ Permanently Delete Account",
@@ -332,8 +334,9 @@ export default function useProfileManagement(user) {
       });
 
       setShowModal(false);
-      closeDeleteModal();
       setPendingDeleteProfile(false);
+      setDeletePassword("");
+      setDeleteError("");
 
       showSuccessModal(
         "Account Deleted Successfully",
@@ -353,25 +356,29 @@ export default function useProfileManagement(user) {
 
       if (error.response?.status === 401) {
         setDeleteError("Incorrect password. Please try again.");
+        setShowDeleteModal(true); // Reopen delete modal for password retry
         showErrorModal(
           "Authentication Failed",
-          "The password you entered is incorrect. Please check and try again."
+          "The password you entered is incorrect. Please try again."
         );
       } else if (error.response?.status === 403) {
         showErrorModal(
           "Deletion Not Allowed",
           "Your account cannot be deleted at this time. Please contact support for assistance."
         );
+        setShowDeleteModal(false);
       } else if (error.response?.status === 409) {
         showErrorModal(
           "Account Has Dependencies",
-          "Your account cannot be deleted because it has associated data that must be handled first."
+          "Your account cannot be deleted because it has associated data that must be handled first. Please contact support."
         );
-      } else if (error.code === "NETWORK_ERROR") {
+        setShowDeleteModal(false);
+      } else if (error.code === "NETWORK_ERROR" || error.message === "Network Error") {
         showErrorModal(
           "Connection Error",
           "Unable to connect to the server. Please check your internet connection and try again."
         );
+        setShowDeleteModal(true); // Reopen delete modal for retry
       } else {
         setDeleteError(
           error.response?.data?.error ||
@@ -382,6 +389,7 @@ export default function useProfileManagement(user) {
           error.response?.data?.error ||
             "Failed to delete account. Please try again or contact support."
         );
+        setShowDeleteModal(true); // Reopen delete modal for retry
       }
     } finally {
       setDeleteLoading(false);
@@ -391,6 +399,8 @@ export default function useProfileManagement(user) {
   const cancelDeleteProfile = () => {
     setPendingDeleteProfile(false);
     setShowModal(false);
+    setDeletePassword("");
+    setDeleteError("");
   };
 
   return {
