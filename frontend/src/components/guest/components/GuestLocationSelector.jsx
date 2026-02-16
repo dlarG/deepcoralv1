@@ -106,24 +106,17 @@ const GuestLocationSelector = ({
   // FIXED: Guest-specific function to count images to save
   const countGuestImagesToSave = () => {
     if (!batchResults) {
-      console.log("❌ No batchResults provided");
       return 0;
     }
-
-    console.log("🔍 Counting guest images to save:", batchResults);
 
     // Guest batch results structure: { results: [{ image_id, success, data }] }
     if (batchResults.results && Array.isArray(batchResults.results)) {
       const successfulResults = batchResults.results.filter(
         (result) => result.success
       );
-      console.log(
-        `✅ Found ${successfulResults.length} successful analyses to save`
-      );
       return successfulResults.length;
     }
 
-    console.log("❌ No valid results structure found in batchResults");
     return 0;
   };
 
@@ -145,7 +138,6 @@ const GuestLocationSelector = ({
 
     try {
       setLoadingTransectCounts(true);
-      console.log("🔢 Loading transect counts for location:", location);
 
       const response = await fetch(
         `${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/images?scope=location`
@@ -165,7 +157,6 @@ const GuestLocationSelector = ({
           }
         });
 
-        console.log("📊 Transect counts:", counts);
         setTransectCounts(counts);
       } else {
         console.error("Failed to load transect counts:", data.error);
@@ -217,7 +208,6 @@ const GuestLocationSelector = ({
 
     try {
       setLoading(true);
-      console.log("🔍 Loading existing locations for guest...");
 
       const response = await fetch(
         `${process.env.REACT_APP_API_URL}/distribution/locations`,
@@ -235,10 +225,8 @@ const GuestLocationSelector = ({
       }
 
       const data = await response.json();
-      console.log("📍 Raw locations response:", data);
 
       if (data.locations && Array.isArray(data.locations)) {
-        console.log(`✅ Found ${data.locations.length} existing locations`);
 
         // Process the locations to ensure consistent structure
         const processedLocations = data.locations.map((loc, index) => {
@@ -287,7 +275,6 @@ const GuestLocationSelector = ({
       // Count images to save
       const count = countGuestImagesToSave();
       setImagesToSaveCount(count);
-      console.log(`📸 Guest images to save: ${count}`);
 
       // Load existing locations only if not already loaded
       if (existingLocations.length === 0) {
@@ -311,8 +298,6 @@ const GuestLocationSelector = ({
   }, [selectedLocation]);
 
   const handleExistingLocationClick = (location) => {
-    console.log("Selected existing location:", location);
-
     setSelectedLocation({
       lat: location.latitude,
       lng: location.longitude,
@@ -478,8 +463,6 @@ const GuestLocationSelector = ({
         (id) => id != null && id !== undefined
       );
 
-      console.log("🔍 Guest image IDs to save:", imageIds);
-
       if (imageIds.length === 0) {
         console.error("❌ NO IMAGE IDS FOUND!");
         console.error("Batch results:", batchResults);
@@ -501,8 +484,6 @@ const GuestLocationSelector = ({
         }
       }
 
-      console.log(`✅ Proceeding with ${imageIds.length} image IDs:`, imageIds);
-
       const requestBody = {
         image_ids: imageIds,
         location: {
@@ -517,8 +498,6 @@ const GuestLocationSelector = ({
         requestBody.municipality = municipality.trim();
         requestBody.barangay = barangay.trim();
       }
-
-      console.log("Request body:", requestBody);
 
       const response = await fetch(
         `${process.env.REACT_APP_API_URL}/gis/save_with_location`,

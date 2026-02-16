@@ -62,22 +62,15 @@ def create_app():
         try:
             import os
             coral_images_path = os.path.join(app.root_path, 'coral_lifeforms')
-            
             # Create directory if it doesn't exist
             os.makedirs(coral_images_path, exist_ok=True)
-            
-            # Log the request
-            app.logger.info(f"🔍 Serving coral image: {filename}")
-            app.logger.info(f"📁 From directory: {coral_images_path}")
             
             # Check if file exists
             file_path = os.path.join(coral_images_path, filename)
             if not os.path.exists(file_path):
-                app.logger.error(f"❌ Image not found: {file_path}")
-                app.logger.info(f"📋 Available files: {os.listdir(coral_images_path)}")
+                app.logger.error(f"Image not found: {filename}")
                 return jsonify({'error': 'Image not found'}), 404
             
-            app.logger.info(f"✅ Image found, serving: {filename}")
             return send_from_directory(coral_images_path, filename)
         
         except Exception as e:

@@ -459,13 +459,10 @@ function CoralDistribution() {
       // Load images for this location with filtering
       const imagesUrl = `${process.env.REACT_APP_API_URL}/distribution/location/${location.latitude}/${location.longitude}/images?${paramString}`;
 
-      console.log("Loading images from:", imagesUrl);
-
       const imagesResponse = await fetch(imagesUrl);
       const imagesData = await imagesResponse.json();
 
       if (imagesResponse.ok) {
-        console.log("Loaded images:", imagesData.images?.length, "images");
         setLocationImages(imagesData.images || []);
 
         // Update available transects based on the data
@@ -487,7 +484,6 @@ function CoralDistribution() {
       const analyticsData = await analyticsResponse.json();
 
       if (analyticsResponse.ok) {
-        console.log("Loaded analytics:", analyticsData);
         setLocationAnalytics(analyticsData);
       }
 
@@ -1110,8 +1106,6 @@ function CoralDistribution() {
             setCurrentImageIndex(updatedImages.length - 1);
           }
         }
-
-        console.log("Image deleted successfully");
       } else {
         const errorData = await response.json();
         console.error("Failed to delete image:", errorData.error);
@@ -1277,7 +1271,7 @@ function CoralDistribution() {
   };
 
   const handleDateRangeChange = async () => {
-    console.log("Applying date filters:", {
+    // Applying date filters with current date range
       start: dateRange.start,
       end: dateRange.end,
     });
