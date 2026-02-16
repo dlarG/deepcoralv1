@@ -193,14 +193,23 @@ def update_profile():
 def delete_profile():
     user_id = session.get('user_id')
     if not user_id:
+        current_app.logger.error("Delete profile: No user_id in session")
         return jsonify({"error": "Unauthorized"}), 401
     
-    data = request.get_json()
-    if not data or 'password' not in data:
-        return jsonify({"error": "Password is required"}), 400
+    try:
+        data = request.get_json()
+        current_app.logger.info(f"Delete profile request received for user {user_id}")
+        
+        if not data or 'password' not in data:
+            current_app.logger.warning(f"Delete profile for {user_id}: Password not provided in request")
+            return jsonify({"error": "Password is required"}), 400
+    except Exception as e:
+        current_app.logger.error(f"Delete profile for {user_id}: Error parsing JSON: {str(e)}")
+        return jsonify({"error": "Invalid request format"}), 400
     
     conn = get_db_connection()
     if conn is None:
+        current_app.logger.error(f"Delete profile for {user_id}: Database connection failed")
         return jsonify({"error": "Database connection failed"}), 500
     
     try:
@@ -208,36 +217,55 @@ def delete_profile():
             # Verify password
             cur.execute("SELECT password, roletype, profile_image FROM users WHERE id = %s", (user_id,))
             result = cur.fetchone()
-            if not result or not check_password_hash(result[0], data['password']):
-                return jsonify({"error": "Incorrect password"}), 401
+            
+            if not result:
+                current_app.logger.error(f"Delete profile: User {user_id} not found in database")
+                return jsonify({"error": "User not found"}), 404
             
             user_password, user_role, profile_image = result
+            
+            # Verify password
+            if not check_password_hash(user_password, data['password']):
+                current_app.logger.warning(f"Delete profile for {user_id}: Incorrect password provided")
+                return jsonify({"error": "Incorrect password"}), 401
             
             # Prevent admin from deleting themselves if they're the only admin
             if user_role == 'admin':
                 cur.execute("SELECT COUNT(*) FROM users WHERE roletype = 'admin'")
                 admin_count = cur.fetchone()[0]
                 if admin_count <= 1:
+                    current_app.logger.warning(f"Delete profile for {user_id}: Cannot delete only admin")
                     return jsonify({"error": "Cannot delete the only admin account"}), 403
             
+            current_app.logger.info(f"Delete profile for {user_id}: Password verified, proceeding with account deletion")
+            
             # Get all images uploaded by this user for cleanup
-            cur.execute("""
-                SELECT filename, quadrat_crop_path, original_image_path 
-                FROM images WHERE uploader_id = %s
-            """, (user_id,))
-            user_images = cur.fetchall()
+            try:
+                cur.execute("""
+                    SELECT filename, quadrat_crop_path, original_image_path 
+                    FROM images WHERE uploader_id = %s
+                """, (user_id,))
+                user_images = cur.fetchall()
+                current_app.logger.info(f"Delete profile for {user_id}: Found {len(user_images)} images to clean up")
+            except Exception as e:
+                current_app.logger.warning(f"Delete profile for {user_id}: Error fetching images: {str(e)}")
+                user_images = []
             
             # Get all segmentation mask paths for cleanup
-            cur.execute("""
-                SELECT DISTINCT sr.mask_path 
-                FROM segmentation_results sr
-                INNER JOIN images i ON sr.image_id = i.id
-                WHERE i.uploader_id = %s AND sr.mask_path IS NOT NULL
-            """, (user_id,))
-            mask_paths = cur.fetchall()
+            try:
+                cur.execute("""
+                    SELECT DISTINCT sr.mask_path 
+                    FROM segmentation_results sr
+                    INNER JOIN images i ON sr.image_id = i.id
+                    WHERE i.uploader_id = %s AND sr.mask_path IS NOT NULL
+                """, (user_id,))
+                mask_paths = cur.fetchall()
+                current_app.logger.info(f"Delete profile for {user_id}: Found {len(mask_paths)} mask files")
+            except Exception as e:
+                current_app.logger.warning(f"Delete profile for {user_id}: Error fetching mask paths: {str(e)}")
+                mask_paths = []
             
-            # Start cascading deletion in correct order
-            print(f"Deleting account for user {user_id}...")
+            current_app.logger.info(f"Delete profile for {user_id}: Starting cascading deletion")
             
             # 1. Delete coral instances (child of segmentation_results)
             cur.execute("""
@@ -249,7 +277,7 @@ def delete_profile():
                 )
             """, (user_id,))
             deleted_instances = cur.rowcount
-            print(f"Deleted {deleted_instances} coral instances")
+            current_app.logger.info(f"Delete profile for {user_id}: Deleted {deleted_instances} coral instances")
             
             # 2. Delete segmentation results (child of images)
             cur.execute("""
@@ -259,26 +287,39 @@ def delete_profile():
                 )
             """, (user_id,))
             deleted_results = cur.rowcount
-            print(f"Deleted {deleted_results} segmentation results")
+            current_app.logger.info(f"Delete profile for {user_id}: Deleted {deleted_results} segmentation results")
             
             # 3. Delete images (parent of segmentation_results)
             cur.execute("DELETE FROM images WHERE uploader_id = %s", (user_id,))
             deleted_images = cur.rowcount
-            print(f"Deleted {deleted_images} images")
+            current_app.logger.info(f"Delete profile for {user_id}: Deleted {deleted_images} images")
             
             # 4. Delete the user account
             cur.execute("DELETE FROM users WHERE id = %s RETURNING id", (user_id,))
-            deleted_user_id = cur.fetchone()[0]
+            delete_result = cur.fetchone()
+            
+            if not delete_result:
+                conn.rollback()
+                current_app.logger.error(f"Delete profile for {user_id}: Failed to delete user from database")
+                return jsonify({"error": "Failed to delete user account"}), 500
+            
+            deleted_user_id = delete_result[0]
             
             # Commit database changes
             conn.commit()
-            print(f"Successfully deleted user {deleted_user_id}")
+            current_app.logger.info(f"Delete profile: Successfully deleted user {deleted_user_id} from database")
             
             # Clean up physical files after successful database deletion
-            files_deleted = cleanup_user_files(user_images, mask_paths, profile_image)
+            try:
+                files_deleted = cleanup_user_files(user_images, mask_paths, profile_image)
+                current_app.logger.info(f"Delete profile for {user_id}: Cleaned up {files_deleted} physical files")
+            except Exception as file_error:
+                current_app.logger.warning(f"Delete profile for {user_id}: Error cleaning up files: {str(file_error)}")
+                files_deleted = 0
             
             # Clear session
             session.clear()
+            current_app.logger.info(f"Delete profile: Account deletion completed successfully for user {deleted_user_id}")
             
             return jsonify({
                 "message": "Account deleted successfully",
@@ -293,18 +334,20 @@ def delete_profile():
             
     except psycopg2.IntegrityError as e:
         conn.rollback()
-        current_app.logger.error(f"Integrity constraint error during user deletion: {str(e)}")
-        return jsonify({"error": "Cannot delete account due to data dependencies. Please contact support."}), 409
+        current_app.logger.error(f"Delete profile for {user_id}: Integrity constraint error: {str(e)}", exc_info=True)
+        return jsonify({"error": "Cannot delete account - data dependencies exist. Please contact support."}), 409
         
     except psycopg2.Error as e:
         conn.rollback()
-        current_app.logger.error(f"Database error during user deletion: {str(e)}")
-        return jsonify({"error": f"Database error: {str(e)}"}), 500
+        current_app.logger.error(f"Delete profile for {user_id}: Database error: {str(e)}", exc_info=True)
+        return jsonify({"error": "Database error occurred. Please try again later."}), 500
         
     except Exception as e:
         conn.rollback()
-        current_app.logger.error(f"Unexpected error during user deletion: {str(e)}")
-        return jsonify({"error": f"Account deletion failed: {str(e)}"}), 500
+        import traceback
+        error_trace = traceback.format_exc()
+        current_app.logger.error(f"Unexpected error during user deletion for {user_id}: {str(e)}\n{error_trace}")
+        return jsonify({"error": "An unexpected error occurred. Please try again later."}), 500
         
     finally:
         if conn:
@@ -326,9 +369,14 @@ def cleanup_user_files(user_images, mask_paths, profile_image):
                     current_app.root_path, '..', 'frontend', 'public', 'crops', filename
                 )
                 if os.path.exists(crop_file_path):
-                    os.remove(crop_file_path)
-                    files_deleted += 1
-                    print(f"Deleted crop file: {filename}")
+                    try:
+                        os.remove(crop_file_path)
+                        files_deleted += 1
+                        current_app.logger.info(f"Cleanup: Deleted crop file: {filename}")
+                    except Exception as e:
+                        current_app.logger.warning(f"Cleanup: Failed to delete crop file {filename}: {str(e)}")
+                else:
+                    current_app.logger.debug(f"Cleanup: Crop file not found: {crop_file_path}")
             
             # Delete quadrat crop file if different
             if crop_path and crop_path != filename:
@@ -336,9 +384,14 @@ def cleanup_user_files(user_images, mask_paths, profile_image):
                     current_app.root_path, '..', 'frontend', 'public', crop_path
                 )
                 if os.path.exists(quadrat_file_path):
-                    os.remove(quadrat_file_path)
-                    files_deleted += 1
-                    print(f"Deleted quadrat file: {crop_path}")
+                    try:
+                        os.remove(quadrat_file_path)
+                        files_deleted += 1
+                        current_app.logger.info(f"Cleanup: Deleted quadrat file: {crop_path}")
+                    except Exception as e:
+                        current_app.logger.warning(f"Cleanup: Failed to delete quadrat file {crop_path}: {str(e)}")
+                else:
+                    current_app.logger.debug(f"Cleanup: Quadrat file not found: {quadrat_file_path}")
             
             # Delete original image file
             if original_path:
@@ -346,9 +399,14 @@ def cleanup_user_files(user_images, mask_paths, profile_image):
                     current_app.root_path, '..', 'frontend', 'public', original_path
                 )
                 if os.path.exists(original_file_path):
-                    os.remove(original_file_path)
-                    files_deleted += 1
-                    print(f"Deleted original file: {original_path}")
+                    try:
+                        os.remove(original_file_path)
+                        files_deleted += 1
+                        current_app.logger.info(f"Cleanup: Deleted original file: {original_path}")
+                    except Exception as e:
+                        current_app.logger.warning(f"Cleanup: Failed to delete original file {original_path}: {str(e)}")
+                else:
+                    current_app.logger.debug(f"Cleanup: Original file not found: {original_file_path}")
         
         # Clean up segmentation mask files
         for mask_data in mask_paths:
@@ -358,9 +416,14 @@ def cleanup_user_files(user_images, mask_paths, profile_image):
                     current_app.root_path, '..', 'frontend', 'public', mask_path
                 )
                 if os.path.exists(mask_file_path):
-                    os.remove(mask_file_path)
-                    files_deleted += 1
-                    print(f"Deleted mask file: {mask_path}")
+                    try:
+                        os.remove(mask_file_path)
+                        files_deleted += 1
+                        current_app.logger.info(f"Cleanup: Deleted mask file: {mask_path}")
+                    except Exception as e:
+                        current_app.logger.warning(f"Cleanup: Failed to delete mask file {mask_path}: {str(e)}")
+                else:
+                    current_app.logger.debug(f"Cleanup: Mask file not found: {mask_file_path}")
         
         # Clean up profile image
         if profile_image:
@@ -368,15 +431,20 @@ def cleanup_user_files(user_images, mask_paths, profile_image):
                 current_app.root_path, 'profile_uploads', profile_image
             )
             if os.path.exists(profile_file_path):
-                os.remove(profile_file_path)
-                files_deleted += 1
-                print(f"Deleted profile image: {profile_image}")
+                try:
+                    os.remove(profile_file_path)
+                    files_deleted += 1
+                    current_app.logger.info(f"Cleanup: Deleted profile image: {profile_image}")
+                except Exception as e:
+                    current_app.logger.warning(f"Cleanup: Failed to delete profile image {profile_image}: {str(e)}")
+            else:
+                current_app.logger.debug(f"Cleanup: Profile image not found: {profile_file_path}")
         
-        print(f"Total files cleaned up: {files_deleted}")
+        current_app.logger.info(f"Cleanup: Total files cleaned up: {files_deleted}")
         return files_deleted
         
     except Exception as e:
-        current_app.logger.error(f"Error during file cleanup: {str(e)}")
+        current_app.logger.error(f"Critical error during file cleanup: {str(e)}")
         # Don't fail the whole operation if file cleanup fails
         return files_deleted
 

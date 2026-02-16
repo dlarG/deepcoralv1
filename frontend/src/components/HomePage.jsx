@@ -305,8 +305,7 @@ function HomePage() {
                 </div>
                 <div className="contact-details">
                   <h4>Email</h4>
-                  <p>gerald@deepcoral.site</p>
-                  <p>jeff@deepcoral.site</p>
+                  <p>support@deepcoral.site</p>
                 </div>
               </div>
 
