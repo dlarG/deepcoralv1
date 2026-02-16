@@ -25,6 +25,19 @@ export default function useProfileManagement(user) {
   const [profileTab, setProfileTab] = useState("info");
   const [pendingDeleteProfile, setPendingDeleteProfile] = useState(false);
 
+  // Password visibility and strength state
+  const [showPasswords, setShowPasswords] = useState({
+    current_password: false,
+    new_password: false,
+    confirm_password: false,
+    delete: false,
+  });
+  const [passwordStrength, setPasswordStrength] = useState({
+    score: 0,
+    color: "#ef4444",
+    feedback: [],
+  });
+
   // Modal state for success/error messages
   const [showModal, setShowModal] = useState(false);
   const [modalConfig, setModalConfig] = useState({
@@ -64,9 +77,55 @@ export default function useProfileManagement(user) {
     setShowModal(true);
   };
 
+  const togglePasswordVisibility = (fieldName) => {
+    setShowPasswords((prev) => ({
+      ...prev,
+      [fieldName]: !prev[fieldName],
+    }));
+  };
+
+  const calculatePasswordStrength = (password) => {
+    let score = 0;
+    const feedback = [];
+
+    if (password.length >= 8) score++;
+    else feedback.push("at least 8 characters");
+
+    if (password.length >= 12) score++;
+
+    if (/[a-z]/.test(password)) score++;
+    else feedback.push("lowercase letters");
+
+    if (/[A-Z]/.test(password)) score++;
+    else feedback.push("uppercase letters");
+
+    if (/\d/.test(password)) score++;
+    else feedback.push("numbers");
+
+    if (/[^a-zA-Z\d]/.test(password)) score++;
+    else feedback.push("special characters");
+
+    let color = "#ef4444"; // red
+    if (score <= 2) color = "#ef4444"; // red
+    else if (score <= 3) color = "#f97316"; // orange
+    else if (score <= 4) color = "#eab308"; // yellow
+    else color = "#22c55e"; // green
+
+    setPasswordStrength({
+      score,
+      color,
+      feedback,
+    });
+  };
+
   const handleProfileInputChange = (e) => {
     const { name, value } = e.target;
     setProfileFormData((prev) => ({ ...prev, [name]: value }));
+
+    // Calculate password strength if new_password is being changed
+    if (name === "new_password") {
+      calculatePasswordStrength(value);
+    }
   };
 
   const handleProfileImageChange = (e) => {
@@ -433,5 +492,8 @@ export default function useProfileManagement(user) {
     confirmDeleteProfile,
     cancelDeleteProfile,
     pendingDeleteProfile,
+    showPasswords,
+    togglePasswordVisibility,
+    passwordStrength,
   };
 }
