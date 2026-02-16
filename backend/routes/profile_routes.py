@@ -267,32 +267,54 @@ def delete_profile():
             
             current_app.logger.info(f"Delete profile for {user_id}: Starting cascading deletion")
             
-            # 1. Delete coral instances (child of segmentation_results)
-            cur.execute("""
-                DELETE FROM coral_instances 
-                WHERE segmentation_id IN (
-                    SELECT sr.id FROM segmentation_results sr
-                    INNER JOIN images i ON sr.image_id = i.id
-                    WHERE i.uploader_id = %s
-                )
-            """, (user_id,))
-            deleted_instances = cur.rowcount
-            current_app.logger.info(f"Delete profile for {user_id}: Deleted {deleted_instances} coral instances")
+            # Initialize counters
+            deleted_instances = 0
+            deleted_results = 0
+            deleted_images = 0
             
-            # 2. Delete segmentation results (child of images)
-            cur.execute("""
-                DELETE FROM segmentation_results 
-                WHERE image_id IN (
-                    SELECT id FROM images WHERE uploader_id = %s
-                )
-            """, (user_id,))
-            deleted_results = cur.rowcount
-            current_app.logger.info(f"Delete profile for {user_id}: Deleted {deleted_results} segmentation results")
+            # 1. Delete coral instances (child of segmentation_results) - safely handle if table doesn't exist
+            try:
+                cur.execute("""
+                    DELETE FROM coral_instances 
+                    WHERE segmentation_id IN (
+                        SELECT sr.id FROM segmentation_results sr
+                        INNER JOIN images i ON sr.image_id = i.id
+                        WHERE i.uploader_id = %s
+                    )
+                """, (user_id,))
+                deleted_instances = cur.rowcount
+                current_app.logger.info(f"Delete profile for {user_id}: Deleted {deleted_instances} coral instances")
+            except Exception as e:
+                error_msg = str(e)
+                if "coral_instances" in error_msg and "does not exist" in error_msg:
+                    current_app.logger.warning(f"Delete profile for {user_id}: coral_instances table not found, skipping")
+                else:
+                    current_app.logger.warning(f"Delete profile for {user_id}: Error deleting coral_instances: {error_msg}")
             
-            # 3. Delete images (parent of segmentation_results)
-            cur.execute("DELETE FROM images WHERE uploader_id = %s", (user_id,))
-            deleted_images = cur.rowcount
-            current_app.logger.info(f"Delete profile for {user_id}: Deleted {deleted_images} images")
+            # 2. Delete segmentation results (child of images) - safely handle if table doesn't exist
+            try:
+                cur.execute("""
+                    DELETE FROM segmentation_results 
+                    WHERE image_id IN (
+                        SELECT id FROM images WHERE uploader_id = %s
+                    )
+                """, (user_id,))
+                deleted_results = cur.rowcount
+                current_app.logger.info(f"Delete profile for {user_id}: Deleted {deleted_results} segmentation results")
+            except Exception as e:
+                error_msg = str(e)
+                if "segmentation_results" in error_msg and "does not exist" in error_msg:
+                    current_app.logger.warning(f"Delete profile for {user_id}: segmentation_results table not found, skipping")
+                else:
+                    current_app.logger.warning(f"Delete profile for {user_id}: Error deleting segmentation_results: {error_msg}")
+            
+            # 3. Delete images (parent of segmentation_results) - always safe since images table is core
+            try:
+                cur.execute("DELETE FROM images WHERE uploader_id = %s", (user_id,))
+                deleted_images = cur.rowcount
+                current_app.logger.info(f"Delete profile for {user_id}: Deleted {deleted_images} images")
+            except Exception as e:
+                current_app.logger.warning(f"Delete profile for {user_id}: Error deleting images: {str(e)}")
             
             # 4. Delete the user account
             cur.execute("DELETE FROM users WHERE id = %s RETURNING id", (user_id,))
