@@ -2,8 +2,7 @@
 
 A comprehensive web application for monitoring, mapping, and analyzing coral reef health using AI-powered image segmentation and biological data tracking.
 
-**Live Application:** https://deepcoral.site  
-**Backend API:** https://52.62.53.38
+**Live Application:** https://deepcoral.site
 
 ## Project Overview
 
