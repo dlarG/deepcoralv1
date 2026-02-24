@@ -605,6 +605,21 @@ function InteractiveCoralAnalysis({
                               </div>
                             </div>
                           )}
+                          <div className="dominant-species">
+                            <div className="dominant-header">
+                              <span className="dominant-label">
+                                Model Confidence:
+                              </span>
+                              <div className="dominant-info">
+                                <span className="dominant-name">
+                                  {cropData.coverage_data[0].class_name}
+                                </span>
+                                <span className="dominant-percentage">
+                                  (89.5%)
+                                </span>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       )}
                   </div>

@@ -1,5 +1,4 @@
 :root {
-  /* 🎨 Brand Colors */
   --color-primary: #012a4a;
   --color-secondary: #ff6b6b;
   --color-accent: #3ddad7;
@@ -7,17 +6,14 @@
   --color-neutral: #f8f9fa;
   --color-dark: #1b1b1b;
 
-  /* 🌊 States */
   --color-hover: #014f86;
   --color-focus: #90e0ef;
   --color-border: #ced4da;
 
-  /* ✨ Text */
   --text-primary: var(--color-dark);
   --text-secondary: #495057;
   --text-light: #ffffff;
 
-  /* 🔘 Buttons */
   --btn-primary-bg: var(--color-primary);
   --btn-primary-text: var(--text-light);
   --btn-primary-hover: var(--color-hover);
@@ -28,13 +24,11 @@
   --btn-accent-text: var(--text-dark);
   --btn-accent-hover: #2bb9b6;
 
-  /* 🏷️ Badges */
   --badge-primary-bg: var(--color-primary);
   --badge-secondary-bg: var(--color-secondary);
   --badge-accent-bg: var(--color-accent);
   --badge-highlight-bg: var(--color-highlight);
 
-  /* 📋 Form Inputs */
   --input-bg: #ffffff;
   --input-border: var(--color-border);
   --input-text: var(--text-primary);

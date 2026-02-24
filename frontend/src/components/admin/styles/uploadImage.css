@@ -1,0 +1,219 @@
+/* Admin Upload Image Styles */
+
+/* Model Accuracy/Confidence Section */
+.model-accuracy-section {
+  background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+  border: 2px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.model-accuracy-section h4 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 1rem 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.confidence-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.confidence-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.confidence-label {
+  font-weight: 500;
+  color: #374151;
+  font-size: 0.95rem;
+}
+
+.confidence-value {
+  font-weight: 700;
+  font-size: 1.1rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.confidence-value.excellent {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.confidence-value.good {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.confidence-value.fair {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+
+.confidence-value.poor {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+/* Confidence Bar Visualization */
+.confidence-bar-container {
+  margin: 1.5rem 0;
+}
+
+.confidence-bar {
+  width: 100%;
+  height: 12px;
+  background: #e5e7eb;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.confidence-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.confidence-fill.excellent {
+  background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
+}
+
+.confidence-fill.good {
+  background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%);
+}
+
+.confidence-fill.fair {
+  background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%);
+}
+
+.confidence-fill.poor {
+  background: linear-gradient(90deg, #ef4444 0%, #f87171 100%);
+}
+
+.confidence-scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin-top: 0.5rem;
+  padding: 0 0.25rem;
+}
+
+/* Confidence Status */
+.confidence-status {
+  text-align: center;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  font-weight: 500;
+  font-size: 0.95rem;
+  border: 2px solid;
+  background: white;
+}
+
+.confidence-status.excellent {
+  color: #065f46;
+  border-color: #10b981;
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+}
+
+.confidence-status.good {
+  color: #1e40af;
+  border-color: #3b82f6;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+}
+
+.confidence-status.fair {
+  color: #92400e;
+  border-color: #f59e0b;
+  background: linear-gradient(135deg, #fef3c7 0%, #fed7aa 100%);
+}
+
+.confidence-status.poor {
+  color: #991b1b;
+  border-color: #ef4444;
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .confidence-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .confidence-item {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.5rem;
+  }
+
+  .model-accuracy-section {
+    padding: 1rem;
+  }
+}
+
+/* Animation for confidence fill */
+@keyframes confidenceFill {
+  from {
+    width: 0%;
+  }
+  to {
+    width: var(--final-width);
+  }
+}
+
+.confidence-fill {
+  animation: confidenceFill 1.5s cubic-bezier(0.4, 0, 0.2, 1) 0.3s both;
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .model-accuracy-section {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    border-color: #475569;
+  }
+
+  .model-accuracy-section h4 {
+    color: #f1f5f9;
+  }
+
+  .confidence-item {
+    background: #374151;
+    border-color: #4b5563;
+  }
+
+  .confidence-label {
+    color: #d1d5db;
+  }
+
+  .confidence-bar {
+    background: #374151;
+  }
+
+  .confidence-scale {
+    color: #9ca3af;
+  }
+
+  .confidence-status {
+    background: #374151;
+  }
+}
