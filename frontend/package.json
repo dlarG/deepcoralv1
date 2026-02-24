@@ -13,6 +13,7 @@
     "chartjs-plugin-datalabels": "^2.2.0",
     "crypto-js": "^4.2.0",
     "dayjs": "^1.11.13",
+    "framer-motion": "^12.31.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.4",
     "leaflet": "^1.9.4",
@@ -52,9 +53,9 @@
     ]
   },
   "devDependencies": {
-    "autoprefixer": "^10.4.21",
+    "autoprefixer": "^10.4.24",
     "postcss": "^8.5.6",
-    "tailwindcss": "^3.4.17",
+    "tailwindcss": "^3.4.19",
     "vite-tsconfig-paths": "^5.1.4"
   }
 }

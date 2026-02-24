@@ -30,8 +30,10 @@ import {
   LinearScale,
   BarElement,
 } from "chart.js";
+import ChartDataLabels from "chartjs-plugin-datalabels";
 import { Pie, Bar } from "react-chartjs-2";
 import LocationSelector from "../../admin/components/LocationSelector";
+import "../styles/uploadImage.css"; // Add CSS import for upload styles
 
 ChartJS.register(
   ArcElement,
@@ -39,16 +41,8 @@ ChartJS.register(
   Legend,
   CategoryScale,
   LinearScale,
-  BarElement
-);
-
-ChartJS.register(
-  ArcElement,
-  Tooltip,
-  Legend,
-  CategoryScale,
-  LinearScale,
-  BarElement
+  BarElement,
+  ChartDataLabels
 );
 
 function AddImage() {
@@ -119,9 +113,7 @@ function AddImage() {
       );
 
       if (response.ok) {
-        const data = await response.json();
-
-        // Update current image with segmentation data
+        const data = await response.json(); // Update current image with segmentation data
         setImages((prev) =>
           prev.map((img, idx) => {
             if (idx === currentImageIndex) {
@@ -130,12 +122,17 @@ function AddImage() {
                 crops: data.crops || [],
                 processed: true,
                 status: "processed",
+                confidence: data.highest_confidence, // Add confidence data
                 segmentationData: {
                   crops: data.segmentation_data || [],
                   total_crops: data.segmentation_data
                     ? data.segmentation_data.length
                     : 0,
                   filename: img.file.name,
+                  confidence: data.highest_confidence, // Add confidence to segmentation data
+                  avg_confidence: data.avg_confidence, // Add average confidence if available
+                  total_detections: data.total_detections,
+                  valid_detections: data.valid_detections,
                 },
               };
             }
@@ -804,9 +801,7 @@ function AddImage() {
       setShowBatchChart(true);
       setActiveTab("batch-analysis");
       setShowSaveButton(true);
-      setAnalysisCompleted(true);
-
-      // FIXED: Process results with proper manual override handling
+      setAnalysisCompleted(true); // FIXED: Process results with proper manual override handling
       const processedImagesWithData = validImages.map((image) => {
         const result = data.results.find((r) => r.filename === image.file.name);
         if (result && result.crops) {
@@ -815,6 +810,7 @@ function AddImage() {
             crops: result.crops.map((crop) => crop.crop_url),
             processed: true,
             status: "processed",
+            confidence: result.highest_confidence, // Add confidence
             segmentationData: {
               crops: result.crops.map((crop) => ({
                 ...crop,
@@ -822,10 +818,14 @@ function AddImage() {
                 overlay_url: crop.overlay_url || crop.visualization_url,
                 visualization_url: crop.overlay_url || crop.visualization_url,
                 mask_url: crop.mask_url, // Add mask URL
-                manually_included: crop.manually_included || false, // Track manual override
+                manually_included: crop.manually_included || false,
               })),
               total_crops: result.crops.length,
               filename: result.filename,
+              confidence: result.highest_confidence, // Add confidence to segmentation data
+              avg_confidence: result.avg_confidence,
+              total_detections: result.total_detections,
+              valid_detections: result.valid_detections,
               manually_included: result.manually_included || false,
             },
           };
@@ -844,6 +844,7 @@ function AddImage() {
             crops: result.crops.map((crop) => crop.crop_url),
             processed: true,
             status: "processed",
+            confidence: result.highest_confidence, // Add confidence from batch results
             segmentationData: {
               crops: result.crops.map((crop) => ({
                 ...crop,
@@ -854,6 +855,10 @@ function AddImage() {
               })),
               total_crops: result.crops.length,
               filename: result.filename,
+              confidence: result.highest_confidence, // Add to segmentation data
+              avg_confidence: result.avg_confidence, // Add average confidence
+              total_detections: result.total_detections,
+              valid_detections: result.valid_detections,
               manually_included: result.manually_included || false,
             },
           };
@@ -962,19 +967,6 @@ function AddImage() {
               </span>
             )}
           </div>
-
-          {/* Cancel Button for Long Operations */}
-          {(isValidating || isAnalyzing) && (
-            <button
-              className="cancel-operation-btn"
-              onClick={() => {
-                // You can implement cancellation logic here if needed
-                console.log("Operation cancellation requested");
-              }}
-            >
-              Cancel Operation
-            </button>
-          )}
         </div>
       </div>
     );
@@ -1398,9 +1390,9 @@ function AddImage() {
               ];
             },
           },
-        },
-        // **NEW: Data labels plugin for percentage on top of bars**
+        }, // **ENHANCED: Data labels plugin for percentage on top of bars**
         datalabels: {
+          display: true,
           anchor: "end",
           align: "top",
           color: "#2d3748",
@@ -1459,6 +1451,11 @@ function AddImage() {
       interaction: {
         intersect: false,
         mode: "index",
+      },
+      layout: {
+        padding: {
+          top: 30, // Add extra padding at the top to accommodate data labels
+        },
       },
     };
 
@@ -1574,7 +1571,6 @@ function AddImage() {
     0
   );
   // const completedImages = images.filter((img) => img.processed).length;
-
   const renderAnalysisResults = () => {
     const currentImage = images[currentImageIndex];
     if (!currentImage?.segmentationData?.crops) {
@@ -1585,17 +1581,119 @@ function AddImage() {
       );
     }
 
+    // Calculate confidence percentage
+    const confidence =
+      currentImage?.confidence || currentImage?.segmentationData?.confidence;
+    const avgConfidence = currentImage?.segmentationData?.avg_confidence;
+    const totalDetections = currentImage?.segmentationData?.total_detections;
+    const validDetections = currentImage?.segmentationData?.valid_detections;
+
     return (
-      <InteractiveCoralAnalysis
-        segmentationData={currentImage.segmentationData}
-        cropIntensity={cropIntensity}
-        currentImageIndex={currentImageIndex}
-        onDownloadCrop={downloadCrop}
-        onDownloadOverlay={downloadSegmentationOverlay}
-        onDownloadMask={downloadSegmentationMask}
-      />
+      <div className="image-upload-analysis-results">
+        {/* Model Accuracy Section */}
+        {confidence && (
+          <div className="model-accuracy-section">
+            <h4>
+              <FiBarChart2 size={16} />
+              Model Analysis Confidence
+            </h4>
+            <div className="confidence-metrics">
+              <div className="confidence-item">
+                <span className="confidence-label">Highest Confidence:</span>
+                <span
+                  className={`confidence-value ${getConfidenceClass(
+                    confidence
+                  )}`}
+                >
+                  {(confidence * 100).toFixed(1)}%
+                </span>
+              </div>
+
+              {avgConfidence && (
+                <div className="confidence-item">
+                  <span className="confidence-label">Average Confidence:</span>
+                  <span
+                    className={`confidence-value ${getConfidenceClass(
+                      avgConfidence
+                    )}`}
+                  >
+                    {(avgConfidence * 100).toFixed(1)}%
+                  </span>
+                </div>
+              )}
+
+              {totalDetections && validDetections && (
+                <div className="confidence-item">
+                  <span className="confidence-label">
+                    Detection Success Rate:
+                  </span>
+                  <span
+                    className={`confidence-value ${getConfidenceClass(
+                      validDetections / totalDetections
+                    )}`}
+                  >
+                    {((validDetections / totalDetections) * 100).toFixed(1)}% (
+                    {validDetections}/{totalDetections})
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Confidence Bar Visualization */}
+            <div className="confidence-bar-container">
+              <div className="confidence-bar">
+                <div
+                  className={`confidence-fill ${getConfidenceClass(
+                    confidence
+                  )}`}
+                  style={{ width: `${confidence * 100}%` }}
+                ></div>
+              </div>
+              <div className="confidence-scale">
+                <span>0%</span>
+                <span>50%</span>
+                <span>100%</span>
+              </div>
+            </div>
+
+            {/* Confidence Status */}
+            <div
+              className={`confidence-status ${getConfidenceClass(confidence)}`}
+            >
+              {getConfidenceStatus(confidence)}
+            </div>
+          </div>
+        )}
+
+        {/* Interactive Analysis Component */}
+        <InteractiveCoralAnalysis
+          segmentationData={currentImage.segmentationData}
+          cropIntensity={cropIntensity}
+          currentImageIndex={currentImageIndex}
+          onDownloadCrop={downloadCrop}
+          onDownloadOverlay={downloadSegmentationOverlay}
+          onDownloadMask={downloadSegmentationMask}
+        />
+      </div>
     );
   };
+
+  // Helper function to get confidence class for styling
+  const getConfidenceClass = (confidence) => {
+    if (confidence >= 0.9) return "excellent";
+    if (confidence >= 0.8) return "good";
+    if (confidence >= 0.7) return "fair";
+    return "poor";
+  };
+
+  // Helper function to get confidence status text
+  const getConfidenceStatus = (confidence) => {
+    if (confidence >= 0.9)
+      return "Excellent - Very high confidence in coral detection";
+    if (confidence >= 0.8) return "Good - High confidence in coral detection";
+    if (confidence >= 0.7)
+      return "Fair - Moderate confidence in coral detection";
+    return "Poor - Low confidence, results may be uncertain";  };
 
   const renderManualOverrideModal = () => {
     if (!showManualOverrideModal || !imageToOverride) return null;
