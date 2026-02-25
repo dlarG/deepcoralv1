@@ -265,7 +265,7 @@ function HomePage() {
                 to="/register"
                 className="group px-8 py-4 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-xl hover:shadow-2xl hover:shadow-cyan-500/30 transition-all duration-300 flex items-center justify-center space-x-3"
               >
-                <span className="font-semibold">Start Free Trial</span>
+                <span className="font-semibold">Get Started</span>
                 <FiArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
               </Link>
               <button
@@ -433,8 +433,7 @@ function HomePage() {
                   </div>
                   <div>
                     <h4 className="text-xl font-bold text-white mb-2">Email</h4>
-                    <p className="text-gray-300">gerald@deepcoral.site</p>
-                    <p className="text-gray-300">jeff@deepcoral.site</p>
+                    <p className="text-gray-300">support@deepcoral.site</p>
                   </div>
                 </div>
 
@@ -455,7 +454,10 @@ function HomePage() {
                   Research Hours
                 </h4>
                 <p className="text-gray-300 mb-2">
-                  Monday - Friday: 9:00 AM - 5:00 PM
+                  Monday - Friday: 9:00 AM - 5:00 PM (PHT/GMT+8)
+                </p>
+                <p className="text-gray-300 text-sm mb-2">
+                  Philippine Standard Time
                 </p>
                 <p className="text-gray-300">
                   Weekend consultations available by appointment
@@ -619,12 +621,9 @@ function HomePage() {
 
           {/* Bottom Bar */}
           <div className="pt-8 border-t border-white/10">
-            <div className="flex flex-col md:flex-row justify-between items-center">
-              <p className="text-gray-400 mb-4 md:mb-0">
+            <div className="flex justify-center items-center">
+              <p className="text-gray-400">
                 © 2026 BrAInstormers. All rights reserved.
-              </p>
-              <p className="text-gray-400 flex items-center">
-                Made with <span className="mx-1">💙</span> for our oceans
               </p>
             </div>
           </div>
