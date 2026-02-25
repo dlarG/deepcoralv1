@@ -135,7 +135,7 @@ def create_app():
             
             if not csrf_token or csrf_token != request_csrf:
                 return jsonify({'error': 'CSRF token missing or invalid'}), 403
-    
+            
     return app
 
 
