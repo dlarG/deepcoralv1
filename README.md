@@ -1,8 +1,31 @@
-# DeepCoral: AI-Powered Coral Reef Monitoring System
+# DeepCoral: AI-Based System for Automated Estimation of Live Coral Cover Percentage in Reef Ecosystems
+
+**Capstone Project by Team BrAInstormers**
 
 A comprehensive web application for monitoring, mapping, and analyzing coral reef health using AI-powered image segmentation and biological data tracking.
 
 **Live Application:** https://deepcoral.site
+
+---
+
+## Team Members
+
+**Team Name:** BrAInstormers
+
+- **Denissa T. Doron**
+- **Gerald Catina**
+- **Jefferson S. Itaok**
+- **Rinvee E. Betonio**
+- **Jonas Arcken M. Salac**
+
+**Adviser:**
+- **Jannie Fleur V. Oraño, MCS**
+
+**Institution:** Southern Leyte State University (SLSU)  
+**Program:** Bachelor of Science in Information Technology  
+**Year:** 2026
+
+---
 
 ## Project Overview
 
@@ -425,17 +448,40 @@ Please ensure:
 
 ## License
 
-This project is licensed under the MIT License - see LICENSE file for details.
+This project is licensed under the **DeepCoral Custom Non-Commercial Academic License v1.0** - see [LICENSE](LICENSE) file for details.
 
-## Support
+Commercial use is not allowed without prior written permission from Team BrAInstormers.
+
+## Intellectual Property Notice
+
+The Utility Model (UM) application related to the system features and methods has been filed with IPOPHL and is currently **pending examination/approval**.
+
+
+## Contact & Support
 
 For issues, questions, or contributions:
-- GitHub Issues: https://github.com/dlarG/deepcoralv1/issues
-- Email: contact@deepcoral.site
-- Documentation: See DEPLOYMENT_GUIDE.md and SETUP.md for additional information
+
+**Contact Us:**
+- Email: support@deepcoral.site
+- GitHub Issues: https://github.com/AnonJeffz/DeepCoral/issues
+
+
+> **Note:** If deepcoral.site domain expires, you can reach the development team via the GitHub repository issues page.
+
+## About This Project
+
+This application was developed as a capstone project at Southern Leyte State University (SLSU) to provide marine biologists, researchers, and environmental organizations with an automated tool for coral reef ecosystem monitoring and analysis. The system leverages artificial intelligence and geospatial technology to provide accurate, real-time insights into coral cover percentage and ecosystem health.
+
+### Use Cases
+
+- **For Researchers & Biologists:** Streamlined workflow for coral reef monitoring and data analysis
+- **For Educational Institutions:** Teaching platform for marine biology, GIS, and AI applications
+- **For Environmental Organizations:** Cost-effective monitoring solution for conservation efforts
+- **For Students:** Learning platform demonstrating practical AI, web development, and database design
 
 ## Acknowledgments
 
-- Marine biology research community for data and expertise
-- Open-source ML community (YOLO, UNet implementations)
-- AWS, Supabase, and Vercel for infrastructure support
+- Marine biology research community for expertise and guidance
+- Open-source ML community (YOLO, UNet, Framer Motion implementations)
+- AWS, Supabase, and Vercel for providing robust infrastructure
+- Southern Leyte State University for research facilities and support
